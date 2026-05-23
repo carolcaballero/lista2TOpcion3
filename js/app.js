@@ -156,7 +156,7 @@ function handleLogout() {
     switchView('login');
 }
 
-// --- MANEJO DE VISTAS Y PESTAÑAS ---
+// --- MANEJO DE VISTAS Y PESTAÑAS (Con Seguridad Extra) ---
 function switchView(view) {
     if (view === 'login') {
         document.getElementById("login-section").classList.remove("hidden");
@@ -168,11 +168,17 @@ function switchView(view) {
 }
 
 function switchTab(tab) {
+    // CANDADO DE SEGURIDAD: Evita que alguien que no sea "Admin" acceda a esta pestaña
+    if (tab === 'admin' && state.currentUser.username !== "Admin") {
+        alert("❌ Acceso Denegado: Solo el Administrador puede ver este panel.");
+        return; 
+    }
+
     const btnPlanilla = document.getElementById("tab-planilla");
     const btnAdmin = document.getElementById("tab-admin");
     const viewPlanilla = document.getElementById("view-planilla");
     const viewAdmin = document.getElementById("view-admin");
-    const searchWrapper = document.getElementById("search-wrapper");
+    const searchWrapper = document.getElementById("search-wrapper"); 
 
     if (tab === 'planilla') {
         btnPlanilla.classList.add("active");
@@ -211,43 +217,159 @@ function calculateMetrics() {
     document.getElementById("metric-pending").innerHTML = `${pending} <span style="font-size:0.85rem; color:#aaa; display:block; margin-top:5px;">(${noVoted} No Votaron)</span>`;
 }
 
-// --- RENDERIZADO DE TABLA PLANILLA ---
 function renderVotantesTable() {
     const tbody = document.getElementById("votantes-table-body");
     tbody.innerHTML = "";
 
-    // 1. Filtrar por búsqueda
-    let filtered = state.votantes.filter(v => 
+    const filtered = state.votantes.filter(v => 
         v.nombre.toLowerCase().includes(state.searchQuery) || 
         v.cedula.includes(state.searchQuery)
     );
-
-    // 2. ORDENAMIENTO (Agrupación): Votó -> No Votó -> Pendiente
-    const ordenEstados = {
-        "Votó": 1,
-        "No Votó": 2,
-        "Pendiente": 3
-    };
-
-    filtered.sort((a, b) => {
-        const pesoA = ordenEstados[a.voto] || 3;
-        const pesoB = ordenEstados[b.voto] || 3;
-
-        // Si son de grupos distintos, los ordena por peso (1, 2, 3)
-        if (pesoA !== pesoB) {
-            return pesoA - pesoB;
-        }
-        // Si están en el mismo grupo (ej. los dos son "Pendiente"), ordena alfabéticamente
-        return a.nombre.localeCompare(b.nombre);
-    });
 
     if (filtered.length === 0) {
         tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No se encontraron registros.</td></tr>`;
         return;
     }
 
-    // 3. Renderizar filas ya ordenadas
     filtered.forEach((v, index) => {
         const tr = document.createElement("tr");
         
-        let badgeStyle = "padding: 6px 12px; border-radius: 4px; font-size: 0.8rem; font-weight:
+        let badgeStyle = "padding: 6px 12px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; display: inline-block; text-transform: uppercase; text-align: center; min-width: 95px;";
+        if (v.voto === "Votó") {
+            badgeStyle += "background-color: #00CC44; color: #FFFFFF;"; 
+        } else if (v.voto === "No Votó") {
+            badgeStyle += "background-color: #E50000; color: #FFFFFF;"; 
+        } else {
+            badgeStyle += "background-color: #333333; color: #DDDDDD;"; 
+        }
+
+        const activeVotoStyle = v.voto === "Votó" 
+            ? "background-color: #00CC44; color: white; border: none; font-weight: bold;" 
+            : "background-color: #222; color: #888; border: 1px solid #444;";
+            
+        const activeNoVotoStyle = v.voto === "No Votó" 
+            ? "background-color: #E50000; color: white; border: none; font-weight: bold;" 
+            : "background-color: #222; color: #888; border: 1px solid #444;";
+
+        tr.innerHTML = `
+            <td><strong>${index + 1}</strong></td>
+            <td>${v.nombre}</td>
+            <td>${v.cedula}</td>
+            <td>${v.domicilio}</td>
+            <td>
+                <span style="${badgeStyle}">${v.voto}</span>
+            </td>
+            <td>
+                <div style="display: flex; gap: 6px; min-width: 140px;">
+                    <button style="${activeVotoStyle} padding: 8px 10px; font-size: 0.75rem; border-radius: 4px; cursor: pointer; flex: 1; text-transform: uppercase;" 
+                            onclick="ejecutarAccionVoto('${v.id}', 'Votó')">
+                        Votó
+                    </button>
+                    <button style="${activeNoVotoStyle} padding: 8px 10px; font-size: 0.75rem; border-radius: 4px; cursor: pointer; flex: 1; text-transform: uppercase;" 
+                            onclick="ejecutarAccionVoto('${v.id}', 'No Votó')">
+                        No Votó
+                    </button>
+                </div>
+            </td>
+            <td>
+                <input type="text" class="obs-input" id="obs-${v.id}" value="${v.observaciones}" 
+                    placeholder="Añadir motivo..." 
+                    onchange="updateObservacion('${v.id}', this.value)">
+            </td>
+            <td>
+                <span class="log-span">${v.modificado_por}</span>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+window.ejecutarAccionVoto = function(id, accionSolicitada) {
+    const target = state.votantes.find(v => v.id == id);
+    if (!target) return;
+
+    if (target.voto === accionSolicitada) {
+        target.voto = "Pendiente";
+        if(accionSolicitada === "No Votó") target.observaciones = "";
+    } else {
+        target.voto = accionSolicitada;
+
+        if (accionSolicitada === "No Votó") {
+            const justificacion = prompt(`Justificación de inasistencia para:\n${target.nombre}\n\n¿Por qué NO votó?`);
+            if (justificacion !== null && justificacion.trim() !== "") {
+                target.observaciones = justificacion.trim();
+            } else {
+                target.observaciones = "No asistió (Sin motivo especificado)";
+            }
+        } else {
+            target.observaciones = "";
+        }
+    }
+
+    target.modificado_por = `Por: ${state.currentUser.username === "Admin" ? "Administrador/a" : state.currentUser.username}`;
+    
+    saveVotantes();
+    updateDashboard();
+};
+
+window.updateObservacion = function(id, text) {
+    const target = state.votantes.find(v => v.id == id);
+    if (target) {
+        target.observaciones = text.trim();
+        target.modificado_por = `Por: ${state.currentUser.username === "Admin" ? "Administrador/a" : state.currentUser.username}`;
+        saveVotantes();
+        renderVotantesTable();
+    }
+};
+
+function handleRegisterUser(e) {
+    e.preventDefault();
+    const fullname = document.getElementById("reg-fullname").value.trim();
+    const phone = document.getElementById("reg-phone").value.trim();
+    const username = document.getElementById("reg-username").value.trim();
+    const password = document.getElementById("reg-password").value;
+
+    if (state.users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+        alert("El nombre de usuario ya existe.");
+        return;
+    }
+
+    state.users.push({ username, password, fullname, phone, isAdmin: false });
+    saveUsers();
+    document.getElementById("register-user-form").reset();
+    renderUsersTable();
+    alert("Usuario creado correctamente.");
+}
+
+function renderUsersTable() {
+    const tbody = document.getElementById("users-table-body");
+    tbody.innerHTML = "";
+
+    const externalUsers = state.users.filter(u => u.username !== "Admin");
+
+    if (externalUsers.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#aaa;">No hay usuarios externos registrados.</td></tr>`;
+        return;
+    }
+
+    externalUsers.forEach(u => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${u.fullname}</td>
+            <td>${u.phone}</td>
+            <td><code>${u.username}</code></td>
+            <td>
+                <button class="btn-danger" onclick="deleteUser('${u.username}')">Eliminar</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+window.deleteUser = function(username) {
+    if (confirm(`¿Eliminar al usuario ${username}?`)) {
+        state.users = state.users.filter(u => u.username !== username);
+        saveUsers();
+        renderUsersTable();
+    }
+};

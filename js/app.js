@@ -59,7 +59,7 @@ function fetchCSVAndParse() {
                     id: cols[0]?.trim(),
                     nombre: cols[1]?.trim(),
                     cedula: cols[2]?.trim(),
-                    voto: cols[3]?.trim() || "No Votó",
+                    voto: cols[3]?.trim() || "Pendiente", // Por defecto permanece en Pendiente
                     domicilio: cols[4]?.trim() || "---",
                     observaciones: cols[5]?.trim() || "",
                     modificado_por: cols[6]?.trim() || "---"
@@ -185,12 +185,15 @@ function updateDashboard() {
 
 function calculateMetrics() {
     const total = state.votantes.length;
-    const voted = state.votantes.filter(v => v.voto === "Ya Votó").length;
-    const pending = total - voted;
+    const voted = state.votantes.filter(v => v.voto === "Votó").length;
+    const noVoted = state.votantes.filter(v => v.voto === "No Votó").length;
+    const pending = state.votantes.filter(v => v.voto === "Pendiente").length;
 
     document.getElementById("metric-total").textContent = total;
     document.getElementById("metric-voted").textContent = voted;
-    document.getElementById("metric-pending").textContent = pending;
+    
+    // Mostramos la suma de las incidencias pendientes y los que justificadamente no votaron
+    document.getElementById("metric-pending").innerHTML = `${pending} <span style="font-size:0.9rem; color:#aaa; display:block; margin-top:5px;">(${noVoted} No Votaron)</span>`;
 }
 
 function renderVotantesTable() {
@@ -209,8 +212,16 @@ function renderVotantesTable() {
 
     filtered.forEach((v, index) => {
         const tr = document.createElement("tr");
-        const isVoted = v.voto === "Ya Votó";
-        const btnClass = isVoted ? "btn-table-voto si" : "btn-table-voto no";
+        
+        // Estilización dinámica basada estrictamente en los colores solicitados (Rojo, Blanco, Negro)
+        let btnStyle = "";
+        if (v.voto === "Votó") {
+            btnStyle = "background-color: #E50000; color: #FFFFFF; border: none;"; // Rojo Campaña
+        } else if (v.voto === "No Votó") {
+            btnStyle = "background-color: #0A0A0A; color: #FFFFFF; border: 2px solid #E50000;"; // Negro con borde Rojo
+        } else {
+            btnStyle = "background-color: #333333; color: #FFFFFF; border: 1px solid #555;"; // Pendiente (Gris neutro)
+        }
 
         tr.innerHTML = `
             <td><strong>${index + 1}</strong></td>
@@ -218,13 +229,13 @@ function renderVotantesTable() {
             <td>${v.cedula}</td>
             <td>${v.domicilio}</td>
             <td>
-                <button class="${btnClass}" onclick="toggleVoto('${v.id}')">
+                <button class="btn-table-voto" style="${btnStyle} width: auto; min-width: 115px; text-transform: uppercase;" onclick="toggleVoto('${v.id}')">
                     ${v.voto}
                 </button>
             </td>
             <td>
-                <input type="text" class="obs-input" value="${v.observaciones}" 
-                    placeholder="Añadir por qué no..." 
+                <input type="text" class="obs-input" id="obs-${v.id}" value="${v.observaciones}" 
+                    placeholder="Sin observaciones..." 
                     onchange="updateObservacion('${v.id}', this.value)">
             </td>
             <td>
@@ -235,11 +246,27 @@ function renderVotantesTable() {
     });
 }
 
+// LÓGICA DE ROTACIÓN: Pendiente -> Votó -> No Votó -> Pendiente
 window.toggleVoto = function(id) {
     const target = state.votantes.find(v => v.id == id);
     if (target) {
-        target.voto = target.voto === "Ya Votó" ? "No Votó" : "Ya Votó";
-        target.modificado_por = `Modificado por: ${state.currentUser.username}`;
+        if (target.voto === "Pendiente") {
+            target.voto = "Votó";
+        } else if (target.voto === "Votó") {
+            target.voto = "No Votó";
+            
+            // Solicitar de forma interactiva la justificación obligatoria
+            const justificacion = prompt(`Justificación requerida para ${target.nombre}:\n¿Por qué NO votó?`);
+            if (justificacion !== null && justificacion.trim() !== "") {
+                target.observaciones = justificacion.trim();
+            } else {
+                target.observaciones = "No asistió (Sin justificación especificada)";
+            }
+        } else {
+            target.voto = "Pendiente";
+        }
+        
+        target.modificado_por = `Por: ${state.currentUser.username}`;
         saveVotantes();
         updateDashboard();
     }
@@ -249,7 +276,7 @@ window.updateObservacion = function(id, text) {
     const target = state.votantes.find(v => v.id == id);
     if (target) {
         target.observaciones = text.trim();
-        target.modificado_por = `Modificado por: ${state.currentUser.username}`;
+        target.modificado_por = `Por: ${state.currentUser.username}`;
         saveVotantes();
         renderVotantesTable();
     }

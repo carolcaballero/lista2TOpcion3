@@ -1,0 +1,11 @@
+nro,nombre,apellido,cedula,voto,domicilio,observaciones,marcadoPor,fechaMarca
+1,Juan,Pérez,1234567,no,,,,
+2,María,González,2345678,si,,,,Admin,2024-10-15
+3,Carlos,Rodríguez,3456789,no,Barrio San Miguel,,,
+4,Ana,López,4567890,si,,,,Admin,2024-10-15
+5,Luis,Martínez,5678901,no,Villa Elisa,,,
+6,Patricia,Fernández,6789012,no,,,Ausente en el país,,
+7,Roberto,García,7890123,si,,,,Admin,2024-10-16
+8,Sandra,Díaz,8901234,no,Barrio Obrero,,,
+9,Miguel,Torres,9012345,no,,,No tiene transporte,,
+10,Laura,Vargas,1023456,si,,,,Admin,2024-10-16

@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sistema de Votantes · Mgtr. Carolina Caballero · Lista 2T</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23CC0000' d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/></svg>"/>
+</head>
+<body>
+
+<!-- =============================================
+     PANTALLA DE LOGIN
+     ============================================= -->
+<div id="login-screen">
+  <div class="login-card">
+
+    <div class="login-header">
+      <svg class="logo-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="40" cy="40" r="38" fill="none" stroke="#CC0000" stroke-width="2"/>
+        <path d="M40 10 L47 27 L65 29 L52 41 L55 59 L40 51 L25 59 L28 41 L15 29 L33 27 Z" fill="#CC0000" opacity="0.9"/>
+        <circle cx="40" cy="40" r="8" fill="#0A0A0A" stroke="#FFFFFF" stroke-width="1.5"/>
+        <path d="M36 40 L39 43 L44 37" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </svg>
+      <h1>MGTR. <span>CAROLINA</span><br/>CABALLERO</h1>
+      <p>Concejal 2026 – 2031 · Lista 2T · Opción 3</p>
+    </div>
+
+    <div id="login-error" class="alert alert-error" style="display:none;">
+      <svg viewBox="0 0 24 24"><use href="#icon-alert"/></svg>
+      <span>Usuario o contraseña incorrectos.</span>
+    </div>
+
+    <form id="login-form" autocomplete="off">
+      <div class="form-group">
+        <label for="login-usuario">Usuario</label>
+        <div class="input-icon-wrap">
+          <input id="login-usuario" type="text" placeholder="Ingrese su usuario" autocomplete="username" required/>
+          <svg class="field-icon" viewBox="0 0 24 24"><use href="#icon-user"/></svg>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="login-password">Contraseña</label>
+        <div class="input-icon-wrap" style="position:relative;">
+          <input id="login-password" type="password" placeholder="Ingrese su contraseña" autocomplete="current-password" required/>
+          <svg class="field-icon" viewBox="0 0 24 24"><use href="#icon-lock"/></svg>
+          <button type="button" class="toggle-pass" id="toggle-password">
+            <svg viewBox="0 0 24 24"><use href="#icon-eye"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-8"></div>
+      <button type="submit" class="btn btn-primary">
+        <svg viewBox="0 0 24 24"><use href="#icon-check"/></svg>
+        Ingresar al Sistema
+      </button>
+    </form>
+
+    <p class="text-muted mt-16" style="text-align:center;font-size:0.75rem;">
+      Sistema Interno de Registro Electoral
+    </p>
+  </div>
+</div>
+
+
+<!-- =============================================
+     APLICACIÓN PRINCIPAL
+     ============================================= -->
+<div id="app">
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="header-brand">
+      <svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="18" cy="18" r="17" fill="none" stroke="#CC0000" stroke-width="1.5"/>
+        <path d="M18 4 L21.5 13 L31 14 L24 20.5 L26 30 L18 25.5 L10 30 L12 20.5 L5 14 L14.5 13 Z" fill="#CC0000"/>
+        <circle cx="18" cy="18" r="4" fill="#0A0A0A" stroke="white" stroke-width="1"/>
+        <path d="M16 18 L17.5 19.5 L20.5 16" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+      </svg>
+      <div class="header-title">
+        MGTR. <span>CAROLINA CABALLERO</span> · CONCEJAL 2026–2031 · LISTA <span>2T</span> OPCIÓN <span>3</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="user-badge">
+        <span class="badge-dot"></span>
+        <span id="user-display">–</span>
+        <span id="user-role-badge" style="font-size:0.7rem;padding:2px 8px;border-radius:10px;background:rgba(204,0,0,0.2);color:var(--rojo);">–</span>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="logout()">
+        <svg viewBox="0 0 24 24"><use href="#icon-logout"/></svg>
+        Salir
+      </button>
+    </div>
+  </header>
+
+  <!-- NAV TABS -->
+  <nav class="nav-tabs">
+    <button class="nav-tab" data-tab="planilla">
+      <svg viewBox="0 0 24 24"><use href="#icon-list"/></svg>
+      Planilla de Votantes
+    </button>
+    <button class="nav-tab" data-tab="dashboard">
+      <svg viewBox="0 0 24 24"><use href="#icon-stats"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-tab admin-only" data-tab="usuarios">
+      <svg viewBox="0 0 24 24"><use href="#icon-users"/></svg>
+      Usuarios
+    </button>
+    <button class="nav-tab admin-only" data-tab="config">
+      <svg viewBox="0 0 24 24"><use href="#icon-file"/></svg>
+      Configuración
+    </button>
+  </nav>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="app-main">
+
+    <!-- ==========================================
+         PANEL: PLANILLA DE VOTANTES
+         ========================================== -->
+    <section id="panel-planilla" class="panel">
+
+      <div class="flex-between mb-16">
+        <h2 class="panel-title" style="margin-bottom:0;">
+          <svg viewBox="0 0 24 24"><use href="#icon-list"/></svg>
+          Planilla de <span>Votantes</span>
+        </h2>
+        <div class="flex gap-8">
+          <button class="btn btn-secondary btn-sm admin-only" onclick="exportarCSV()">
+            <svg viewBox="0 0 24 24"><use href="#icon-file"/></svg>
+            Exportar CSV
+          </button>
+          <button class="btn btn-primary btn-sm admin-only" onclick="openAgregarVotante()">
+            <svg viewBox="0 0 24 24"><use href="#icon-add"/></svg>
+            Agregar
+          </button>
+        </div>
+      </div>
+
+      <!-- Barra de búsqueda -->
+      <div class="search-bar">
+        <div class="search-input-wrap">
+          <svg viewBox="0 0 24 24"><use href="#icon-search"/></svg>
+          <input type="text" id="search-input" placeholder="Buscar por nombre, apellido o N° de cédula..."/>
+        </div>
+        <select id="filter-voto" class="filter-select">
+          <option value="todos">Todos</option>
+          <option value="si">Votaron</option>
+          <option value="no">No votaron</option>
+        </select>
+      </div>
+
+      <!-- Tabla -->
+      <div class="table-wrap">
+        <div class="table-header">
+          <span class="table-header-title">Registro de votantes</span>
+          <span id="count-label" class="text-muted" style="font-size:0.8rem;"></span>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>N°</th>
+                <th>Nombre</th>
+                <th>Apellido</th>
+                <th>Cédula</th>
+                <th>Voto</th>
+                <th>Domicilio / Barrio</th>
+                <th>Observaciones</th>
+                <th>Marcado por</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="votantes-tbody">
+              <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--gris-light);">
+                <div class="spinner"></div>
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <span id="pg-info" class="text-muted"></span>
+          <div class="pagination-btns" id="pg-btns"></div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ==========================================
+         PANEL: DASHBOARD
+         ========================================== -->
+    <section id="panel-dashboard" class="panel">
+      <h2 class="panel-title">
+        <svg viewBox="0 0 24 24"><use href="#icon-stats"/></svg>
+        <span>Dashboard</span> Electoral
+      </h2>
+
+      <!-- Stats cards -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total Padron</div>
+          <div class="stat-value" id="stat-total">0</div>
+          <div class="stat-sub">Votantes registrados</div>
+        </div>
+        <div class="stat-card verde">
+          <div class="stat-label">Ya Votaron</div>
+          <div class="stat-value" id="stat-votaron">0</div>
+          <div class="stat-sub">Confirmados</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">No Votaron</div>
+          <div class="stat-value" id="stat-novotaron">0</div>
+          <div class="stat-sub">Pendientes</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">% Participación</div>
+          <div class="stat-value" id="stat-pct">0%</div>
+          <div class="stat-sub">Del total</div>
+        </div>
+      </div>
+
+      <!-- Barra de progreso -->
+      <div class="progress-bar-wrap">
+        <div class="progress-label">
+          <span>Progreso de captación de votos</span>
+          <span id="progress-pct">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Recientes -->
+      <h3 style="font-family:var(--font-cond);font-size:0.82rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris-light);margin-bottom:12px;">
+        Últimas marcaciones
+      </h3>
+      <div class="table-wrap">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Cédula</th>
+                <th>Estado</th>
+                <th>Registrado por</th>
+                <th>Fecha</th>
+              </tr>
+            </thead>
+            <tbody id="recientes-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ==========================================
+         PANEL: USUARIOS (admin)
+         ========================================== -->
+    <section id="panel-usuarios" class="panel admin-only">
+      <div class="flex-between mb-16">
+        <h2 class="panel-title" style="margin-bottom:0;">
+          <svg viewBox="0 0 24 24"><use href="#icon-users"/></svg>
+          Panel de <span>Usuarios</span>
+        </h2>
+        <button class="btn btn-primary btn-sm" onclick="openAgregarUsuario()">
+          <svg viewBox="0 0 24 24"><use href="#icon-add"/></svg>
+          Nuevo Usuario
+        </button>
+      </div>
+
+      <div class="alert alert-info">
+        <svg viewBox="0 0 24 24"><use href="#icon-info"/></svg>
+        Los usuarios con rol <strong>Admin</strong> pueden agregar, editar y eliminar votantes. Los usuarios estándar solo pueden ver la planilla y marcar votos.
+      </div>
+
+      <div class="users-grid" id="users-grid"></div>
+    </section>
+
+
+    <!-- ==========================================
+         PANEL: CONFIGURACIÓN (admin)
+         ========================================== -->
+    <section id="panel-config" class="panel admin-only">
+      <h2 class="panel-title">
+        <svg viewBox="0 0 24 24"><use href="#icon-file"/></svg>
+        <span>Configuración</span>
+      </h2>
+
+      <div class="table-wrap" style="max-width:600px;padding:24px;">
+        <h3 style="font-family:var(--font-cond);letter-spacing:1px;margin-bottom:16px;">URL del CSV en GitHub</h3>
+        <p class="text-muted" style="margin-bottom:16px;font-size:0.85rem;">
+          Ingrese la URL raw de su archivo CSV en GitHub (p.ej. <code style="color:var(--rojo);">https://raw.githubusercontent.com/usuario/repo/main/votantes.csv</code>)
+        </p>
+        <div class="form-group">
+          <label>URL del archivo CSV</label>
+          <div class="input-icon-wrap">
+            <input type="url" id="csv-url-input" placeholder="https://raw.githubusercontent.com/..."/>
+            <svg class="field-icon" viewBox="0 0 24 24"><use href="#icon-file"/></svg>
+          </div>
+        </div>
+        <div class="flex gap-8 mt-16">
+          <button class="btn btn-primary" onclick="saveCSVUrl()">
+            <svg viewBox="0 0 24 24"><use href="#icon-check"/></svg>
+            Guardar y Recargar
+          </button>
+          <button class="btn btn-secondary" onclick="reloadCSV()">
+            <svg viewBox="0 0 24 24"><use href="#icon-refresh"/></svg>
+            Recargar CSV
+          </button>
+        </div>
+
+        <div class="divider"></div>
+        <h3 style="font-family:var(--font-cond);letter-spacing:1px;margin-bottom:16px;">Exportar datos</h3>
+        <button class="btn btn-secondary" onclick="exportarCSV()">
+          <svg viewBox="0 0 24 24"><use href="#icon-file"/></svg>
+          Exportar Votantes como CSV
+        </button>
+
+        <div class="divider"></div>
+        <h3 style="font-family:var(--font-cond);letter-spacing:1px;margin-bottom:12px;color:#ff6b6b;">Zona de riesgo</h3>
+        <button class="btn btn-danger" onclick="resetVotantes()">
+          Resetear todos los votos (⚠ irreversible)
+        </button>
+      </div>
+    </section>
+
+  </main><!-- /app-main -->
+</div><!-- /app -->
+
+
+<!-- =============================================
+     MODALES
+     ============================================= -->
+
+<!-- MODAL: Votante -->
+<div class="modal-overlay" id="modal-votante">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modal-votante-title">Votante</h3>
+      <button class="modal-close" onclick="closeModal('modal-votante')">
+        <svg viewBox="0 0 24 24"><use href="#icon-x"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="vtid"/>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>Nombre *</label>
+          <div class="input-icon-wrap">
+            <input type="text" id="vt-nombre" placeholder="Nombre"/>
+            <svg class="field-icon" viewBox="0 0 24 24"><use href="#icon-user"/></svg>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Apellido *</label>
+          <div class="input-icon-wrap">
+            <input type="text" id="vt-apellido" placeholder="Apellido"/>
+            <svg class="field-icon" viewBox="0 0 24 24"><use href="#icon-user"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>N° Cédula *</label>
+        <div class="input-icon-wrap">
+          <input type="text" id="vt-cedula" placeholder="Número de cédula de identidad"/>
+          <svg class="field-icon" viewBox="0 0 24 24"><use href="#icon-id"/></svg>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Domicilio / Barrio</label>
+        <div class="input-icon-wrap">
+          <input type="text" id="vt-domicilio" placeholder="Barrio o dirección"/>
+          <svg class="field-icon" viewBox="0 0 24 24"><use href="#icon-home"/></svg>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Observaciones</label>
+        <textarea id="vt-observaciones" placeholder="Observaciones opcionales..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-votante')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveVotante()" style="width:auto;">
+        <svg viewBox="0 0 24 24"><use href="#icon-check"/></svg>
+        Guardar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Usuario -->
+<div class="modal-overlay" id="modal-usuario">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modal-usuario-title">Usuario</h3>
+      <button class="modal-close" onclick="closeModal('modal-usuario')">
+        <svg viewBox="0 0 24 24"><use href="#icon-x"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="uid"/>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>Nombre *</label>
+          <div class="input-icon-wrap">
+            <input type="text" id="usr-nombre" placeholder="Nombre"/>
+            <svg class="field-icon" viewBox="0 0 24 24"><use href="#icon-user"/></svg>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Apellido *</label>
+          <div class="input-icon-wrap">
+            <input type="text" id="usr-apellido" placeholder="Apellido"/>
+            <svg class="field-icon" viewBox="0 0 24 24"><use href="#icon-user"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Teléfono</label>
+        <div class="input-icon-wrap">
+          <input type="tel" id="usr-telefono" placeholder="Número de teléfono"/>
+          <svg class="field-icon" viewBox="0 0 24 24"><use href="#icon-phone"/></svg>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Nombre de Usuario *</label>
+        <div class="input-icon-wrap">
+          <input type="text" id="usr-usuario" placeholder="Usuario para iniciar sesión" autocomplete="off"/>
+          <svg class="field-icon" viewBox="0 0 24 24"><use href="#icon-id"/></svg>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Rol</label>
+        <select id="usr-rol">
+          <option value="user">Usuario (solo consulta y marcado)</option>
+          <option value="admin">Administrador (acceso total)</option>
+        </select>
+      </div>
+      <div class="form-group" id="usr-pass-group">
+        <label>Contraseña</label>
+        <div class="input-icon-wrap" style="position:relative;">
+          <input type="password" id="usr-pass" placeholder="Contraseña (dejar vacío para no cambiar)" autocomplete="new-password"/>
+          <svg class="field-icon" viewBox="0 0 24 24"><use href="#icon-lock"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-usuario')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveUsuario()" style="width:auto;">
+        <svg viewBox="0 0 24 24"><use href="#icon-check"/></svg>
+        Guardar Usuario
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Observación al desmarcar -->
+<div class="modal-overlay obs-modal" id="modal-obs">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <h3 class="modal-title">Desmarcar Voto</h3>
+      <button class="modal-close" onclick="closeModal('modal-obs')">
+        <svg viewBox="0 0 24 24"><use href="#icon-x"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="text-muted" style="margin-bottom:16px;">
+        Desmarcar el voto de: <strong id="obs-nombre"></strong>
+      </p>
+      <div class="form-group">
+        <label>Observación <span class="text-muted">(opcional)</span></label>
+        <textarea id="obs-input" placeholder="¿Por qué se desmarca este voto? (no obligatorio)"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-obs')">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmDesmarcar()" style="width:auto;background:rgba(204,0,0,0.15);color:var(--rojo);border:1px solid var(--borde);">
+        <svg viewBox="0 0 24 24"><use href="#icon-cancel"/></svg>
+        Confirmar Desmarcar
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- Scripts -->
+<script>
+// Función inline para resetear votos (config panel)
+function resetVotantes() {
+  if (!confirm('¿Seguro que desea resetear TODOS los votos? Esta acción no puede deshacerse.')) return;
+  STATE.votantes.forEach(v => { v.voto = 'no'; v.marcadoPor = ''; v.fechaMarca = ''; v.observaciones = ''; });
+  saveVotantes();
+  renderVotantes();
+  renderDashboard();
+  showToast('Todos los votos han sido reseteados', 'error');
+}
+</script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,455 +1,589 @@
-// --- CONFIGURACIÓN DE DATOS INICIALES ---
-const DEFAULT_ADMIN = { username: "Admin", password: "CAROL2T3", fullname: "Administrador/a", phone: "N/A", isAdmin: true };
-const CSV_PATH = 'data/votantes.csv';
-const SVG_PATH = 'assets/icons.svg';
+// ═══════════════════════════════════════════════════════════════
+//  CONTROL ELECTORAL — app.js
+//  Firebase Firestore (tiempo real) + CSV padrón base
+//  Usuarios y votos guardados en Firestore
+// ═══════════════════════════════════════════════════════════════
 
-let state = {
-    currentUser: null,
-    users: [],
-    votantes: [],
-    currentFilter: "Pendiente", 
-    searchQuery: ""             
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+    getFirestore,
+    doc, getDoc, getDocs, setDoc, deleteDoc,
+    collection, onSnapshot, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ── Firebase config ─────────────────────────────────────────────
+const firebaseConfig = {
+    apiKey:            "AIzaSyAPOUL6dxwCVgJxhGbBudKbWcyfiFFZt88",
+    authDomain:        "lista2topcion3.firebaseapp.com",
+    projectId:         "lista2topcion3",
+    storageBucket:     "lista2topcion3.firebasestorage.app",
+    messagingSenderId: "121196945937",
+    appId:             "1:121196945937:web:1d4eac42d712927f4b87b0",
+    measurementId:     "G-J6NJZ4ZNWK"
 };
 
-// --- INICIALIZACIÓN ---
+const firebaseApp = initializeApp(firebaseConfig);
+const db          = getFirestore(firebaseApp);
+
+// ── Constantes ──────────────────────────────────────────────────
+const ADMIN_USER = "Admin";
+const ADMIN_PASS = "CAROL2T3";
+const CSV_PATH   = "data/votantes.csv";
+
+// ── Estado global ───────────────────────────────────────────────
+const state = {
+    currentUser:   null,
+    padron:        [],    // leído del CSV (inmutable en sesión)
+    votos:         {},    // { [cedula]: {voto, observaciones, modificado_por} }
+    usuarios:      [],    // operadores desde Firestore
+    currentFilter: "Pendiente",
+    searchQuery:   "",
+    pendingNoVoto: null,  // { cedula, nombre } esperando modal
+    unsubVotos:    null,  // cancelar listener Firestore
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  INICIO
+// ═══════════════════════════════════════════════════════════════
 document.addEventListener("DOMContentLoaded", () => {
-    loadSvgSprite();
-    initStorage();
-    setupEventListeners();
+    bindEvents();
     checkSession();
 });
 
-function loadSvgSprite() {
-    fetch(SVG_PATH)
-        .then(response => response.text())
-        .then(data => {
-            document.getElementById('svg-container').innerHTML = data;
-        }).catch(err => console.error("Error cargando SVG sprites:", err));
-}
-
-function initStorage() {
-    const localUsers = localStorage.getItem("elecciones_users");
-    if (!localUsers) {
-        state.users = [DEFAULT_ADMIN];
-        localStorage.setItem("elecciones_users", JSON.stringify(state.users));
-    } else {
-        state.users = JSON.parse(localUsers);
-    }
-
-    const localVotantes = localStorage.getItem("elecciones_votantes");
-    if (!localVotantes) {
-        fetchCSVAndParse();
-    } else {
-        state.votantes = JSON.parse(localVotantes);
-        updateDashboard();
-    }
-}
-
-function fetchCSVAndParse() {
-    fetch(CSV_PATH)
-        .then(res => res.text())
-        .then(text => {
-            const lines = text.split("\n");
-            const result = [];
-            
-            for (let i = 1; i < lines.length; i++) {
-                if (!lines[i].trim()) continue;
-                
-                const cols = lines[i].split(",");
-                result.push({
-                    id: cols[0]?.trim() || Date.now() + Math.random().toString(),
-                    nombre: cols[1]?.trim(),
-                    cedula: cols[2]?.trim(),
-                    voto: cols[3]?.trim() || "Pendiente", 
-                    domicilio: cols[4]?.trim() || "---",
-                    observaciones: cols[5]?.trim() || "", 
-                    modificado_por: cols[6]?.trim() || "---"
-                });
-            }
-            state.votantes = result;
-            saveVotantes();
-            updateDashboard();
-        })
-        .catch(err => {
-            console.error("Error leyendo padrón base.", err);
-            state.votantes = [];
-        });
-}
-
-function saveVotantes() {
-    localStorage.setItem("elecciones_votantes", JSON.stringify(state.votantes));
-}
-
-function saveUsers() {
-    localStorage.setItem("elecciones_users", JSON.stringify(state.users));
-}
-
-function setupEventListeners() {
-    document.getElementById("login-form").addEventListener("submit", handleLogin);
-    document.getElementById("logout-btn").addEventListener("click", handleLogout);
-    
-    document.getElementById("search-input").addEventListener("input", (e) => {
-        state.searchQuery = e.target.value.toLowerCase();
-        renderVotantesTable();
-    });
-    
-    document.getElementById("btn-filter-pending").addEventListener("click", () => switchStateFilter("Pendiente"));
-    document.getElementById("btn-filter-voted").addEventListener("click", () => switchStateFilter("Votó"));
-    document.getElementById("btn-filter-novoted").addEventListener("click", () => switchStateFilter("No Votó"));
-
-    document.getElementById("tab-planilla").addEventListener("click", () => switchTab('planilla'));
-    document.getElementById("tab-admin").addEventListener("click", () => switchTab('admin'));
-    document.getElementById("register-user-form").addEventListener("submit", handleRegisterUser);
-    
-    // NUEVO: Escucha para el envío del nuevo formulario de votantes
-    document.getElementById("register-votante-form").addEventListener("submit", handleRegisterVotante);
-}
-
+// ═══════════════════════════════════════════════════════════════
+//  SESIÓN
+// ═══════════════════════════════════════════════════════════════
 function checkSession() {
-    const session = sessionStorage.getItem("active_user");
-    if (session) {
-        const user = state.users.find(u => u.username === session);
-        if (user) {
-            loginSuccess(user);
+    const saved = sessionStorage.getItem("active_user");
+    if (saved) {
+        try {
+            const user = JSON.parse(saved);
+            loginSuccess(user, false);
             return;
-        }
+        } catch { /**/ }
     }
-    switchView('login');
+    showLogin();
 }
 
-function handleLogin(e) {
+async function handleLogin(e) {
     e.preventDefault();
-    const userIn = document.getElementById("username").value.trim();
-    const passIn = document.getElementById("password").value;
-    const errorEl = document.getElementById("login-error");
+    const userIn  = document.getElementById("username").value.trim();
+    const passIn  = document.getElementById("password").value;
+    const errEl   = document.getElementById("login-error");
+    errEl.textContent = "";
 
-    const foundUser = state.users.find(u => u.username.toLowerCase() === userIn.toLowerCase() && u.password === passIn);
+    // Admin hardcoded
+    if (userIn === ADMIN_USER && passIn === ADMIN_PASS) {
+        loginSuccess({ username: ADMIN_USER, fullname: "Administrador/a", isAdmin: true }, true);
+        return;
+    }
 
-    if (foundUser) {
-        errorEl.textContent = "";
-        sessionStorage.setItem("active_user", foundUser.username);
-        loginSuccess(foundUser);
-    } else {
-        errorEl.textContent = "Usuario o contraseña incorrectos.";
+    // Operador desde Firestore
+    try {
+        const snap = await getDoc(doc(db, "usuarios", userIn.toLowerCase()));
+        if (snap.exists()) {
+            const u = snap.data();
+            if (u.password === passIn) {
+                loginSuccess({ username: u.username, fullname: u.fullname, isAdmin: false }, true);
+                return;
+            }
+        }
+        errEl.textContent = "Usuario o contraseña incorrectos.";
+    } catch (err) {
+        console.error(err);
+        errEl.textContent = "Error de conexión con el servidor.";
     }
 }
 
-function loginSuccess(user) {
+function loginSuccess(user, persist) {
     state.currentUser = user;
-    
-    const userPrefix = document.getElementById("user-prefix");
-    const userDisplay = document.getElementById("current-user-display");
-    
-    if (userDisplay && userPrefix) {
-        if (user.username === "Admin") {
-            userPrefix.textContent = ""; 
-            userDisplay.textContent = "Administrador/a";
-        } else {
-            userPrefix.textContent = "Usuario: ";
-            userDisplay.textContent = user.fullname;
-        }
-    }
+    if (persist) sessionStorage.setItem("active_user", JSON.stringify(user));
+
+    // Actualizar UI header
+    document.getElementById("user-prefix").textContent    = user.isAdmin ? "" : "Operador: ";
+    document.getElementById("current-user-display").textContent = user.fullname;
 
     document.getElementById("login-form").reset();
 
-    const adminTab = document.getElementById("tab-admin");
-    if (user.username === "Admin") {
-        adminTab.classList.remove("hidden");
-    } else {
-        adminTab.classList.add("hidden");
-    }
+    // Tab admin: solo para Admin
+    const tabAdmin = document.getElementById("tab-admin");
+    user.isAdmin ? tabAdmin.classList.remove("hidden") : tabAdmin.classList.add("hidden");
 
-    switchView('app');
-    switchTab('planilla');
-    updateDashboard();
+    showApp();
+    switchTab("planilla");
+    loadPadronYEscuchar();
 }
 
 function handleLogout() {
     sessionStorage.removeItem("active_user");
+    if (state.unsubVotos) { state.unsubVotos(); state.unsubVotos = null; }
     state.currentUser = null;
-    switchView('login');
+    state.padron      = [];
+    state.votos       = {};
+    setStatus(false);
+    showLogin();
 }
 
-function switchView(view) {
-    if (view === 'login') {
-        document.getElementById("login-section").classList.remove("hidden");
-        document.getElementById("app-section").classList.add("hidden");
-    } else {
-        document.getElementById("login-section").classList.add("hidden");
-        document.getElementById("app-section").classList.remove("hidden");
+// ═══════════════════════════════════════════════════════════════
+//  CARGA DE DATOS
+// ═══════════════════════════════════════════════════════════════
+async function loadPadronYEscuchar() {
+    // 1. Leer CSV (padrón base, solo lectura)
+    try {
+        const res    = await fetch(CSV_PATH);
+        const texto  = await res.text();
+        state.padron = parsearCSV(texto);
+    } catch (err) {
+        console.error("Error cargando CSV:", err);
+        toast("No se pudo cargar el padrón base.", "error");
+        state.padron = [];
     }
-}
 
-function switchTab(tab) {
-    if (tab === 'admin' && state.currentUser.username !== "Admin") {
-        alert("❌ Acceso Denegado: Solo el Administrador puede ver este panel.");
-        return; 
-    }
+    // 2. Cargar votantes extra (agregados manualmente en admin)
+    try {
+        const snap = await getDocs(collection(db, "padron_extra"));
+        snap.forEach(d => {
+            const v = d.data();
+            if (!state.padron.some(p => p.cedula === v.cedula)) {
+                state.padron.push({ id: v.id, nombre: v.nombre, cedula: v.cedula, domicilio: v.domicilio });
+            }
+        });
+    } catch { /* si falla, se ignora */ }
 
-    const btnPlanilla = document.getElementById("tab-planilla");
-    const btnAdmin = document.getElementById("tab-admin");
-    const viewPlanilla = document.getElementById("view-planilla");
-    const viewAdmin = document.getElementById("view-admin");
-    const filterWrapper = document.getElementById("filter-wrapper"); 
+    // 3. Escuchar cambios de votos en tiempo real (Firestore onSnapshot)
+    if (state.unsubVotos) state.unsubVotos();
 
-    if (tab === 'planilla') {
-        btnPlanilla.classList.add("active");
-        btnAdmin.classList.remove("active");
-        viewPlanilla.classList.remove("hidden");
-        viewAdmin.style.setProperty("display", "none", "important"); // Oculta layout flex
-        
-        if(filterWrapper) filterWrapper.style.display = "flex"; 
-        
-        renderVotantesTable();
-    } else {
-        btnPlanilla.classList.remove("active");
-        btnAdmin.classList.add("active");
-        viewPlanilla.classList.add("hidden");
-        viewAdmin.style.setProperty("display", "flex", "important"); // Activa layout flex
-        
-        if(filterWrapper) filterWrapper.style.display = "none"; 
-        
-        renderUsersTable();
-    }
-}
-
-function switchStateFilter(estadoDestino) {
-    state.currentFilter = estadoDestino;
-
-    const btnPending = document.getElementById("btn-filter-pending");
-    const btnVoted = document.getElementById("btn-filter-voted");
-    const btnNoVoted = document.getElementById("btn-filter-novoted");
-
-    [btnPending, btnVoted, btnNoVoted].forEach(btn => {
-        if(btn) {
-            btn.style.background = "#222";
-            btn.style.borderColor = "#444";
+    state.unsubVotos = onSnapshot(
+        collection(db, "votos"),
+        (snapshot) => {
+            state.votos = {};
+            snapshot.forEach(d => { state.votos[d.id] = d.data(); });
+            setStatus(true);
+            actualizarDashboard();
+        },
+        (err) => {
+            console.error("Listener error:", err);
+            setStatus(false);
         }
-    });
+    );
 
-    if (estadoDestino === "Pendiente" && btnPending) {
-        btnPending.style.background = "#555"; 
-        btnPending.style.borderColor = "#888";
-    } else if (estadoDestino === "Votó" && btnVoted) {
-        btnVoted.style.background = "#00CC44"; 
-        btnVoted.style.borderColor = "#00FF55";
-    } else if (estadoDestino === "No Votó" && btnNoVoted) {
-        btnNoVoted.style.background = "#E50000"; 
-        btnNoVoted.style.borderColor = "#FF3333";
+    // 4. Si es admin, cargar también la tabla de usuarios
+    if (state.currentUser?.isAdmin) cargarUsuarios();
+}
+
+function parsearCSV(texto) {
+    const lineas  = texto.split("\n").filter(l => l.trim());
+    const result  = [];
+    for (let i = 1; i < lineas.length; i++) {
+        const c = lineas[i].split(",");
+        result.push({
+            id:        c[0]?.trim() || String(i),
+            nombre:    c[1]?.trim() || "Sin nombre",
+            cedula:    c[2]?.trim() || "",
+            domicilio: c[4]?.trim() || "---",
+        });
     }
-
-    renderVotantesTable();
+    return result;
 }
 
-function updateDashboard() {
-    renderVotantesTable();
-    calculateMetrics();
-}
+// ── Helpers para leer estado de voto desde Firestore ────────────
+const getVoto = (cedula) => state.votos[cedula]?.voto          || "Pendiente";
+const getObs  = (cedula) => state.votos[cedula]?.observaciones || "";
+const getLog  = (cedula) => state.votos[cedula]?.modificado_por || "---";
 
-function calculateMetrics() {
-    const total = state.votantes.length;
-    const voted = state.votantes.filter(v => v.voto === "Votó").length;
-    const noVoted = state.votantes.filter(v => v.voto === "No Votó").length;
-    const pending = state.votantes.filter(v => v.voto === "Pendiente").length;
+// ═══════════════════════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════════════════════
+function actualizarDashboard() {
+    const total   = state.padron.length;
+    const voted   = state.padron.filter(v => getVoto(v.cedula) === "Votó").length;
+    const noVoted = state.padron.filter(v => getVoto(v.cedula) === "No Votó").length;
+    const pending = total - voted - noVoted;
 
-    document.getElementById("metric-total").textContent = total;
-    document.getElementById("metric-voted").textContent = voted;
+    document.getElementById("metric-total").textContent   = total;
+    document.getElementById("metric-voted").textContent   = voted;
     document.getElementById("metric-novoted").textContent = noVoted;
     document.getElementById("metric-pending").textContent = pending;
+
+    renderTablaVotantes();
 }
 
-function renderVotantesTable() {
+// ═══════════════════════════════════════════════════════════════
+//  TABLA DE VOTANTES
+// ═══════════════════════════════════════════════════════════════
+function renderTablaVotantes() {
     const tbody = document.getElementById("votantes-table-body");
     tbody.innerHTML = "";
 
-    let filtered = state.votantes.filter(v => v.voto === state.currentFilter);
+    let lista = state.padron.filter(v => getVoto(v.cedula) === state.currentFilter);
 
-    if (state.searchQuery !== "") {
-        filtered = filtered.filter(v => 
-            v.nombre.toLowerCase().includes(state.searchQuery) || 
-            v.cedula.includes(state.searchQuery)
+    if (state.searchQuery) {
+        const q = state.searchQuery;
+        lista = lista.filter(v =>
+            v.nombre.toLowerCase().includes(q) || v.cedula.includes(q)
         );
     }
 
-    if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#aaa; padding: 20px;">No se encontraron registros.</td></tr>`;
+    if (!lista.length) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align:center;color:var(--color-gray);padding:30px;">
+                    No se encontraron registros.
+                </td>
+            </tr>`;
         return;
     }
 
-    filtered.forEach((v, index) => {
+    lista.forEach((v, idx) => {
+        const voto = getVoto(v.cedula);
+        const obs  = getObs(v.cedula);
+        const log  = getLog(v.cedula);
+
+        // Badge de estado
+        let badgeClass = "badge badge-pending", badgeLabel = "Pendiente";
+        if (voto === "Votó")    { badgeClass = "badge badge-voted";   badgeLabel = "Votó"; }
+        if (voto === "No Votó") { badgeClass = "badge badge-novoted"; badgeLabel = "No Votó"; }
+
+        // Botones de acción
+        const clsVoto   = voto === "Votó"    ? "btn-accion sel-voto"   : "btn-accion";
+        const clsNoVoto = voto === "No Votó" ? "btn-accion sel-novoto" : "btn-accion";
+
         const tr = document.createElement("tr");
-        
-        let badgeStyle = "padding: 6px 12px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; display: inline-block; text-transform: uppercase; text-align: center; min-width: 95px;";
-        if (v.voto === "Votó") {
-            badgeStyle += "background-color: #00CC44; color: #FFFFFF;"; 
-        } else if (v.voto === "No Votó") {
-            badgeStyle += "background-color: #E50000; color: #FFFFFF;"; 
-        } else {
-            badgeStyle += "background-color: #333333; color: #DDDDDD;"; 
-        }
-
-        const activeVotoStyle = v.voto === "Votó" 
-            ? "background-color: #00CC44; color: white; border: none; font-weight: bold;" 
-            : "background-color: #222; color: #888; border: 1px solid #444;";
-            
-        const activeNoVotoStyle = v.voto === "No Votó" 
-            ? "background-color: #E50000; color: white; border: none; font-weight: bold;" 
-            : "background-color: #222; color: #888; border: 1px solid #444;";
-
         tr.innerHTML = `
-            <td><strong>${index + 1}</strong></td>
+            <td><strong>${idx + 1}</strong></td>
             <td>${v.nombre}</td>
-            <td>${v.cedula}</td>
+            <td style="font-family:monospace">${v.cedula}</td>
             <td>${v.domicilio}</td>
+            <td><span class="${badgeClass}">${badgeLabel}</span></td>
             <td>
-                <span style="${badgeStyle}">${v.voto}</span>
-            </td>
-            <td>
-                <div style="display: flex; gap: 6px; min-width: 140px;">
-                    <button style="${activeVotoStyle} padding: 8px 10px; font-size: 0.75rem; border-radius: 4px; cursor: pointer; flex: 1; text-transform: uppercase;" 
-                            onclick="ejecutarAccionVoto('${v.id}', 'Votó')">
+                <div class="action-btns">
+                    <button class="${clsVoto}" onclick="accionVoto('${v.cedula}','Votó')">
+                        <svg width="12" height="12"><use href="#icon-check"/></svg>
                         Votó
                     </button>
-                    <button style="${activeNoVotoStyle} padding: 8px 10px; font-size: 0.75rem; border-radius: 4px; cursor: pointer; flex: 1; text-transform: uppercase;" 
-                            onclick="ejecutarAccionVoto('${v.id}', 'No Votó')">
+                    <button class="${clsNoVoto}" onclick="accionVoto('${v.cedula}','No Votó')">
+                        <svg width="12" height="12"><use href="#icon-x"/></svg>
                         No Votó
                     </button>
                 </div>
             </td>
             <td>
-                <input type="text" class="obs-input" id="obs-${v.id}" value="${v.observaciones}" 
-                    placeholder="Añadir motivo..." 
-                    onchange="updateObservacion('${v.id}', this.value)">
+                <input class="obs-input" value="${escHtml(obs)}"
+                    placeholder="Sin observación..."
+                    onchange="actualizarObservacion('${v.cedula}', this.value)">
             </td>
-            <td>
-                <span class="log-span">${v.modificado_por}</span>
-            </td>
+            <td><span class="log-span">${log}</span></td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-window.ejecutarAccionVoto = function(id, accionSolicitada) {
-    const target = state.votantes.find(v => v.id == id);
-    if (!target) return;
+// ═══════════════════════════════════════════════════════════════
+//  ACCIONES DE VOTO
+// ═══════════════════════════════════════════════════════════════
+window.accionVoto = function(cedula, accion) {
+    const actual = getVoto(cedula);
 
-    if (target.voto === accionSolicitada) {
-        target.voto = "Pendiente";
-        if(accionSolicitada === "No Votó") target.observaciones = "";
+    // Toggle: mismo estado → vuelve a Pendiente
+    if (actual === accion) {
+        guardarVoto(cedula, "Pendiente", "");
+        return;
+    }
+
+    if (accion === "No Votó") {
+        // Pide justificación por modal
+        const v = state.padron.find(p => p.cedula === cedula);
+        state.pendingNoVoto = { cedula, nombre: v?.nombre || cedula };
+        document.getElementById("modal-novoto-name").textContent =
+            `${v?.nombre || cedula} — registrá el motivo de ausencia`;
+        document.getElementById("modal-obs-input").value = getObs(cedula);
+        abrirModal("modal-novoto");
     } else {
-        target.voto = accionSolicitada;
-
-        if (accionSolicitada === "No Votó") {
-            const justificacion = prompt(`Justificación de inasistencia para:\n${target.nombre}\n\n¿Por qué NO votó?`);
-            if (justificacion !== null && justificacion.trim() !== "") {
-                target.observaciones = justificacion.trim();
-            } else {
-                target.observaciones = "No asistió (Sin motivo especificado)";
-            }
-        } else {
-            target.observaciones = "";
-        }
-    }
-
-    target.modificado_por = `Por: ${state.currentUser.username === "Admin" ? "Administrador/a" : state.currentUser.username}`;
-    
-    saveVotantes();
-    updateDashboard();
-};
-
-window.updateObservacion = function(id, text) {
-    const target = state.votantes.find(v => v.id == id);
-    if (target) {
-        target.observaciones = text.trim();
-        target.modificado_por = `Por: ${state.currentUser.username === "Admin" ? "Administrador/a" : state.currentUser.username}`;
-        saveVotantes();
-        renderVotantesTable();
+        guardarVoto(cedula, "Votó", "");
     }
 };
 
-// NUEVO: Lógica de Procesamiento de un Nuevo Votante
-function handleRegisterVotante(e) {
+window.confirmNoVoto = function() {
+    if (!state.pendingNoVoto) return;
+    const { cedula } = state.pendingNoVoto;
+    const obs = document.getElementById("modal-obs-input").value.trim()
+        || "No asistió (sin motivo especificado)";
+    guardarVoto(cedula, "No Votó", obs);
+    cerrarModal("modal-novoto");
+    state.pendingNoVoto = null;
+};
+
+async function guardarVoto(cedula, voto, observaciones) {
+    const operador = state.currentUser.isAdmin
+        ? "Administrador/a"
+        : state.currentUser.username;
+    try {
+        await setDoc(doc(db, "votos", cedula), {
+            voto,
+            observaciones,
+            modificado_por: `Por: ${operador}`,
+            timestamp:      serverTimestamp()
+        });
+    } catch (err) {
+        console.error("Error guardando voto:", err);
+        toast("Error al guardar. Verificá la conexión.", "error");
+    }
+}
+
+window.actualizarObservacion = async function(cedula, texto) {
+    const actual   = state.votos[cedula] || {};
+    const operador = state.currentUser.isAdmin ? "Administrador/a" : state.currentUser.username;
+    try {
+        await setDoc(doc(db, "votos", cedula), {
+            voto:           actual.voto || "Pendiente",
+            observaciones:  texto.trim(),
+            modificado_por: `Por: ${operador}`,
+            timestamp:      serverTimestamp()
+        });
+    } catch {
+        toast("Error al guardar observación.", "error");
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  ADMIN: VOTANTES
+// ═══════════════════════════════════════════════════════════════
+async function handleRegistrarVotante(e) {
     e.preventDefault();
-    const nombre = document.getElementById("vot-fullname").value.trim();
-    const cedula = document.getElementById("vot-cedula").value.trim();
+    const nombre    = document.getElementById("vot-fullname").value.trim();
+    const cedula    = document.getElementById("vot-cedula").value.trim();
     const domicilio = document.getElementById("vot-domicilio").value.trim() || "---";
 
-    // Validar duplicados de Cédula por seguridad
-    if (state.votantes.some(v => v.cedula === cedula)) {
-        alert(`⚠️ Error: Ya existe un votante registrado con la cédula N° ${cedula}.`);
+    if (state.padron.some(v => v.cedula === cedula)) {
+        toast(`Ya existe un votante con la cédula ${cedula}.`, "error");
         return;
     }
 
-    const nuevoVotante = {
-        id: "manual_" + Date.now(), // ID único autogenerado
-        nombre: nombre,
-        cedula: cedula,
-        voto: "Pendiente", // Ingresa directo para que se le tome el voto
-        domicilio: domicilio,
-        observaciones: "",
-        modificado_por: `Creado por: ${state.currentUser.username === "Admin" ? "Administrador/a" : state.currentUser.username}`
-    };
+    const nuevo = { id: "manual_" + Date.now(), nombre, cedula, domicilio };
+    state.padron.push(nuevo);
 
-    state.votantes.push(nuevoVotante);
-    saveVotantes();
-    
+    try {
+        await setDoc(doc(db, "padron_extra", cedula), {
+            ...nuevo,
+            creado_por: state.currentUser.isAdmin ? "Administrador/a" : state.currentUser.username,
+            timestamp:  serverTimestamp()
+        });
+        toast(`${nombre} inscrito correctamente en el padrón.`);
+    } catch {
+        toast("Inscripto en esta sesión, pero error al sincronizar.", "warn");
+    }
+
     document.getElementById("register-votante-form").reset();
-    
-    // Forzar que el filtro activo se mueva a "Pendientes" para ver al nuevo inscrito al volver
-    state.currentFilter = "Pendiente";
-    switchStateFilter("Pendiente"); 
-    
-    alert(`✅ ${nombre} ha sido inscrito exitosamente como "Pendiente".`);
+    cambiarFiltro("Pendiente");
+    actualizarDashboard();
 }
 
-function handleRegisterUser(e) {
-    e.preventDefault();
-    const fullname = document.getElementById("reg-fullname").value.trim();
-    const phone = document.getElementById("reg-phone").value.trim();
-    const username = document.getElementById("reg-username").value.trim();
-    const password = document.getElementById("reg-password").value;
+// ═══════════════════════════════════════════════════════════════
+//  ADMIN: OPERADORES
+// ═══════════════════════════════════════════════════════════════
+async function cargarUsuarios() {
+    try {
+        const snap = await getDocs(collection(db, "usuarios"));
+        state.usuarios = [];
+        snap.forEach(d => state.usuarios.push(d.data()));
+        renderTablaUsuarios();
+    } catch (err) {
+        console.error("Error cargando usuarios:", err);
+    }
+}
 
-    if (state.users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
-        alert("El nombre de usuario ya existe.");
+async function handleRegistrarUsuario(e) {
+    e.preventDefault();
+    const fullname  = document.getElementById("reg-fullname").value.trim();
+    const phone     = document.getElementById("reg-phone").value.trim();
+    const username  = document.getElementById("reg-username").value.trim().toLowerCase();
+    const password  = document.getElementById("reg-password").value;
+
+    if (username === ADMIN_USER.toLowerCase()) {
+        toast("Ese nombre de usuario está reservado.", "error");
         return;
     }
 
-    state.users.push({ username, password, fullname, phone, isAdmin: false });
-    saveUsers();
-    document.getElementById("register-user-form").reset();
-    renderUsersTable();
-    alert("Usuario creado correctamente.");
+    try {
+        const existe = await getDoc(doc(db, "usuarios", username));
+        if (existe.exists()) {
+            toast("El nombre de usuario ya existe.", "error");
+            return;
+        }
+        await setDoc(doc(db, "usuarios", username), {
+            username, fullname, phone, password, isAdmin: false
+        });
+        toast(`Operador "${fullname}" creado correctamente.`);
+        document.getElementById("register-user-form").reset();
+        cargarUsuarios();
+    } catch (err) {
+        console.error(err);
+        toast("Error al crear el usuario.", "error");
+    }
 }
 
-function renderUsersTable() {
+window.deleteUser = async function(username) {
+    if (!confirm(`¿Eliminar al operador "${username}"?`)) return;
+    try {
+        await deleteDoc(doc(db, "usuarios", username));
+        toast(`Operador "${username}" eliminado.`, "warn");
+        cargarUsuarios();
+    } catch {
+        toast("Error al eliminar el operador.", "error");
+    }
+};
+
+function renderTablaUsuarios() {
     const tbody = document.getElementById("users-table-body");
     tbody.innerHTML = "";
 
-    const externalUsers = state.users.filter(u => u.username !== "Admin");
-
-    if (externalUsers.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#aaa;">No hay usuarios externos registrados.</td></tr>`;
+    if (!state.usuarios.length) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--color-gray);padding:20px;">No hay operadores registrados.</td></tr>`;
         return;
     }
 
-    externalUsers.forEach(u => {
+    state.usuarios.forEach(u => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td>${u.fullname}</td>
             <td>${u.phone}</td>
             <td><code>${u.username}</code></td>
             <td>
-                <button class="btn-danger" onclick="deleteUser('${u.username}')">Eliminar</button>
+                <button class="btn-danger" onclick="deleteUser('${u.username}')" style="display:flex;align-items:center;gap:5px;justify-content:center;">
+                    <svg class="icon" style="color:#fff;width:14px;height:14px"><use href="#icon-trash"/></svg>
+                    Eliminar
+                </button>
             </td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-window.deleteUser = function(username) {
-    if (confirm(`¿Eliminar al usuario ${username}?`)) {
-        state.users = state.users.filter(u => u.username !== username);
-        saveUsers();
-        renderUsersTable();
+// ═══════════════════════════════════════════════════════════════
+//  FILTROS
+// ═══════════════════════════════════════════════════════════════
+function cambiarFiltro(destino) {
+    state.currentFilter = destino;
+
+    const btnP = document.getElementById("btn-filter-pending");
+    const btnV = document.getElementById("btn-filter-voted");
+    const btnN = document.getElementById("btn-filter-novoted");
+
+    [btnP, btnV, btnN].forEach(b => b.className = "filter-btn");
+    if (destino === "Pendiente")  btnP.classList.add("f-pending");
+    if (destino === "Votó")       btnV.classList.add("f-voted");
+    if (destino === "No Votó")    btnN.classList.add("f-novoted");
+
+    renderTablaVotantes();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  NAVEGACIÓN
+// ═══════════════════════════════════════════════════════════════
+function showLogin() {
+    document.getElementById("login-section").classList.remove("hidden");
+    document.getElementById("app-section").classList.add("hidden");
+}
+
+function showApp() {
+    document.getElementById("login-section").classList.add("hidden");
+    document.getElementById("app-section").classList.remove("hidden");
+}
+
+function switchTab(tab) {
+    if (tab === "admin" && !state.currentUser?.isAdmin) {
+        toast("Acceso denegado. Solo el Administrador.", "error");
+        return;
     }
+
+    const planilla    = document.getElementById("view-planilla");
+    const admin       = document.getElementById("view-admin");
+    const fw          = document.getElementById("filter-wrapper");
+    const tabPlanilla = document.getElementById("tab-planilla");
+    const tabAdmin    = document.getElementById("tab-admin");
+
+    if (tab === "planilla") {
+        planilla.style.display = "";
+        admin.classList.remove("visible");
+        fw.style.display = "flex";
+        tabPlanilla.classList.add("active");
+        tabAdmin.classList.remove("active");
+        renderTablaVotantes();
+    } else {
+        planilla.style.display = "none";
+        admin.classList.add("visible");
+        fw.style.display = "none";
+        tabPlanilla.classList.remove("active");
+        tabAdmin.classList.add("active");
+        cargarUsuarios();
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MODALES
+// ═══════════════════════════════════════════════════════════════
+function abrirModal(id)  { document.getElementById(id).classList.add("active"); }
+window.closeModal = function(id) {
+    document.getElementById(id).classList.remove("active");
+    state.pendingNoVoto = null;
 };
+
+// ═══════════════════════════════════════════════════════════════
+//  TOASTS
+// ═══════════════════════════════════════════════════════════════
+function toast(msg, tipo = "ok") {
+    const el = document.createElement("div");
+    el.className = tipo === "error" ? "toast error" : tipo === "warn" ? "toast warn" : "toast";
+    el.textContent = msg;
+    document.getElementById("toast-container").appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STATUS DOT
+// ═══════════════════════════════════════════════════════════════
+function setStatus(online) {
+    const dot   = document.getElementById("status-dot");
+    const label = document.getElementById("status-label");
+    dot.className = "status-dot" + (online ? " online" : "");
+    label.textContent = online ? "en línea" : "sin conexión";
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  UTILIDADES
+// ═══════════════════════════════════════════════════════════════
+function escHtml(str) {
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BIND EVENTOS
+// ═══════════════════════════════════════════════════════════════
+function bindEvents() {
+    document.getElementById("login-form").addEventListener("submit", handleLogin);
+    document.getElementById("logout-btn").addEventListener("click", handleLogout);
+
+    document.getElementById("search-input").addEventListener("input", e => {
+        state.searchQuery = e.target.value.toLowerCase().trim();
+        renderTablaVotantes();
+    });
+
+    document.getElementById("btn-filter-pending").addEventListener("click", () => cambiarFiltro("Pendiente"));
+    document.getElementById("btn-filter-voted").addEventListener("click",   () => cambiarFiltro("Votó"));
+    document.getElementById("btn-filter-novoted").addEventListener("click", () => cambiarFiltro("No Votó"));
+
+    document.getElementById("tab-planilla").addEventListener("click", () => switchTab("planilla"));
+    document.getElementById("tab-admin").addEventListener("click",    () => switchTab("admin"));
+
+    document.getElementById("register-user-form").addEventListener("submit",    handleRegistrarUsuario);
+    document.getElementById("register-votante-form").addEventListener("submit", handleRegistrarVotante);
+
+    // Cerrar modal clickeando fuera
+    document.getElementById("modal-novoto").addEventListener("click", function(e) {
+        if (e.target === this) closeModal("modal-novoto");
+    });
+}

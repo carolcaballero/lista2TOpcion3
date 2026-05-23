@@ -7,7 +7,8 @@ let state = {
     currentUser: null,
     users: [],
     votantes: [],
-    searchQuery: ""
+    currentFilter: "Pendiente", // Filtro de estado activo por defecto
+    searchQuery: ""             // Consulta de texto del buscador
 };
 
 // --- INICIALIZACIÓN ---
@@ -86,10 +87,18 @@ function saveUsers() {
 function setupEventListeners() {
     document.getElementById("login-form").addEventListener("submit", handleLogin);
     document.getElementById("logout-btn").addEventListener("click", handleLogout);
+    
+    // Escucha activa de la barra de búsqueda restaurada
     document.getElementById("search-input").addEventListener("input", (e) => {
         state.searchQuery = e.target.value.toLowerCase();
         renderVotantesTable();
     });
+    
+    // Escuchas para los botones clasificadores de estado
+    document.getElementById("btn-filter-pending").addEventListener("click", () => switchStateFilter("Pendiente"));
+    document.getElementById("btn-filter-voted").addEventListener("click", () => switchStateFilter("Votó"));
+    document.getElementById("btn-filter-novoted").addEventListener("click", () => switchStateFilter("No Votó"));
+
     document.getElementById("tab-planilla").addEventListener("click", () => switchTab('planilla'));
     document.getElementById("tab-admin").addEventListener("click", () => switchTab('admin'));
     document.getElementById("register-user-form").addEventListener("submit", handleRegisterUser);
@@ -127,7 +136,6 @@ function handleLogin(e) {
 function loginSuccess(user) {
     state.currentUser = user;
     
-    // CONTROL DE IDENTIFICACIÓN: Muestra estrictamente "Administrador/a" sin prefijos si es Admin.
     const userPrefix = document.getElementById("user-prefix");
     const userDisplay = document.getElementById("current-user-display");
     
@@ -181,7 +189,7 @@ function switchTab(tab) {
     const btnAdmin = document.getElementById("tab-admin");
     const viewPlanilla = document.getElementById("view-planilla");
     const viewAdmin = document.getElementById("view-admin");
-    const searchWrapper = document.getElementById("search-wrapper"); 
+    const filterWrapper = document.getElementById("filter-wrapper"); 
 
     if (tab === 'planilla') {
         btnPlanilla.classList.add("active");
@@ -189,7 +197,7 @@ function switchTab(tab) {
         viewPlanilla.classList.remove("hidden");
         viewAdmin.classList.add("hidden");
         
-        if(searchWrapper) searchWrapper.classList.remove("hidden"); 
+        if(filterWrapper) filterWrapper.style.display = "flex"; 
         
         renderVotantesTable();
     } else {
@@ -198,10 +206,38 @@ function switchTab(tab) {
         viewPlanilla.classList.add("hidden");
         viewAdmin.classList.remove("hidden");
         
-        if(searchWrapper) searchWrapper.classList.add("hidden"); 
+        if(filterWrapper) filterWrapper.style.display = "none"; 
         
         renderUsersTable();
     }
+}
+
+function switchStateFilter(estadoDestino) {
+    state.currentFilter = estadoDestino;
+
+    const btnPending = document.getElementById("btn-filter-pending");
+    const btnVoted = document.getElementById("btn-filter-voted");
+    const btnNoVoted = document.getElementById("btn-filter-novoted");
+
+    [btnPending, btnVoted, btnNoVoted].forEach(btn => {
+        if(btn) {
+            btn.style.background = "#222";
+            btn.style.borderColor = "#444";
+        }
+    });
+
+    if (estadoDestino === "Pendiente" && btnPending) {
+        btnPending.style.background = "#555"; 
+        btnPending.style.borderColor = "#888";
+    } else if (estadoDestino === "Votó" && btnVoted) {
+        btnVoted.style.background = "#00CC44"; 
+        btnVoted.style.borderColor = "#00FF55";
+    } else if (estadoDestino === "No Votó" && btnNoVoted) {
+        btnNoVoted.style.background = "#E50000"; 
+        btnNoVoted.style.borderColor = "#FF3333";
+    }
+
+    renderVotantesTable();
 }
 
 function updateDashboard() {
@@ -209,31 +245,36 @@ function updateDashboard() {
     calculateMetrics();
 }
 
-// --- CÁLCULO DE MÉTRICAS CORREGIDO ---
 function calculateMetrics() {
     const total = state.votantes.length;
     const voted = state.votantes.filter(v => v.voto === "Votó").length;
     const noVoted = state.votantes.filter(v => v.voto === "No Votó").length;
     const pending = state.votantes.filter(v => v.voto === "Pendiente").length;
 
-    // Inyección de valores en los 4 módulos correspondientes
     document.getElementById("metric-total").textContent = total;
     document.getElementById("metric-voted").textContent = voted;
     document.getElementById("metric-novoted").textContent = noVoted;
     document.getElementById("metric-pending").textContent = pending;
 }
 
+// --- RENDERIZADO CON FILTRADO COMBINADO (BOTÓN + BUSCADOR) ---
 function renderVotantesTable() {
     const tbody = document.getElementById("votantes-table-body");
     tbody.innerHTML = "";
 
-    const filtered = state.votantes.filter(v => 
-        v.nombre.toLowerCase().includes(state.searchQuery) || 
-        v.cedula.includes(state.searchQuery)
-    );
+    // 1. Filtrar primero por el estado del botón seleccionado
+    let filtered = state.votantes.filter(v => v.voto === state.currentFilter);
+
+    // 2. Filtrar el resultado anterior usando lo escrito en la barra de búsqueda (si tiene texto)
+    if (state.searchQuery !== "") {
+        filtered = filtered.filter(v => 
+            v.nombre.toLowerCase().includes(state.searchQuery) || 
+            v.cedula.includes(state.searchQuery)
+        );
+    }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No se encontraron registros.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#aaa; padding: 20px;">No se encontraron registros.</td></tr>`;
         return;
     }
 

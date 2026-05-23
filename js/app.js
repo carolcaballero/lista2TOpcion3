@@ -127,12 +127,17 @@ function handleLogin(e) {
 function loginSuccess(user) {
     state.currentUser = user;
     
-    const userInfoSpan = document.querySelector(".user-info span");
-    if (userInfoSpan) {
+    // CONTROL DE IDENTIFICACIÓN: Muestra estrictamente "Administrador/a" sin prefijos si es Admin.
+    const userPrefix = document.getElementById("user-prefix");
+    const userDisplay = document.getElementById("current-user-display");
+    
+    if (userDisplay && userPrefix) {
         if (user.username === "Admin") {
-            userInfoSpan.innerHTML = `<strong id="current-user-display">Administrador/a</strong>`;
+            userPrefix.textContent = ""; 
+            userDisplay.textContent = "Administrador/a";
         } else {
-            userInfoSpan.innerHTML = `Usuario: <strong id="current-user-display">${user.fullname}</strong>`;
+            userPrefix.textContent = "Usuario: ";
+            userDisplay.textContent = user.fullname;
         }
     }
 
@@ -156,7 +161,6 @@ function handleLogout() {
     switchView('login');
 }
 
-// --- MANEJO DE VISTAS Y PESTAÑAS (Con Seguridad Extra) ---
 function switchView(view) {
     if (view === 'login') {
         document.getElementById("login-section").classList.remove("hidden");
@@ -168,7 +172,6 @@ function switchView(view) {
 }
 
 function switchTab(tab) {
-    // CANDADO DE SEGURIDAD: Evita que alguien que no sea "Admin" acceda a esta pestaña
     if (tab === 'admin' && state.currentUser.username !== "Admin") {
         alert("❌ Acceso Denegado: Solo el Administrador puede ver este panel.");
         return; 
@@ -206,15 +209,18 @@ function updateDashboard() {
     calculateMetrics();
 }
 
+// --- CÁLCULO DE MÉTRICAS CORREGIDO ---
 function calculateMetrics() {
     const total = state.votantes.length;
     const voted = state.votantes.filter(v => v.voto === "Votó").length;
     const noVoted = state.votantes.filter(v => v.voto === "No Votó").length;
     const pending = state.votantes.filter(v => v.voto === "Pendiente").length;
 
+    // Inyección de valores en los 4 módulos correspondientes
     document.getElementById("metric-total").textContent = total;
     document.getElementById("metric-voted").textContent = voted;
-    document.getElementById("metric-pending").innerHTML = `${pending} <span style="font-size:0.85rem; color:#aaa; display:block; margin-top:5px;">(${noVoted} No Votaron)</span>`;
+    document.getElementById("metric-novoted").textContent = noVoted;
+    document.getElementById("metric-pending").textContent = pending;
 }
 
 function renderVotantesTable() {

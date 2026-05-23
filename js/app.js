@@ -59,9 +59,9 @@ function fetchCSVAndParse() {
                     id: cols[0]?.trim(),
                     nombre: cols[1]?.trim(),
                     cedula: cols[2]?.trim(),
-                    voto: cols[3]?.trim() || "Pendiente", // Todos inician en Pendiente por defecto
+                    voto: cols[3]?.trim() || "Pendiente", 
                     domicilio: cols[4]?.trim() || "---",
-                    observaciones: cols[5]?.trim() || "", // Vacío por defecto
+                    observaciones: cols[5]?.trim() || "", 
                     modificado_por: cols[6]?.trim() || "---"
                 });
             }
@@ -156,7 +156,7 @@ function handleLogout() {
     switchView('login');
 }
 
-// --- MANEJO DE VISTAS ---
+// --- MANEJO DE VISTAS Y PESTAÑAS ---
 function switchView(view) {
     if (view === 'login') {
         document.getElementById("login-section").classList.remove("hidden");
@@ -172,18 +172,27 @@ function switchTab(tab) {
     const btnAdmin = document.getElementById("tab-admin");
     const viewPlanilla = document.getElementById("view-planilla");
     const viewAdmin = document.getElementById("view-admin");
+    const searchWrapper = document.getElementById("search-wrapper"); // Obtenemos el contenedor del buscador
 
     if (tab === 'planilla') {
         btnPlanilla.classList.add("active");
         btnAdmin.classList.remove("active");
         viewPlanilla.classList.remove("hidden");
         viewAdmin.classList.add("hidden");
+        
+        // Muestra el buscador
+        if(searchWrapper) searchWrapper.classList.remove("hidden"); 
+        
         renderVotantesTable();
     } else {
         btnPlanilla.classList.remove("active");
         btnAdmin.classList.add("active");
         viewPlanilla.classList.add("hidden");
         viewAdmin.classList.remove("hidden");
+        
+        // Oculta el buscador
+        if(searchWrapper) searchWrapper.classList.add("hidden"); 
+        
         renderUsersTable();
     }
 }
@@ -222,17 +231,15 @@ function renderVotantesTable() {
     filtered.forEach((v, index) => {
         const tr = document.createElement("tr");
         
-        // Estilos visuales del Estado Actual (Badge informativo)
         let badgeStyle = "padding: 6px 12px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; display: inline-block; text-transform: uppercase; text-align: center; min-width: 95px;";
         if (v.voto === "Votó") {
-            badgeStyle += "background-color: #00CC44; color: #FFFFFF;"; // Verde si ya votó
+            badgeStyle += "background-color: #00CC44; color: #FFFFFF;"; 
         } else if (v.voto === "No Votó") {
-            badgeStyle += "background-color: #E50000; color: #FFFFFF;"; // Rojo si marcó No Votó
+            badgeStyle += "background-color: #E50000; color: #FFFFFF;"; 
         } else {
-            badgeStyle += "background-color: #333333; color: #DDDDDD;"; // Gris para Pendiente
+            badgeStyle += "background-color: #333333; color: #DDDDDD;"; 
         }
 
-        // Estilos de botones de acción en base a la selección activa
         const activeVotoStyle = v.voto === "Votó" 
             ? "background-color: #00CC44; color: white; border: none; font-weight: bold;" 
             : "background-color: #222; color: #888; border: 1px solid #444;";
@@ -246,11 +253,9 @@ function renderVotantesTable() {
             <td>${v.nombre}</td>
             <td>${v.cedula}</td>
             <td>${v.domicilio}</td>
-            
             <td>
                 <span style="${badgeStyle}">${v.voto}</span>
             </td>
-            
             <td>
                 <div style="display: flex; gap: 6px; min-width: 140px;">
                     <button style="${activeVotoStyle} padding: 8px 10px; font-size: 0.75rem; border-radius: 4px; cursor: pointer; flex: 1; text-transform: uppercase;" 
@@ -263,7 +268,6 @@ function renderVotantesTable() {
                     </button>
                 </div>
             </td>
-            
             <td>
                 <input type="text" class="obs-input" id="obs-${v.id}" value="${v.observaciones}" 
                     placeholder="Añadir motivo..." 
@@ -282,14 +286,12 @@ window.ejecutarAccionVoto = function(id, accionSolicitada) {
     const target = state.votantes.find(v => v.id == id);
     if (!target) return;
 
-    // Si vuelve a presionar el botón activo, se limpia y regresa a Pendiente
     if (target.voto === accionSolicitada) {
         target.voto = "Pendiente";
         if(accionSolicitada === "No Votó") target.observaciones = "";
     } else {
         target.voto = accionSolicitada;
 
-        // Dispara cuadro de diálogo interactivo solo si la opción elegida es No Votó
         if (accionSolicitada === "No Votó") {
             const justificacion = prompt(`Justificación de inasistencia para:\n${target.nombre}\n\n¿Por qué NO votó?`);
             if (justificacion !== null && justificacion.trim() !== "") {
@@ -298,12 +300,10 @@ window.ejecutarAccionVoto = function(id, accionSolicitada) {
                 target.observaciones = "No asistió (Sin motivo especificado)";
             }
         } else {
-            // Si cambia a Votó, limpiamos observaciones automáticas previas por coherencia
             target.observaciones = "";
         }
     }
 
-    // Auditoría de modificaciones en pantalla
     target.modificado_por = `Por: ${state.currentUser.username === "Admin" ? "Administrador/a" : state.currentUser.username}`;
     
     saveVotantes();

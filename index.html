@@ -43,14 +43,14 @@
             </div>
         </header>
 
-        <nav class="toolbar">
-            <div class="tab-buttons">
+        <nav class="toolbar" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: space-between; align-items: center; padding: 10px 0;">
+            <div class="tab-buttons" style="display: flex; gap: 10px;">
                 <button id="tab-planilla" class="tab-btn active">Planilla de Votantes</button>
                 <button id="tab-admin" class="tab-btn hidden">Panel de Administración</button>
             </div>
             
-            <div id="search-wrapper" class="search-box">
-                <input type="text" id="search-input" placeholder="Buscar por nombre o cédula...">
+            <div id="search-wrapper" class="search-box" style="flex: 1; min-width: 250px;">
+                <input type="text" id="search-input" placeholder="Buscar por nombre o cédula..." style="width: 100%; box-sizing: border-box; padding: 10px;">
             </div>
         </nav>
 

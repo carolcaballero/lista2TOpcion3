@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mgtr. Carolina Caballero — Sistema de Votantes</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+  <style>
+    @keyframes shake {
+      0%,100%{ transform:translateX(0) }
+      20%    { transform:translateX(-8px) }
+      40%    { transform:translateX(8px) }
+      60%    { transform:translateX(-5px) }
+      80%    { transform:translateX(5px) }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     SPRITE SVG
+════════════════════════════════════════════ -->
+<div id="svg-sprite" aria-hidden="true"></div>
+
+<!-- ═══════════════════════════════════════════
+     PANTALLA LOGIN
+════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-header">
+      <div class="login-escudo">
+        <svg class="icon-xl" style="color:white"><use href="assets/icons.svg#icon-vote"/></svg>
+      </div>
+      <h1 class="login-titulo">
+        MGTR. CAROLINA CABALLERO<br>
+        CONCEJAL 2026–2031
+      </h1>
+      <p class="login-subtitulo">Lista 2T &nbsp;·&nbsp; Opción 3 &nbsp;·&nbsp; Sistema de Votantes</p>
+    </div>
+
+    <div class="form-group">
+      <label>
+        <svg class="icon" style="color:var(--rojo)"><use href="assets/icons.svg#icon-user"/></svg>
+        Usuario
+      </label>
+      <input type="text" id="login-usuario" placeholder="Ingrese su usuario" autocomplete="username"/>
+    </div>
+
+    <div class="form-group">
+      <label>
+        <svg class="icon" style="color:var(--rojo)"><use href="assets/icons.svg#icon-lock"/></svg>
+        Contraseña
+      </label>
+      <input type="password" id="login-pass" placeholder="Ingrese su contraseña" autocomplete="current-password"/>
+    </div>
+
+    <div class="error-msg" id="login-error"></div>
+
+    <button class="btn btn-primary" onclick="intentarLogin()">
+      <svg class="icon"><use href="assets/icons.svg#icon-login"/></svg>
+      Ingresar al Sistema
+    </button>
+
+    <p style="text-align:center;margin-top:20px;font-family:var(--font-ui);font-size:11px;letter-spacing:1px;color:var(--gris-claro);">
+      ACCESO RESTRINGIDO — USO EXCLUSIVO INTERNO
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     APLICACIÓN PRINCIPAL
+════════════════════════════════════════════ -->
+<div id="app-screen">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="topbar-escudo">
+        <svg class="icon-lg" style="color:var(--rojo)"><use href="assets/icons.svg#icon-vote"/></svg>
+      </div>
+      <div>
+        <div class="topbar-titulo">MGTR. CAROLINA CABALLERO — CONCEJAL 2026–2031</div>
+        <div class="topbar-sub">LISTA 2T &nbsp;·&nbsp; OPCIÓN 3 &nbsp;·&nbsp; SISTEMA DE VOTANTES</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span class="topbar-user">
+        <svg class="icon"><use href="assets/icons.svg#icon-user"/></svg>
+        <span id="topbar-username"></span>
+      </span>
+      <button class="btn btn-secundario btn-sm" onclick="cerrarSesion()">
+        <svg class="icon"><use href="assets/icons.svg#icon-logout"/></svg>
+        Salir
+      </button>
+    </div>
+  </header>
+
+  <div class="app-layout">
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+      <div class="nav-item activo" data-panel="panel-votantes" onclick="activarPanel('panel-votantes')">
+        <svg class="icon"><use href="assets/icons.svg#icon-home"/></svg>
+        Padrón
+      </div>
+      <div class="nav-item" data-panel="panel-stats" onclick="activarPanel('panel-stats')">
+        <svg class="icon"><use href="assets/icons.svg#icon-stats"/></svg>
+        Estadísticas
+      </div>
+      <div class="nav-separator admin-only"></div>
+      <div class="nav-item admin-only" data-panel="panel-usuarios" onclick="activarPanel('panel-usuarios')">
+        <svg class="icon"><use href="assets/icons.svg#icon-users"/></svg>
+        Usuarios
+      </div>
+      <div class="nav-item admin-only" data-panel="panel-config" onclick="activarPanel('panel-config')">
+        <svg class="icon"><use href="assets/icons.svg#icon-settings"/></svg>
+        Configurar
+      </div>
+    </nav>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="main-content">
+
+      <!-- ─────────────── PANEL: PADRÓN ─────────────── -->
+      <section class="panel activo" id="panel-votantes">
+        <h2 class="seccion-titulo">
+          <svg class="icon-lg"><use href="assets/icons.svg#icon-flag"/></svg>
+          Padrón de Votantes
+        </h2>
+        <div class="seccion-sub">Registro y control de votación</div>
+
+        <!-- STATS RÁPIDAS -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <svg class="icon-xl stat-icon"><use href="assets/icons.svg#icon-users"/></svg>
+            <span class="stat-numero" id="stat-total">0</span>
+            <span class="stat-label">Total Registrados</span>
+          </div>
+          <div class="stat-card">
+            <svg class="icon-xl stat-icon"><use href="assets/icons.svg#icon-check"/></svg>
+            <span class="stat-numero" id="stat-voto" style="color:#4CAF50">0</span>
+            <span class="stat-label">Ya Votaron</span>
+          </div>
+          <div class="stat-card">
+            <svg class="icon-xl stat-icon"><use href="assets/icons.svg#icon-x"/></svg>
+            <span class="stat-numero" id="stat-no">0</span>
+            <span class="stat-label">Pendientes</span>
+          </div>
+          <div class="stat-card">
+            <svg class="icon-xl stat-icon"><use href="assets/icons.svg#icon-stats"/></svg>
+            <span class="stat-numero" id="stat-pct">0%</span>
+            <span class="stat-label">Participación</span>
+          </div>
+        </div>
+
+        <!-- PROGRESO -->
+        <div class="progreso-wrap">
+          <div class="progreso-titulo">
+            <svg class="icon"><use href="assets/icons.svg#icon-stats"/></svg>
+            Progreso de Votación
+          </div>
+          <div class="progreso-bar-bg">
+            <div class="progreso-bar-fill" id="progreso-fill" style="width:0%"></div>
+          </div>
+          <span class="progreso-texto" id="progreso-txt">0 de 0 votantes (0%)</span>
+        </div>
+
+        <!-- TOOLBAR -->
+        <div class="tabla-toolbar">
+          <div class="search-wrap">
+            <svg class="icon"><use href="assets/icons.svg#icon-search"/></svg>
+            <input type="text" placeholder="Buscar por nombre, apellido o CI…"
+                   oninput="onBusqueda(this.value)" id="buscador"/>
+          </div>
+          <span id="conteo-votantes" style="font-family:var(--font-ui);font-size:12px;color:var(--rojo);letter-spacing:1px;white-space:nowrap;"></span>
+          <button class="btn btn-secundario btn-sm admin-only" onclick="exportarCSV()">
+            <svg class="icon"><use href="assets/icons.svg#icon-stats"/></svg>
+            Exportar CSV
+          </button>
+        </div>
+
+        <!-- FILTROS -->
+        <div class="filtro-tabs">
+          <button class="filtro-tab activo" data-filtro="todos" onclick="setFiltro('todos')">
+            Todos
+          </button>
+          <button class="filtro-tab" data-filtro="voto" onclick="setFiltro('voto')">
+            <svg class="icon"><use href="assets/icons.svg#icon-check"/></svg>
+            Votaron
+          </button>
+          <button class="filtro-tab" data-filtro="no" onclick="setFiltro('no')">
+            <svg class="icon"><use href="assets/icons.svg#icon-x"/></svg>
+            No Votaron
+          </button>
+        </div>
+
+        <!-- TABLA -->
+        <div class="tabla-container">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Nombre</th>
+                <th>Apellido</th>
+                <th>C.I.</th>
+                <th>Estado</th>
+                <th>Domicilio / Barrio</th>
+                <th>Observaciones</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-votantes">
+              <tr>
+                <td colspan="8" style="text-align:center;padding:40px;color:var(--gris-claro);font-family:var(--font-ui);letter-spacing:1px;">
+                  Cargando padrón…
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ─────────────── PANEL: ESTADÍSTICAS ─────────────── -->
+      <section class="panel" id="panel-stats">
+        <h2 class="seccion-titulo">
+          <svg class="icon-lg"><use href="assets/icons.svg#icon-stats"/></svg>
+          Estadísticas Generales
+        </h2>
+        <div class="seccion-sub">Resumen de participación electoral</div>
+        <div class="red-line"></div>
+
+        <div class="stats-grid" style="margin-bottom:32px">
+          <div class="stat-card">
+            <svg class="icon-xl stat-icon"><use href="assets/icons.svg#icon-users"/></svg>
+            <span class="stat-numero" id="stat-total-2">0</span>
+            <span class="stat-label">Total en Padrón</span>
+          </div>
+          <div class="stat-card">
+            <svg class="icon-xl stat-icon"><use href="assets/icons.svg#icon-check"/></svg>
+            <span class="stat-numero" id="stat-voto-2" style="color:#4CAF50">0</span>
+            <span class="stat-label">Votaron</span>
+          </div>
+          <div class="stat-card">
+            <svg class="icon-xl stat-icon"><use href="assets/icons.svg#icon-x"/></svg>
+            <span class="stat-numero" id="stat-no-2">0</span>
+            <span class="stat-label">No Votaron</span>
+          </div>
+          <div class="stat-card">
+            <svg class="icon-xl stat-icon"><use href="assets/icons.svg#icon-flag"/></svg>
+            <span class="stat-numero" id="stat-pct-2">0%</span>
+            <span class="stat-label">Participación</span>
+          </div>
+        </div>
+
+        <div class="progreso-wrap" style="margin-bottom:32px">
+          <div class="progreso-titulo">Barra de Participación</div>
+          <div class="progreso-bar-bg" style="height:20px;border-radius:10px">
+            <div class="progreso-bar-fill" id="progreso-fill-2" style="width:0%;border-radius:10px"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:8px;font-family:var(--font-ui);font-size:12px;letter-spacing:1px;color:rgba(255,255,255,0.5)">
+            <span>0%</span>
+            <span id="progreso-txt-2" style="color:var(--blanco);font-size:14px"></span>
+            <span>100%</span>
+          </div>
+        </div>
+
+        <div class="control-section">
+          <div class="control-section-titulo">
+            <svg class="icon"><use href="assets/icons.svg#icon-flag"/></svg>
+            Votantes por Barrio/Domicilio
+          </div>
+          <div id="stats-barrio" style="font-family:var(--font-body);color:rgba(255,255,255,0.7)">
+            Cargando…
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────────── PANEL: USUARIOS (ADMIN) ─────────────── -->
+      <section class="panel admin-only" id="panel-usuarios">
+        <h2 class="seccion-titulo">
+          <svg class="icon-lg"><use href="assets/icons.svg#icon-users"/></svg>
+          Panel de Usuarios
+        </h2>
+        <div class="seccion-sub">Gestión de accesos al sistema</div>
+        <div class="red-line"></div>
+
+        <div style="margin-bottom:20px">
+          <button class="btn btn-primary" style="width:auto" onclick="abrirModalUsuario()">
+            <svg class="icon"><use href="assets/icons.svg#icon-plus"/></svg>
+            Nuevo Usuario
+          </button>
+        </div>
+
+        <div class="control-section">
+          <div class="control-section-titulo">
+            <svg class="icon"><use href="assets/icons.svg#icon-user"/></svg>
+            Administrador
+          </div>
+          <div class="user-card">
+            <div style="display:flex;align-items:center;gap:14px;">
+              <div style="width:42px;height:42px;background:var(--rojo);border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                <svg class="icon-lg" style="color:white"><use href="assets/icons.svg#icon-user"/></svg>
+              </div>
+              <div>
+                <div class="user-card-nombre">Admin Sistema</div>
+                <div class="user-card-detalle">@Admin</div>
+                <div class="user-card-rol" style="color:var(--amarillo)">
+                  ★ Administrador
+                </div>
+              </div>
+            </div>
+            <span class="badge badge-voto">Principal</span>
+          </div>
+        </div>
+
+        <div class="control-section">
+          <div class="control-section-titulo">
+            <svg class="icon"><use href="assets/icons.svg#icon-users"/></svg>
+            Operadores Registrados
+          </div>
+          <div id="lista-usuarios">
+            <div style="color:var(--gris-claro);font-family:var(--font-ui);letter-spacing:1px;">
+              Sin operadores registrados.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────────── PANEL: CONFIGURACIÓN (ADMIN) ─────────────── -->
+      <section class="panel admin-only" id="panel-config">
+        <h2 class="seccion-titulo">
+          <svg class="icon-lg"><use href="assets/icons.svg#icon-settings"/></svg>
+          Configuración
+        </h2>
+        <div class="seccion-sub">Carga y gestión del padrón CSV</div>
+        <div class="red-line"></div>
+
+        <div class="control-section">
+          <div class="control-section-titulo">
+            <svg class="icon"><use href="assets/icons.svg#icon-flag"/></svg>
+            Cargar Padrón desde Archivo
+          </div>
+          <p style="font-family:var(--font-body);font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:16px;">
+            Suba su archivo <code style="color:var(--rojo)">votantes.csv</code> desde su computadora o desde una URL de GitHub.
+            Los votos ya marcados se preservarán.
+          </p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+            <label class="btn btn-secundario" style="cursor:pointer">
+              <svg class="icon"><use href="assets/icons.svg#icon-plus"/></svg>
+              Elegir archivo CSV
+              <input type="file" accept=".csv" style="display:none" onchange="onArchivoCSV(event)"/>
+            </label>
+          </div>
+        </div>
+
+        <div class="control-section">
+          <div class="control-section-titulo">
+            <svg class="icon"><use href="assets/icons.svg#icon-settings"/></svg>
+            Cargar desde URL (GitHub Raw)
+          </div>
+          <p style="font-family:var(--font-body);font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:16px;">
+            Pegue la URL raw de su archivo CSV en GitHub (ej: <code style="color:var(--rojo)">https://raw.githubusercontent.com/…/votantes.csv</code>).
+          </p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+            <div class="form-group" style="flex:1;margin-bottom:0;min-width:260px">
+              <input type="url" id="csv-url" placeholder="https://raw.githubusercontent.com/…/votantes.csv"/>
+            </div>
+            <button class="btn btn-primary" style="width:auto" onclick="cargarCSVUrl()">
+              <svg class="icon"><use href="assets/icons.svg#icon-search"/></svg>
+              Cargar
+            </button>
+          </div>
+        </div>
+
+        <div class="control-section">
+          <div class="control-section-titulo">
+            <svg class="icon"><use href="assets/icons.svg#icon-stats"/></svg>
+            Exportar Datos
+          </div>
+          <p style="font-family:var(--font-body);font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:16px;">
+            Descargue el padrón completo con el estado de voto actual en formato CSV.
+          </p>
+          <button class="btn btn-primary" style="width:auto" onclick="exportarCSV()">
+            <svg class="icon"><use href="assets/icons.svg#icon-stats"/></svg>
+            Exportar CSV completo
+          </button>
+        </div>
+
+        <div class="control-section" style="border-top-color:var(--rojo-oscuro)">
+          <div class="control-section-titulo" style="color:var(--gris-claro)">
+            <svg class="icon"><use href="assets/icons.svg#icon-alert"/></svg>
+            Zona Peligrosa
+          </div>
+          <p style="font-family:var(--font-body);font-size:14px;color:rgba(255,255,255,0.5);margin-bottom:16px;">
+            Esta acción borrará <strong style="color:var(--rojo)">todos los datos guardados</strong> (padrón y estados de voto).
+          </p>
+          <button class="btn btn-danger" onclick="resetearDatos()">
+            <svg class="icon"><use href="assets/icons.svg#icon-trash"/></svg>
+            Borrar todos los datos
+          </button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     MODAL: OBSERVACIÓN
+════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-observacion">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-titulo">
+        <svg class="icon"><use href="assets/icons.svg#icon-alert"/></svg>
+        Observación
+      </div>
+      <button class="btn-icon" onclick="cerrarModal('modal-observacion')">
+        <svg class="icon"><use href="assets/icons.svg#icon-x"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-family:var(--font-ui);font-size:13px;letter-spacing:1px;color:var(--rojo);margin-bottom:16px;">
+        Votante: <span id="obs-nombre" style="color:var(--blanco)"></span>
+      </p>
+      <div class="form-group">
+        <label>
+          <svg class="icon"><use href="assets/icons.svg#icon-alert"/></svg>
+          Observación (opcional)
+        </label>
+        <textarea id="obs-texto" placeholder="Ingrese una observación sobre este votante…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secundario" onclick="cerrarModal('modal-observacion')">Cancelar</button>
+      <button class="btn btn-primary" style="width:auto" onclick="guardarObservacion()">
+        <svg class="icon"><use href="assets/icons.svg#icon-check"/></svg>
+        Guardar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     MODAL: NUEVO USUARIO
+════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-nuevo-usuario">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-titulo">
+        <svg class="icon"><use href="assets/icons.svg#icon-plus"/></svg>
+        Nuevo Usuario
+      </div>
+      <button class="btn-icon" onclick="cerrarModal('modal-nuevo-usuario')">
+        <svg class="icon"><use href="assets/icons.svg#icon-x"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form id="form-nuevo-usuario" onsubmit="return false">
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label>
+              <svg class="icon"><use href="assets/icons.svg#icon-user"/></svg>
+              Nombre
+            </label>
+            <input type="text" id="nu-nombre" placeholder="Nombre"/>
+          </div>
+          <div class="form-group">
+            <label>
+              <svg class="icon"><use href="assets/icons.svg#icon-user"/></svg>
+              Apellido
+            </label>
+            <input type="text" id="nu-apellido" placeholder="Apellido"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>
+            <svg class="icon"><use href="assets/icons.svg#icon-phone"/></svg>
+            Teléfono
+          </label>
+          <input type="tel" id="nu-telefono" placeholder="Número de teléfono"/>
+        </div>
+        <div class="form-group">
+          <label>
+            <svg class="icon"><use href="assets/icons.svg#icon-user"/></svg>
+            Nombre de Usuario
+          </label>
+          <input type="text" id="nu-usuario" placeholder="Usuario para iniciar sesión" autocomplete="off"/>
+        </div>
+        <div class="form-group">
+          <label>
+            <svg class="icon"><use href="assets/icons.svg#icon-lock"/></svg>
+            Contraseña
+          </label>
+          <input type="password" id="nu-password" placeholder="Contraseña" autocomplete="new-password"/>
+        </div>
+        <div class="error-msg" id="nuevo-user-error"></div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secundario" onclick="cerrarModal('modal-nuevo-usuario')">Cancelar</button>
+      <button class="btn btn-primary" style="width:auto" onclick="crearUsuario()">
+        <svg class="icon"><use href="assets/icons.svg#icon-plus"/></svg>
+        Crear Usuario
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div class="toast-container" id="toast-container"></div>
+
+<script src="js/app.js"></script>
+<script>
+  // Sincronizar stats del panel de estadísticas
+  const _origRenderStats = renderStats;
+  renderStats = function() {
+    _origRenderStats();
+    const total   = APP.votantes.length;
+    const votaron = APP.votantes.filter(v => v.voto === 'si').length;
+    const noVotaron = total - votaron;
+    const pct     = total > 0 ? Math.round((votaron / total) * 100) : 0;
+
+    ['stat-total-2','stat-voto-2','stat-no-2','stat-pct-2'].forEach((id,i) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = [total, votaron, noVotaron, pct+'%'][i];
+    });
+    const f2 = document.getElementById('progreso-fill-2');
+    const t2 = document.getElementById('progreso-txt-2');
+    if (f2) f2.style.width = pct + '%';
+    if (t2) t2.textContent = `${votaron} de ${total} (${pct}%)`;
+
+    // Stats por barrio
+    const barrioEl = document.getElementById('stats-barrio');
+    if (barrioEl && APP.votantes.length > 0) {
+      const barrios = {};
+      APP.votantes.forEach(v => {
+        const b = v.domicilio || 'Sin especificar';
+        if (!barrios[b]) barrios[b] = { total: 0, voto: 0 };
+        barrios[b].total++;
+        if (v.voto === 'si') barrios[b].voto++;
+      });
+      const filas = Object.entries(barrios)
+        .sort((a,b) => b[1].total - a[1].total)
+        .slice(0, 15)
+        .map(([barrio, datos]) => {
+          const p = datos.total > 0 ? Math.round((datos.voto/datos.total)*100) : 0;
+          return `
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+              <div style="flex:1;font-family:var(--font-ui);font-size:14px;letter-spacing:1px;">${barrio}</div>
+              <div style="font-family:var(--font-titulo);font-size:18px;color:var(--rojo);width:40px;text-align:right">${datos.voto}</div>
+              <div style="font-size:12px;color:var(--gris-claro);width:60px;text-align:right">/ ${datos.total}</div>
+              <div style="width:100px;background:var(--gris-oscuro);height:6px;border-radius:3px;overflow:hidden">
+                <div style="height:100%;width:${p}%;background:var(--rojo);border-radius:3px;"></div>
+              </div>
+              <div style="font-family:var(--font-ui);font-size:12px;color:var(--rojo);width:36px;text-align:right">${p}%</div>
+            </div>`;
+        }).join('');
+      barrioEl.innerHTML = filas || '<div style="color:var(--gris-claro)">Sin datos de barrio.</div>';
+    }
+  };
+
+  // Reset datos
+  function resetearDatos() {
+    if (!confirm('¿Está seguro? Esto borrará TODOS los datos del padrón y estados de voto.')) return;
+    localStorage.removeItem('cv_votantes');
+    APP.votantes = [];
+    renderVotantes();
+    renderStats();
+    toast('Todos los datos han sido borrados.', 'error');
+  }
+</script>
+</body>
+</html>

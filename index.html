@@ -38,7 +38,7 @@
                 <h2>Control de Gestión de Votantes</h2>
             </div>
             <div class="user-info">
-                <span>Usuario: <strong id="current-user-display">---</strong></span>
+                <span><span id="user-prefix">Usuario: </span><strong id="current-user-display">---</strong></span>
                 <button id="logout-btn" class="btn-secondary">Cerrar Sesión</button>
             </div>
         </header>
@@ -54,18 +54,22 @@
             </div>
         </nav>
 
-        <div class="metrics-grid">
+        <div class="metrics-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
             <div class="metric-card total">
                 <h3>Total Padrón</h3>
                 <p id="metric-total">0</p>
             </div>
-            <div class="metric-card voted">
+            <div class="metric-card voted" style="border-left: 4px solid #00CC44;">
                 <h3>Ya Votaron</h3>
-                <p id="metric-voted">0</p>
+                <p id="metric-voted" style="color: #00CC44;">0</p>
             </div>
-            <div class="metric-card pending">
-                <h3>Restantes</h3>
-                <p id="metric-pending">0</p>
+            <div class="metric-card novoted" style="border-left: 4px solid #E50000;">
+                <h3>No Votaron</h3>
+                <p id="metric-novoted" style="color: #E50000;">0</p>
+            </div>
+            <div class="metric-card pending" style="border-left: 4px solid #aaa;">
+                <h3>Pendientes de Voto</h3>
+                <p id="metric-pending" style="color: #aaa;">0</p>
             </div>
         </div>
 

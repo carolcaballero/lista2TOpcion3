@@ -59,7 +59,7 @@ function fetchCSVAndParse() {
                     id: cols[0]?.trim(),
                     nombre: cols[1]?.trim(),
                     cedula: cols[2]?.trim(),
-                    voto: cols[3]?.trim() || "Pendiente", // Por defecto permanece en Pendiente
+                    voto: cols[3]?.trim() || "Pendiente", 
                     domicilio: cols[4]?.trim() || "---",
                     observaciones: cols[5]?.trim() || "",
                     modificado_por: cols[6]?.trim() || "---"
@@ -191,9 +191,7 @@ function calculateMetrics() {
 
     document.getElementById("metric-total").textContent = total;
     document.getElementById("metric-voted").textContent = voted;
-    
-    // Mostramos la suma de las incidencias pendientes y los que justificadamente no votaron
-    document.getElementById("metric-pending").innerHTML = `${pending} <span style="font-size:0.9rem; color:#aaa; display:block; margin-top:5px;">(${noVoted} No Votaron)</span>`;
+    document.getElementById("metric-pending").innerHTML = `${pending} <span style="font-size:0.85rem; color:#aaa; display:block; margin-top:5px;">(${noVoted} No Votaron)</span>`;
 }
 
 function renderVotantesTable() {
@@ -213,15 +211,19 @@ function renderVotantesTable() {
     filtered.forEach((v, index) => {
         const tr = document.createElement("tr");
         
-        // Estilización dinámica basada estrictamente en los colores solicitados (Rojo, Blanco, Negro)
-        let btnStyle = "";
+        // 1. Diseño del Indicador de Estado Actual (Badge)
+        let badgeStyle = "padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; display: inline-block; margin-bottom: 8px; text-transform: uppercase;";
         if (v.voto === "Votó") {
-            btnStyle = "background-color: #E50000; color: #FFFFFF; border: none;"; // Rojo Campaña
+            badgeStyle += "background-color: #E50000; color: #FFFFFF;"; // Rojo
         } else if (v.voto === "No Votó") {
-            btnStyle = "background-color: #0A0A0A; color: #FFFFFF; border: 2px solid #E50000;"; // Negro con borde Rojo
+            badgeStyle += "background-color: #000000; color: #E50000; border: 1px solid #E50000;"; // Negro con borde rojo
         } else {
-            btnStyle = "background-color: #333333; color: #FFFFFF; border: 1px solid #555;"; // Pendiente (Gris neutro)
+            badgeStyle += "background-color: #333333; color: #DDDDDD;"; // Pendiente (Gris oscuro)
         }
+
+        // 2. Definición y Opacidad de los botones según estado actual (para saber cuál está activo)
+        const activeVotoStyle = v.voto === "Votó" ? "background-color: #E50000; color: white; border:none; font-weight:bold;" : "background-color: #222; color: #888; border: 1px solid #444;";
+        const activeNoVotoStyle = v.voto === "No Votó" ? "background-color: #000; color: #E50000; border: 2px solid #E50000; font-weight:bold;" : "background-color: #222; color: #888; border: 1px solid #444;";
 
         tr.innerHTML = `
             <td><strong>${index + 1}</strong></td>
@@ -229,13 +231,25 @@ function renderVotantesTable() {
             <td>${v.cedula}</td>
             <td>${v.domicilio}</td>
             <td>
-                <button class="btn-table-voto" style="${btnStyle} width: auto; min-width: 115px; text-transform: uppercase;" onclick="toggleVoto('${v.id}')">
-                    ${v.voto}
-                </button>
+                <div style="display: flex; flex-direction: column; align-items: flex-start; min-width: 140px;">
+                    <span style="${badgeStyle}">${v.voto}</span>
+                    
+                    <div style="display: flex; gap: 4px; width: 100%;">
+                        <button style="${activeVotoStyle} padding: 8px 6px; font-size: 0.75rem; border-radius: 4px; cursor: pointer; flex: 1; text-transform: uppercase;" 
+                                onclick="ejecutarAccionVoto('${v.id}', 'Votó')">
+                            Votó
+                        </button>
+                        
+                        <button style="${activeNoVotoStyle} padding: 8px 6px; font-size: 0.75rem; border-radius: 4px; cursor: pointer; flex: 1; text-transform: uppercase;" 
+                                onclick="ejecutarAccionVoto('${v.id}', 'No Votó')">
+                            No Votó
+                        </button>
+                    </div>
+                </div>
             </td>
             <td>
                 <input type="text" class="obs-input" id="obs-${v.id}" value="${v.observaciones}" 
-                    placeholder="Sin observaciones..." 
+                    placeholder="Añadir motivo..." 
                     onchange="updateObservacion('${v.id}', this.value)">
             </td>
             <td>
@@ -246,30 +260,39 @@ function renderVotantesTable() {
     });
 }
 
-// LÓGICA DE ROTACIÓN: Pendiente -> Votó -> No Votó -> Pendiente
-window.toggleVoto = function(id) {
+// --- NUEVA LÓGICA DIRECTA POR BOTÓN ---
+window.ejecutarAccionVoto = function(id, accionSolicitada) {
     const target = state.votantes.find(v => v.id == id);
-    if (target) {
-        if (target.voto === "Pendiente") {
-            target.voto = "Votó";
-        } else if (target.voto === "Votó") {
-            target.voto = "No Votó";
-            
-            // Solicitar de forma interactiva la justificación obligatoria
-            const justificacion = prompt(`Justificación requerida para ${target.nombre}:\n¿Por qué NO votó?`);
+    if (!target) return;
+
+    // Si vuelven a tocar el botón que ya estaba activo, se limpia y vuelve a "No Votó" / "Pendiente"
+    if (target.voto === accionSolicitada) {
+        target.voto = "Pendiente";
+        // Si vuelve a pendiente voluntariamente se limpia la observación automática si existiese
+        if(accionSolicitada === "No Votó") target.observaciones = "";
+    } else {
+        // Asignación del nuevo estado directo
+        target.voto = accionSolicitada;
+
+        // Si la acción seleccionada es "No Votó", se dispara la solicitud de observación
+        if (accionSolicitada === "No Votó") {
+            const justificacion = prompt(`Justificación de inasistencia para:\n${target.nombre}\n\n¿Por qué NO votó?`);
             if (justificacion !== null && justificacion.trim() !== "") {
                 target.observaciones = justificacion.trim();
             } else {
-                target.observaciones = "No asistió (Sin justificación especificada)";
+                target.observaciones = "No asistió (Sin motivo especificado)";
             }
         } else {
-            target.voto = "Pendiente";
+            // Si votó, limpiamos la justificación anterior por coherencia
+            target.observaciones = "";
         }
-        
-        target.modificado_por = `Por: ${state.currentUser.username}`;
-        saveVotantes();
-        updateDashboard();
     }
+
+    // Auditoría de quién modificó el campo
+    target.modificado_por = `Por: ${state.currentUser.username}`;
+    
+    saveVotantes();
+    updateDashboard();
 };
 
 window.updateObservacion = function(id, text) {

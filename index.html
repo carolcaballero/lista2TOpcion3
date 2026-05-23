@@ -49,8 +49,22 @@
                 <button id="tab-admin" class="tab-btn hidden">Panel de Administración</button>
             </div>
             
-            <div id="search-wrapper" class="search-box" style="flex: 1; min-width: 250px;">
-                <input type="text" id="search-input" placeholder="Buscar por nombre o cédula..." style="width: 100%; box-sizing: border-box; padding: 10px;">
+            <div id="filter-wrapper" style="display: flex; gap: 10px; flex-wrap: wrap; flex: 1; justify-content: flex-end; min-width: 300px;">
+                <div style="display: flex; gap: 6px;">
+                    <button id="btn-filter-pending" class="filter-btn active" style="padding: 10px 12px; border: 1px solid #444; background: #555; color: #fff; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">
+                        ⏳ Pendientes
+                    </button>
+                    <button id="btn-filter-voted" class="filter-btn" style="padding: 10px 12px; border: 1px solid #444; background: #222; color: #fff; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">
+                        ✅ Votaron
+                    </button>
+                    <button id="btn-filter-novoted" class="filter-btn" style="padding: 10px 12px; border: 1px solid #444; background: #222; color: #fff; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem;">
+                        ❌ No Votaron
+                    </button>
+                </div>
+                
+                <div class="search-box" style="min-width: 200px; flex: 1; max-width: 300px;">
+                    <input type="text" id="search-input" placeholder="Buscar en esta lista..." style="width: 100%; box-sizing: border-box; padding: 10px; border-radius: 4px; border: 1px solid #444; background-color: #1a1a1a; color: #fff;">
+                </div>
             </div>
         </nav>
 

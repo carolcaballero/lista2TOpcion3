@@ -1,5 +1,5 @@
 // --- CONFIGURACIÓN DE DATOS INICIALES ---
-const DEFAULT_ADMIN = { username: "Admin", password: "CAROL2T3", fullname: "Administrador Central", phone: "N/A", isAdmin: true };
+const DEFAULT_ADMIN = { username: "Admin", password: "CAROL2T3", fullname: "Administrador/a", phone: "N/A", isAdmin: true };
 const CSV_PATH = 'data/votantes.csv';
 const SVG_PATH = 'assets/icons.svg';
 
@@ -126,7 +126,17 @@ function handleLogin(e) {
 
 function loginSuccess(user) {
     state.currentUser = user;
-    document.getElementById("current-user-display").textContent = user.fullname;
+    
+    // CONTROL DE IDENTIFICACIÓN: Si es el Admin, fuerza a que diga SOLO "Administrador/a"
+    const userInfoSpan = document.querySelector(".user-info span");
+    if (userInfoSpan) {
+        if (user.username === "Admin") {
+            userInfoSpan.innerHTML = `<strong id="current-user-display">Administrador/a</strong>`;
+        } else {
+            userInfoSpan.innerHTML = `Usuario: <strong id="current-user-display">${user.fullname}</strong>`;
+        }
+    }
+
     document.getElementById("login-form").reset();
 
     const adminTab = document.getElementById("tab-admin");
@@ -211,17 +221,15 @@ function renderVotantesTable() {
     filtered.forEach((v, index) => {
         const tr = document.createElement("tr");
         
-        // 1. Diseño del Indicador de Estado Actual (Badge)
         let badgeStyle = "padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; display: inline-block; margin-bottom: 8px; text-transform: uppercase;";
         if (v.voto === "Votó") {
-            badgeStyle += "background-color: #E50000; color: #FFFFFF;"; // Rojo
+            badgeStyle += "background-color: #E50000; color: #FFFFFF;"; 
         } else if (v.voto === "No Votó") {
-            badgeStyle += "background-color: #000000; color: #E50000; border: 1px solid #E50000;"; // Negro con borde rojo
+            badgeStyle += "background-color: #000000; color: #E50000; border: 1px solid #E50000;"; 
         } else {
-            badgeStyle += "background-color: #333333; color: #DDDDDD;"; // Pendiente (Gris oscuro)
+            badgeStyle += "background-color: #333333; color: #DDDDDD;"; 
         }
 
-        // 2. Definición y Opacidad de los botones según estado actual (para saber cuál está activo)
         const activeVotoStyle = v.voto === "Votó" ? "background-color: #E50000; color: white; border:none; font-weight:bold;" : "background-color: #222; color: #888; border: 1px solid #444;";
         const activeNoVotoStyle = v.voto === "No Votó" ? "background-color: #000; color: #E50000; border: 2px solid #E50000; font-weight:bold;" : "background-color: #222; color: #888; border: 1px solid #444;";
 
@@ -233,13 +241,11 @@ function renderVotantesTable() {
             <td>
                 <div style="display: flex; flex-direction: column; align-items: flex-start; min-width: 140px;">
                     <span style="${badgeStyle}">${v.voto}</span>
-                    
                     <div style="display: flex; gap: 4px; width: 100%;">
                         <button style="${activeVotoStyle} padding: 8px 6px; font-size: 0.75rem; border-radius: 4px; cursor: pointer; flex: 1; text-transform: uppercase;" 
                                 onclick="ejecutarAccionVoto('${v.id}', 'Votó')">
                             Votó
                         </button>
-                        
                         <button style="${activeNoVotoStyle} padding: 8px 6px; font-size: 0.75rem; border-radius: 4px; cursor: pointer; flex: 1; text-transform: uppercase;" 
                                 onclick="ejecutarAccionVoto('${v.id}', 'No Votó')">
                             No Votó
@@ -260,21 +266,16 @@ function renderVotantesTable() {
     });
 }
 
-// --- NUEVA LÓGICA DIRECTA POR BOTÓN ---
 window.ejecutarAccionVoto = function(id, accionSolicitada) {
     const target = state.votantes.find(v => v.id == id);
     if (!target) return;
 
-    // Si vuelven a tocar el botón que ya estaba activo, se limpia y vuelve a "No Votó" / "Pendiente"
     if (target.voto === accionSolicitada) {
         target.voto = "Pendiente";
-        // Si vuelve a pendiente voluntariamente se limpia la observación automática si existiese
         if(accionSolicitada === "No Votó") target.observaciones = "";
     } else {
-        // Asignación del nuevo estado directo
         target.voto = accionSolicitada;
 
-        // Si la acción seleccionada es "No Votó", se dispara la solicitud de observación
         if (accionSolicitada === "No Votó") {
             const justificacion = prompt(`Justificación de inasistencia para:\n${target.nombre}\n\n¿Por qué NO votó?`);
             if (justificacion !== null && justificacion.trim() !== "") {
@@ -283,13 +284,12 @@ window.ejecutarAccionVoto = function(id, accionSolicitada) {
                 target.observaciones = "No asistió (Sin motivo especificado)";
             }
         } else {
-            // Si votó, limpiamos la justificación anterior por coherencia
             target.observaciones = "";
         }
     }
 
-    // Auditoría de quién modificó el campo
-    target.modificado_por = `Por: ${state.currentUser.username}`;
+    // Auditoría corta e intuitiva para las celdas
+    target.modificado_por = `Por: ${state.currentUser.username === "Admin" ? "Administrador/a" : state.currentUser.username}`;
     
     saveVotantes();
     updateDashboard();
@@ -299,7 +299,7 @@ window.updateObservacion = function(id, text) {
     const target = state.votantes.find(v => v.id == id);
     if (target) {
         target.observaciones = text.trim();
-        target.modificado_por = `Por: ${state.currentUser.username}`;
+        target.modificado_por = `Por: ${state.currentUser.username === "Admin" ? "Administrador/a" : state.currentUser.username}`;
         saveVotantes();
         renderVotantesTable();
     }

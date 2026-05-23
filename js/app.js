@@ -7,8 +7,8 @@ let state = {
     currentUser: null,
     users: [],
     votantes: [],
-    currentFilter: "Pendiente", // Filtro de estado activo por defecto
-    searchQuery: ""             // Consulta de texto del buscador
+    currentFilter: "Pendiente", 
+    searchQuery: ""             
 };
 
 // --- INICIALIZACIÓN ---
@@ -57,7 +57,7 @@ function fetchCSVAndParse() {
                 
                 const cols = lines[i].split(",");
                 result.push({
-                    id: cols[0]?.trim(),
+                    id: cols[0]?.trim() || Date.now() + Math.random().toString(),
                     nombre: cols[1]?.trim(),
                     cedula: cols[2]?.trim(),
                     voto: cols[3]?.trim() || "Pendiente", 
@@ -88,13 +88,11 @@ function setupEventListeners() {
     document.getElementById("login-form").addEventListener("submit", handleLogin);
     document.getElementById("logout-btn").addEventListener("click", handleLogout);
     
-    // Escucha activa de la barra de búsqueda restaurada
     document.getElementById("search-input").addEventListener("input", (e) => {
         state.searchQuery = e.target.value.toLowerCase();
         renderVotantesTable();
     });
     
-    // Escuchas para los botones clasificadores de estado
     document.getElementById("btn-filter-pending").addEventListener("click", () => switchStateFilter("Pendiente"));
     document.getElementById("btn-filter-voted").addEventListener("click", () => switchStateFilter("Votó"));
     document.getElementById("btn-filter-novoted").addEventListener("click", () => switchStateFilter("No Votó"));
@@ -102,6 +100,9 @@ function setupEventListeners() {
     document.getElementById("tab-planilla").addEventListener("click", () => switchTab('planilla'));
     document.getElementById("tab-admin").addEventListener("click", () => switchTab('admin'));
     document.getElementById("register-user-form").addEventListener("submit", handleRegisterUser);
+    
+    // NUEVO: Escucha para el envío del nuevo formulario de votantes
+    document.getElementById("register-votante-form").addEventListener("submit", handleRegisterVotante);
 }
 
 function checkSession() {
@@ -195,7 +196,7 @@ function switchTab(tab) {
         btnPlanilla.classList.add("active");
         btnAdmin.classList.remove("active");
         viewPlanilla.classList.remove("hidden");
-        viewAdmin.classList.add("hidden");
+        viewAdmin.style.setProperty("display", "none", "important"); // Oculta layout flex
         
         if(filterWrapper) filterWrapper.style.display = "flex"; 
         
@@ -204,7 +205,7 @@ function switchTab(tab) {
         btnPlanilla.classList.remove("active");
         btnAdmin.classList.add("active");
         viewPlanilla.classList.add("hidden");
-        viewAdmin.classList.remove("hidden");
+        viewAdmin.style.setProperty("display", "flex", "important"); // Activa layout flex
         
         if(filterWrapper) filterWrapper.style.display = "none"; 
         
@@ -257,15 +258,12 @@ function calculateMetrics() {
     document.getElementById("metric-pending").textContent = pending;
 }
 
-// --- RENDERIZADO CON FILTRADO COMBINADO (BOTÓN + BUSCADOR) ---
 function renderVotantesTable() {
     const tbody = document.getElementById("votantes-table-body");
     tbody.innerHTML = "";
 
-    // 1. Filtrar primero por el estado del botón seleccionado
     let filtered = state.votantes.filter(v => v.voto === state.currentFilter);
 
-    // 2. Filtrar el resultado anterior usando lo escrito en la barra de búsqueda (si tiene texto)
     if (state.searchQuery !== "") {
         filtered = filtered.filter(v => 
             v.nombre.toLowerCase().includes(state.searchQuery) || 
@@ -368,6 +366,41 @@ window.updateObservacion = function(id, text) {
         renderVotantesTable();
     }
 };
+
+// NUEVO: Lógica de Procesamiento de un Nuevo Votante
+function handleRegisterVotante(e) {
+    e.preventDefault();
+    const nombre = document.getElementById("vot-fullname").value.trim();
+    const cedula = document.getElementById("vot-cedula").value.trim();
+    const domicilio = document.getElementById("vot-domicilio").value.trim() || "---";
+
+    // Validar duplicados de Cédula por seguridad
+    if (state.votantes.some(v => v.cedula === cedula)) {
+        alert(`⚠️ Error: Ya existe un votante registrado con la cédula N° ${cedula}.`);
+        return;
+    }
+
+    const nuevoVotante = {
+        id: "manual_" + Date.now(), // ID único autogenerado
+        nombre: nombre,
+        cedula: cedula,
+        voto: "Pendiente", // Ingresa directo para que se le tome el voto
+        domicilio: domicilio,
+        observaciones: "",
+        modificado_por: `Creado por: ${state.currentUser.username === "Admin" ? "Administrador/a" : state.currentUser.username}`
+    };
+
+    state.votantes.push(nuevoVotante);
+    saveVotantes();
+    
+    document.getElementById("register-votante-form").reset();
+    
+    // Forzar que el filtro activo se mueva a "Pendientes" para ver al nuevo inscrito al volver
+    state.currentFilter = "Pendiente";
+    switchStateFilter("Pendiente"); 
+    
+    alert(`✅ ${nombre} ha sido inscrito exitosamente como "Pendiente".`);
+}
 
 function handleRegisterUser(e) {
     e.preventDefault();

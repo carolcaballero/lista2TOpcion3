@@ -59,9 +59,9 @@ function fetchCSVAndParse() {
                     id: cols[0]?.trim(),
                     nombre: cols[1]?.trim(),
                     cedula: cols[2]?.trim(),
-                    voto: cols[3]?.trim() || "Pendiente", 
+                    voto: cols[3]?.trim() || "Pendiente", // Todos inician en Pendiente por defecto
                     domicilio: cols[4]?.trim() || "---",
-                    observaciones: cols[5]?.trim() || "",
+                    observaciones: cols[5]?.trim() || "", // Vacío por defecto
                     modificado_por: cols[6]?.trim() || "---"
                 });
             }
@@ -127,7 +127,6 @@ function handleLogin(e) {
 function loginSuccess(user) {
     state.currentUser = user;
     
-    // CONTROL DE IDENTIFICACIÓN: Si es el Admin, fuerza a que diga SOLO "Administrador/a"
     const userInfoSpan = document.querySelector(".user-info span");
     if (userInfoSpan) {
         if (user.username === "Admin") {
@@ -157,6 +156,7 @@ function handleLogout() {
     switchView('login');
 }
 
+// --- MANEJO DE VISTAS ---
 function switchView(view) {
     if (view === 'login') {
         document.getElementById("login-section").classList.remove("hidden");
@@ -204,6 +204,7 @@ function calculateMetrics() {
     document.getElementById("metric-pending").innerHTML = `${pending} <span style="font-size:0.85rem; color:#aaa; display:block; margin-top:5px;">(${noVoted} No Votaron)</span>`;
 }
 
+// --- RENDERIZADO DE TABLA PLANILLA ---
 function renderVotantesTable() {
     const tbody = document.getElementById("votantes-table-body");
     tbody.innerHTML = "";
@@ -214,45 +215,55 @@ function renderVotantesTable() {
     );
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">No se encontraron registros.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">No se encontraron registros.</td></tr>`;
         return;
     }
 
     filtered.forEach((v, index) => {
         const tr = document.createElement("tr");
         
-        let badgeStyle = "padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; display: inline-block; margin-bottom: 8px; text-transform: uppercase;";
+        // Estilos visuales del Estado Actual (Badge informativo)
+        let badgeStyle = "padding: 6px 12px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; display: inline-block; text-transform: uppercase; text-align: center; min-width: 95px;";
         if (v.voto === "Votó") {
-            badgeStyle += "background-color: #E50000; color: #FFFFFF;"; 
+            badgeStyle += "background-color: #00CC44; color: #FFFFFF;"; // Verde si ya votó
         } else if (v.voto === "No Votó") {
-            badgeStyle += "background-color: #000000; color: #E50000; border: 1px solid #E50000;"; 
+            badgeStyle += "background-color: #E50000; color: #FFFFFF;"; // Rojo si marcó No Votó
         } else {
-            badgeStyle += "background-color: #333333; color: #DDDDDD;"; 
+            badgeStyle += "background-color: #333333; color: #DDDDDD;"; // Gris para Pendiente
         }
 
-        const activeVotoStyle = v.voto === "Votó" ? "background-color: #E50000; color: white; border:none; font-weight:bold;" : "background-color: #222; color: #888; border: 1px solid #444;";
-        const activeNoVotoStyle = v.voto === "No Votó" ? "background-color: #000; color: #E50000; border: 2px solid #E50000; font-weight:bold;" : "background-color: #222; color: #888; border: 1px solid #444;";
+        // Estilos de botones de acción en base a la selección activa
+        const activeVotoStyle = v.voto === "Votó" 
+            ? "background-color: #00CC44; color: white; border: none; font-weight: bold;" 
+            : "background-color: #222; color: #888; border: 1px solid #444;";
+            
+        const activeNoVotoStyle = v.voto === "No Votó" 
+            ? "background-color: #E50000; color: white; border: none; font-weight: bold;" 
+            : "background-color: #222; color: #888; border: 1px solid #444;";
 
         tr.innerHTML = `
             <td><strong>${index + 1}</strong></td>
             <td>${v.nombre}</td>
             <td>${v.cedula}</td>
             <td>${v.domicilio}</td>
+            
             <td>
-                <div style="display: flex; flex-direction: column; align-items: flex-start; min-width: 140px;">
-                    <span style="${badgeStyle}">${v.voto}</span>
-                    <div style="display: flex; gap: 4px; width: 100%;">
-                        <button style="${activeVotoStyle} padding: 8px 6px; font-size: 0.75rem; border-radius: 4px; cursor: pointer; flex: 1; text-transform: uppercase;" 
-                                onclick="ejecutarAccionVoto('${v.id}', 'Votó')">
-                            Votó
-                        </button>
-                        <button style="${activeNoVotoStyle} padding: 8px 6px; font-size: 0.75rem; border-radius: 4px; cursor: pointer; flex: 1; text-transform: uppercase;" 
-                                onclick="ejecutarAccionVoto('${v.id}', 'No Votó')">
-                            No Votó
-                        </button>
-                    </div>
+                <span style="${badgeStyle}">${v.voto}</span>
+            </td>
+            
+            <td>
+                <div style="display: flex; gap: 6px; min-width: 140px;">
+                    <button style="${activeVotoStyle} padding: 8px 10px; font-size: 0.75rem; border-radius: 4px; cursor: pointer; flex: 1; text-transform: uppercase;" 
+                            onclick="ejecutarAccionVoto('${v.id}', 'Votó')">
+                        Votó
+                    </button>
+                    <button style="${activeNoVotoStyle} padding: 8px 10px; font-size: 0.75rem; border-radius: 4px; cursor: pointer; flex: 1; text-transform: uppercase;" 
+                            onclick="ejecutarAccionVoto('${v.id}', 'No Votó')">
+                        No Votó
+                    </button>
                 </div>
             </td>
+            
             <td>
                 <input type="text" class="obs-input" id="obs-${v.id}" value="${v.observaciones}" 
                     placeholder="Añadir motivo..." 
@@ -266,16 +277,19 @@ function renderVotantesTable() {
     });
 }
 
+// --- MANEJO DE ACCIONES DIRECTAS POR BOTÓN ---
 window.ejecutarAccionVoto = function(id, accionSolicitada) {
     const target = state.votantes.find(v => v.id == id);
     if (!target) return;
 
+    // Si vuelve a presionar el botón activo, se limpia y regresa a Pendiente
     if (target.voto === accionSolicitada) {
         target.voto = "Pendiente";
         if(accionSolicitada === "No Votó") target.observaciones = "";
     } else {
         target.voto = accionSolicitada;
 
+        // Dispara cuadro de diálogo interactivo solo si la opción elegida es No Votó
         if (accionSolicitada === "No Votó") {
             const justificacion = prompt(`Justificación de inasistencia para:\n${target.nombre}\n\n¿Por qué NO votó?`);
             if (justificacion !== null && justificacion.trim() !== "") {
@@ -284,11 +298,12 @@ window.ejecutarAccionVoto = function(id, accionSolicitada) {
                 target.observaciones = "No asistió (Sin motivo especificado)";
             }
         } else {
+            // Si cambia a Votó, limpiamos observaciones automáticas previas por coherencia
             target.observaciones = "";
         }
     }
 
-    // Auditoría corta e intuitiva para las celdas
+    // Auditoría de modificaciones en pantalla
     target.modificado_por = `Por: ${state.currentUser.username === "Admin" ? "Administrador/a" : state.currentUser.username}`;
     
     saveVotantes();
@@ -305,6 +320,7 @@ window.updateObservacion = function(id, text) {
     }
 };
 
+// --- GESTIÓN DE USUARIOS ---
 function handleRegisterUser(e) {
     e.preventDefault();
     const fullname = document.getElementById("reg-fullname").value.trim();

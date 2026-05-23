@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MGTR. Carolina Caballero Concejal 2026 - 2031 Lista 2T Opción 3</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <svg class="svg-sprite" aria-hidden="true" focusable="false">
+    <use href="assets/icons.svg#sprite-root"></use>
+  </svg>
+
+  <div class="app-shell">
+    <header class="hero">
+      <div class="hero__brand">
+        <div class="hero__logo">
+          <svg class="icon icon--lg"><use href="assets/icons.svg#icon-shield"></use></svg>
+        </div>
+        <div>
+          <p class="hero__eyebrow">Sistema de registro de votantes</p>
+          <h1>MGTR. Carolina Caballero Concejal 2026 - 2031 Lista 2T Opción 3</h1>
+          <p class="hero__subtext">Control de padrón, seguimiento de voto, gestión de usuarios y trazabilidad de cambios.</p>
+        </div>
+      </div>
+      <div class="hero__legend">
+        <span class="legend legend--red">Rojo</span>
+        <span class="legend legend--white">Blanco</span>
+        <span class="legend legend--black">Negro</span>
+      </div>
+    </header>
+
+    <main>
+      <section id="loginView" class="card card--login view-active">
+        <div class="card__header">
+          <div>
+            <p class="section-tag">Acceso</p>
+            <h2>Iniciar sesión</h2>
+          </div>
+          <svg class="icon icon--xl"><use href="assets/icons.svg#icon-user-lock"></use></svg>
+        </div>
+
+        <form id="loginForm" class="form-grid">
+          <label>
+            <span>Usuario</span>
+            <input id="username" name="username" type="text" placeholder="Escriba su usuario" required />
+          </label>
+          <label>
+            <span>Contraseña</span>
+            <input id="password" name="password" type="password" placeholder="Escriba su contraseña" required />
+          </label>
+          <button class="btn btn--primary btn--full" type="submit">
+            <svg class="icon"><use href="assets/icons.svg#icon-login"></use></svg>
+            Entrar al sistema
+          </button>
+        </form>
+
+        <div class="login-help">
+          <strong>Acceso inicial por defecto</strong>
+          <p>Usuario: <code>Admin</code> · Contraseña: <code>CAROL2T3</code></p>
+          <small>La versión para GitHub Pages guarda usuarios y cambios en el navegador del dispositivo que la use.</small>
+        </div>
+      </section>
+
+      <section id="dashboardView" class="view-hidden">
+        <div class="toolbar">
+          <div>
+            <p class="section-tag">Panel principal</p>
+            <h2>Planilla de votantes</h2>
+            <p id="sessionInfo" class="session-info"></p>
+          </div>
+          <div class="toolbar__actions">
+            <button id="addVoterBtn" class="btn btn--secondary" type="button">
+              <svg class="icon"><use href="assets/icons.svg#icon-plus"></use></svg>
+              Agregar votante
+            </button>
+            <button id="exportBtn" class="btn btn--ghost" type="button">
+              <svg class="icon"><use href="assets/icons.svg#icon-file"></use></svg>
+              Exportar CSV
+            </button>
+            <button id="logoutBtn" class="btn btn--danger" type="button">
+              <svg class="icon"><use href="assets/icons.svg#icon-logout"></use></svg>
+              Salir
+            </button>
+          </div>
+        </div>
+
+        <section class="stats-grid" id="statsGrid">
+          <article class="stat-card">
+            <span>Total</span>
+            <strong id="totalCount">0</strong>
+          </article>
+          <article class="stat-card stat-card--success">
+            <span>Ya votó</span>
+            <strong id="votedCount">0</strong>
+          </article>
+          <article class="stat-card stat-card--warning">
+            <span>No votó</span>
+            <strong id="notVotedCount">0</strong>
+          </article>
+          <article class="stat-card stat-card--neutral">
+            <span>Pendiente</span>
+            <strong id="pendingCount">0</strong>
+          </article>
+        </section>
+
+        <section class="card filters-card">
+          <div class="search-box">
+            <svg class="icon"><use href="assets/icons.svg#icon-search"></use></svg>
+            <input id="searchInput" type="search" placeholder="Buscar por cédula o nombre" />
+          </div>
+          <div class="inline-controls">
+            <label>
+              <span>Estado</span>
+              <select id="statusFilter">
+                <option value="todos">Todos</option>
+                <option value="ya_voto">Ya votó</option>
+                <option value="no_voto">No votó</option>
+                <option value="pendiente">Pendiente</option>
+              </select>
+            </label>
+            <button id="reloadBaseBtn" class="btn btn--ghost" type="button">
+              <svg class="icon"><use href="assets/icons.svg#icon-refresh"></use></svg>
+              Recargar padrón base
+            </button>
+          </div>
+        </section>
+
+        <section class="card table-card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>N°</th>
+                  <th>Nombre y apellido</th>
+                  <th>Número de cédula</th>
+                  <th>Estado</th>
+                  <th>Domicilio o barrio</th>
+                  <th>Observaciones</th>
+                  <th>Registro</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="votersTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="adminSection" class="card admin-section view-hidden">
+          <div class="card__header">
+            <div>
+              <p class="section-tag">Administración</p>
+              <h2>Panel de control</h2>
+            </div>
+            <svg class="icon icon--xl"><use href="assets/icons.svg#icon-admin"></use></svg>
+          </div>
+
+          <div class="admin-grid">
+            <div>
+              <h3>Registrar nuevo usuario</h3>
+              <form id="userForm" class="form-grid compact">
+                <label>
+                  <span>Nombre y apellido</span>
+                  <input id="newFullName" type="text" required />
+                </label>
+                <label>
+                  <span>Número de teléfono</span>
+                  <input id="newPhone" type="tel" required />
+                </label>
+                <label>
+                  <span>Usuario</span>
+                  <input id="newUsername" type="text" required />
+                </label>
+                <label>
+                  <span>Contraseña</span>
+                  <input id="newPassword" type="password" required />
+                </label>
+                <button class="btn btn--primary" type="submit">
+                  <svg class="icon"><use href="assets/icons.svg#icon-user-plus"></use></svg>
+                  Guardar usuario
+                </button>
+              </form>
+            </div>
+
+            <div>
+              <h3>Usuarios registrados</h3>
+              <div class="table-wrap small">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>Teléfono</th>
+                      <th>Usuario</th>
+                      <th>Rol</th>
+                      <th>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody id="usersTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="voterDialog" class="modal">
+    <form id="voterForm" class="modal__content" method="dialog">
+      <div class="modal__header">
+        <div>
+          <p class="section-tag">Planilla</p>
+          <h3>Agregar votante</h3>
+        </div>
+        <button id="closeVoterDialog" class="icon-btn" type="button" aria-label="Cerrar">
+          <svg class="icon"><use href="assets/icons.svg#icon-close"></use></svg>
+        </button>
+      </div>
+
+      <div class="form-grid compact">
+        <label>
+          <span>N°</span>
+          <input id="voterNumber" type="number" min="1" required />
+        </label>
+        <label>
+          <span>Nombre y apellido</span>
+          <input id="voterName" type="text" required />
+        </label>
+        <label>
+          <span>Número de cédula</span>
+          <input id="voterCi" type="text" required />
+        </label>
+        <label>
+          <span>Domicilio o barrio</span>
+          <input id="voterAddress" type="text" />
+        </label>
+        <label class="full-span">
+          <span>Observaciones</span>
+          <textarea id="voterNotes" rows="3" placeholder="Opcional"></textarea>
+        </label>
+      </div>
+
+      <div class="modal__actions">
+        <button class="btn btn--ghost" id="cancelVoterBtn" type="button">Cancelar</button>
+        <button class="btn btn--primary" type="submit">Guardar votante</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="js/app.js" defer></script>
+</body>
+</html>

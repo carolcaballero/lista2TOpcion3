@@ -106,33 +106,55 @@
             </table>
         </div>
 
-        <div id="view-admin" class="admin-grid hidden">
+        <div id="view-admin" class="admin-grid hidden" style="display: flex; flex-direction: column; gap: 25px;">
             
-            <div class="admin-card">
-                <h3>Registrar Nuevo Operador</h3>
-                <form id="register-user-form">
-                    <div class="form-group">
-                        <label for="reg-fullname">Nombre Completo</label>
-                        <input type="text" id="reg-fullname" required placeholder="Ej. Juan Pérez">
-                    </div>
-                    <div class="form-group">
-                        <label for="reg-phone">Teléfono / Celular</label>
-                        <input type="tel" id="reg-phone" required placeholder="Ej. 0981XXXXXX">
-                    </div>
-                    <div class="form-group">
-                        <label for="reg-username">Nombre de Usuario</label>
-                        <input type="text" id="reg-username" required placeholder="Ej. jperez">
-                    </div>
-                    <div class="form-group">
-                        <label for="reg-password">Contraseña de Acceso</label>
-                        <input type="password" id="reg-password" required placeholder="Crear contraseña">
-                    </div>
-                    <button type="submit" class="btn-primary">Crear Usuario Operador</button>
-                </form>
+            <div class="forms-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                
+                <div class="admin-card" style="background: #222; padding: 20px; border-radius: 6px; border: 1px solid #333;">
+                    <h3 style="margin-top: 0; color: #fff; border-bottom: 1px solid #444; padding-bottom: 10px;">📋 Registrar Nuevo Votante (Padrón)</h3>
+                    <form id="register-votante-form">
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label for="vot-fullname" style="display:block; margin-bottom:5px; font-size:0.9rem;">Nombre y Apellido Completo</label>
+                            <input type="text" id="vot-fullname" required placeholder="Ej. Carlos Alberto Gómez" style="width:100%; box-sizing:border-box; padding:8px; background:#111; color:#fff; border:1px solid #444;">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label for="vot-cedula" style="display:block; margin-bottom:5px; font-size:0.9rem;">Documento de Cédula</label>
+                            <input type="text" id="vot-cedula" required placeholder="Ej. 1234567" style="width:100%; box-sizing:border-box; padding:8px; background:#111; color:#fff; border:1px solid #444;">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label for="vot-domicilio" style="display:block; margin-bottom:5px; font-size:0.9rem;">Domicilio / Dirección</label>
+                            <input type="text" id="vot-domicilio" placeholder="Ej. Avda. Principal c/ Mcal. López" style="width:100%; box-sizing:border-box; padding:8px; background:#111; color:#fff; border:1px solid #444;">
+                        </div>
+                        <button type="submit" class="btn-primary" style="width:100%; padding:10px; font-weight:bold; cursor:pointer;">Inscribir en el Padrón</button>
+                    </form>
+                </div>
+
+                <div class="admin-card" style="background: #222; padding: 20px; border-radius: 6px; border: 1px solid #333;">
+                    <h3 style="margin-top: 0; color: #fff; border-bottom: 1px solid #444; padding-bottom: 10px;">👤 Registrar Nuevo Operador</h3>
+                    <form id="register-user-form">
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label for="reg-fullname" style="display:block; margin-bottom:5px; font-size:0.9rem;">Nombre Completo</label>
+                            <input type="text" id="reg-fullname" required placeholder="Ej. Juan Pérez" style="width:100%; box-sizing:border-box; padding:8px; background:#111; color:#fff; border:1px solid #444;">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label for="reg-phone" style="display:block; margin-bottom:5px; font-size:0.9rem;">Teléfono / Celular</label>
+                            <input type="tel" id="reg-phone" required placeholder="Ej. 0981XXXXXX" style="width:100%; box-sizing:border-box; padding:8px; background:#111; color:#fff; border:1px solid #444;">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label for="reg-username" style="display:block; margin-bottom:5px; font-size:0.9rem;">Nombre de Usuario</label>
+                            <input type="text" id="reg-username" required placeholder="Ej. jperez" style="width:100%; box-sizing:border-box; padding:8px; background:#111; color:#fff; border:1px solid #444;">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label for="reg-password" style="display:block; margin-bottom:5px; font-size:0.9rem;">Contraseña de Acceso</label>
+                            <input type="password" id="reg-password" required placeholder="Crear contraseña" style="width:100%; box-sizing:border-box; padding:8px; background:#111; color:#fff; border:1px solid #444;">
+                        </div>
+                        <button type="submit" class="btn-primary" style="width:100%; padding:10px; font-weight:bold; cursor:pointer;">Crear Usuario Operador</button>
+                    </form>
+                </div>
             </div>
 
-            <div class="admin-card">
-                <h3>Operadores Habilitados en el Sistema</h3>
+            <div class="admin-card" style="background: #222; padding: 20px; border-radius: 6px; border: 1px solid #333;">
+                <h3 style="margin-top: 0; color: #fff;">Operadores Habilitados en el Sistema</h3>
                 <div class="table-responsive">
                     <table>
                         <thead>

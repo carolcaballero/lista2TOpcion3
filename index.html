@@ -34,17 +34,17 @@
 
         /* Badges */
         .badge { display:inline-block;padding:4px 10px;border-radius:4px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;min-width:80px;text-align:center; }
-        .badge-voted   { background:rgba(229,0,0,.15);color:#ff4444;border:1px solid var(--color-primary); }
-        .badge-novoted { background:rgba(180,180,180,.1);color:#aaa;border:1px solid #444; }
+        .badge-voted   { background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.4); }
+        .badge-novoted { background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.4); }
         .badge-pending { background:rgba(255,255,255,.05);color:#666;border:1px solid #333; }
 
         /* Botones tabla */
         .action-btns { display:flex;gap:6px;min-width:150px; }
         .btn-accion { flex:1;padding:9px 8px;border-radius:4px;font-size:.75rem;font-weight:700;text-transform:uppercase;cursor:pointer;border:1px solid var(--color-border);background:#1a1a1a;color:#666;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:4px; }
         .btn-accion svg { width:12px;height:12px; }
-        .btn-accion:hover { border-color:var(--color-primary);color:var(--color-light); }
-        .btn-accion.sel-voto   { background:var(--color-primary);color:#fff;border-color:var(--color-primary); }
-        .btn-accion.sel-novoto { background:#333;color:#fff;border-color:#555; }
+        .btn-accion:hover { border-color:#555;color:var(--color-light); }
+        .btn-accion.sel-voto   { background:rgba(34,197,94,.2);color:#22c55e;border-color:rgba(34,197,94,.5); }
+        .btn-accion.sel-novoto { background:rgba(239,68,68,.2);color:#ef4444;border-color:rgba(239,68,68,.5); }
 
         /* Spinner */
         .spinner-cell { text-align:center;padding:40px !important; }
@@ -52,18 +52,18 @@
         @keyframes spin { to{transform:rotate(360deg)} }
 
         /* Métricas */
-        #metric-voted   { color:var(--color-primary); }
-        #metric-novoted { color:var(--color-gray); }
+        #metric-voted   { color:#22c55e; }
+        #metric-novoted { color:#ef4444; }
         #metric-pending { color:#555; }
 
         /* Filtros */
-        .filter-btn { display:flex;align-items:center;gap:6px;padding:10px 14px;border-radius:4px;font-size:.8rem;font-weight:700;text-transform:uppercase;cursor:pointer;border:1px solid var(--color-border);background:#1a1a1a;color:var(--color-gray);transition:all .15s; }
+        .filter-btn { display:flex;align-items:center;gap:6px;padding:9px 13px;border-radius:4px;font-size:.78rem;font-weight:700;text-transform:uppercase;cursor:pointer;border:1px solid var(--color-border);background:#1a1a1a;color:var(--color-gray);transition:all .15s; }
         .filter-btn svg { width:13px;height:13px;flex-shrink:0; }
-        .filter-btn:hover { border-color:var(--color-primary);color:var(--color-light); }
+        .filter-btn:hover { border-color:#555;color:var(--color-light); }
         .filter-btn.f-pending { border-color:#555;color:var(--color-light);background:#222; }
-        .filter-btn.f-voted   { border-color:var(--color-primary);color:var(--color-primary);background:rgba(229,0,0,.08); }
-        .filter-btn.f-novoted { border-color:#666;color:#bbb;background:rgba(255,255,255,.05); }
-        .filter-group { display:flex;gap:6px;flex-wrap:wrap; }
+        .filter-btn.f-voted   { border-color:rgba(34,197,94,.5);color:#22c55e;background:rgba(34,197,94,.08); }
+        .filter-btn.f-novoted { border-color:rgba(239,68,68,.5);color:#ef4444;background:rgba(239,68,68,.08); }
+        .filter-group { display:flex;gap:5px;flex-wrap:wrap; }
 
         /* Views */
         #view-admin { display:none; }
@@ -90,16 +90,16 @@
         .wa-link:hover { opacity:.8;text-decoration:underline; }
 
         /* Panel Online */
-        .online-panel { background:var(--color-card-bg);border:1px solid var(--color-border);border-left:3px solid #22c55e;border-radius:8px;padding:14px 16px;margin-bottom:20px; }
-        .online-panel-header { display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:.82rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--color-gray); }
-        .online-dot-lg { width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 5px #22c55e;flex-shrink:0; }
-        .online-dot-sm { width:7px;height:7px;border-radius:50%;background:#22c55e;flex-shrink:0;display:inline-block; }
-        .online-count-badge { background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);border-radius:12px;padding:2px 8px;font-size:.75rem;font-weight:700; }
-        .online-users-grid { display:flex;flex-wrap:wrap;gap:6px; }
-        .online-user-item { display:flex;align-items:center;gap:6px;background:#1a1a1a;border:1px solid var(--color-border);border-radius:20px;padding:5px 12px;font-size:.82rem; }
+        .online-panel { background:var(--color-card-bg);border:1px solid var(--color-border);border-left:3px solid #22c55e;border-radius:6px;padding:8px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap; }
+        .online-panel-header { display:flex;align-items:center;gap:6px;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--color-gray);white-space:nowrap;flex-shrink:0; }
+        .online-dot-lg { width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 4px #22c55e;flex-shrink:0; }
+        .online-dot-sm { width:6px;height:6px;border-radius:50%;background:#22c55e;flex-shrink:0;display:inline-block; }
+        .online-count-badge { background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);border-radius:10px;padding:1px 7px;font-size:.7rem;font-weight:700; }
+        .online-users-grid { display:flex;flex-wrap:wrap;gap:5px;flex:1; }
+        .online-user-item { display:flex;align-items:center;gap:5px;background:#1a1a1a;border:1px solid var(--color-border);border-radius:20px;padding:3px 10px;font-size:.75rem; }
         .online-name { color:var(--color-light); }
-        .online-badge-admin { background:rgba(229,0,0,.2);color:var(--color-primary);border:1px solid rgba(229,0,0,.3);border-radius:4px;padding:1px 6px;font-size:.65rem;font-weight:700;text-transform:uppercase; }
-        .online-empty { font-size:.8rem;color:var(--color-gray);font-style:italic; }
+        .online-badge-admin { background:rgba(229,0,0,.2);color:var(--color-primary);border:1px solid rgba(229,0,0,.3);border-radius:4px;padding:1px 5px;font-size:.6rem;font-weight:700;text-transform:uppercase; }
+        .online-empty { font-size:.75rem;color:var(--color-gray);font-style:italic; }
 
         /* ═══════════════════════════════════════
            BITÁCORA
@@ -302,12 +302,33 @@
     </div>
 
     <!-- TOOLBAR -->
-    <nav class="toolbar" style="flex-wrap:wrap;gap:12px;">
-        <div class="tab-buttons">
+    <nav class="toolbar" style="flex-wrap:wrap;gap:8px;align-items:center;">
+        <!-- IZQUIERDA: tab Planilla + filtros + búsqueda -->
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1;">
             <button id="tab-planilla" class="tab-btn active">
                 <svg class="icon" style="color:inherit"><use href="#icon-clipboard"/></svg>
                 Planilla
             </button>
+            <div id="filter-wrapper" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;">
+                <div class="filter-group">
+                    <button id="btn-filter-pending" class="filter-btn f-pending">
+                        <svg><use href="#icon-clock"/></svg>Pendientes
+                    </button>
+                    <button id="btn-filter-voted" class="filter-btn">
+                        <svg><use href="#icon-check"/></svg>Votaron
+                    </button>
+                    <button id="btn-filter-novoted" class="filter-btn">
+                        <svg><use href="#icon-x"/></svg>No Votaron
+                    </button>
+                </div>
+                <div class="search-box" style="min-width:160px;max-width:240px;">
+                    <svg class="icon"><use href="#icon-search"/></svg>
+                    <input type="text" id="search-input" placeholder="Nombre o cédula...">
+                </div>
+            </div>
+        </div>
+        <!-- DERECHA: Admin + Padrón + Exportar -->
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
             <button id="tab-admin" class="tab-btn hidden">
                 <svg class="icon" style="color:inherit"><use href="#icon-settings"/></svg>
                 Administración
@@ -316,41 +337,23 @@
                 <svg class="icon" style="color:inherit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 Padrón ANR
             </button>
+            <button id="btn-exportar" onclick="exportarCSV()" class="btn-secondary hidden"
+                style="display:none;align-items:center;gap:6px;padding:9px 13px;font-size:.78rem;font-weight:700;white-space:nowrap;">
+                <svg class="icon" style="color:var(--color-primary);width:13px;height:13px"><use href="#icon-clipboard"/></svg>
+                Exportar CSV
+            </button>
         </div>
-        <div id="filter-wrapper" style="display:flex;gap:8px;flex-wrap:wrap;flex:1;justify-content:flex-end;align-items:center;">
-            <div class="filter-group">
-                <button id="btn-filter-pending" class="filter-btn f-pending">
-                    <svg><use href="#icon-clock"/></svg>Pendientes
-                </button>
-                <button id="btn-filter-voted" class="filter-btn">
-                    <svg><use href="#icon-check"/></svg>Votaron
-                </button>
-                <button id="btn-filter-novoted" class="filter-btn">
-                    <svg><use href="#icon-x"/></svg>No Votaron
-                </button>
-            </div>
-            <div class="search-box" style="flex:1;min-width:180px;max-width:280px;">
-                <svg class="icon"><use href="#icon-search"/></svg>
-                <input type="text" id="search-input" placeholder="Nombre o cédula...">
-            </div>
-        </div>
-        <!-- Botón Exportar CSV — solo Admin -->
-        <button id="btn-exportar" onclick="exportarCSV()" class="btn-secondary hidden"
-            style="display:none;align-items:center;gap:6px;padding:9px 14px;font-size:.8rem;font-weight:700;white-space:nowrap;">
-            <svg class="icon" style="color:var(--color-primary);width:14px;height:14px"><use href="#icon-clipboard"/></svg>
-            Exportar CSV
-        </button>
     </nav>
 
     <!-- BARRA DE BÚSQUEDA GLOBAL -->
     <div id="search-hint" style="display:none;align-items:center;gap:8px;background:#1a1a1a;border:1px solid #333;border-left:3px solid var(--color-primary);border-radius:6px;padding:9px 14px;margin-bottom:12px;font-size:.82rem;color:var(--color-gray);flex-wrap:wrap;"></div>
 
-    <!-- MÉTRICAS -->
-    <div class="metrics-grid">
-        <div class="metric-card total"><h3>Total Padrón</h3><p id="metric-total">0</p></div>
-        <div class="metric-card voted"><h3>Ya Votaron</h3><p id="metric-voted">0</p></div>
-        <div class="metric-card novoted"><h3>No Votaron</h3><p id="metric-novoted">0</p></div>
-        <div class="metric-card pending"><h3>Pendientes</h3><p id="metric-pending">0</p></div>
+    <!-- MÉTRICAS compactas — una sola fila -->
+    <div class="metrics-grid" style="grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
+        <div class="metric-card total"  style="padding:10px 14px;"><h3 style="font-size:.68rem;margin-bottom:3px;">Total Padrón</h3><p id="metric-total"  style="font-size:1.5rem;">0</p></div>
+        <div class="metric-card voted"  style="padding:10px 14px;"><h3 style="font-size:.68rem;margin-bottom:3px;">Ya Votaron</h3>  <p id="metric-voted"  style="font-size:1.5rem;">0</p></div>
+        <div class="metric-card novoted"style="padding:10px 14px;"><h3 style="font-size:.68rem;margin-bottom:3px;">No Votaron</h3>  <p id="metric-novoted"style="font-size:1.5rem;">0</p></div>
+        <div class="metric-card pending"style="padding:10px 14px;"><h3 style="font-size:.68rem;margin-bottom:3px;">Pendientes</h3>  <p id="metric-pending"style="font-size:1.5rem;">0</p></div>
     </div>
 
     <!-- PLANILLA -->

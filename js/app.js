@@ -196,11 +196,17 @@ function checkSession() {
 
 async function handleLogin(e) {
     e.preventDefault();
-    const userIn   = document.getElementById("username").value.trim();
-    const passIn   = document.getElementById("password").value;
+    // Limpieza exhaustiva: elimina espacios, saltos de línea y caracteres invisibles
+    const userIn   = document.getElementById("username").value.replace(/\s+/g, "").trim();
+    const passIn   = document.getElementById("password").value.replace(/\s+/g, "").trim();
     const errEl    = document.getElementById("login-error");
     const btnLogin = e.target.querySelector("button[type=submit]");
     errEl.textContent = "";
+
+    if (!userIn || !passIn) {
+        errEl.textContent = "Completá usuario y contraseña.";
+        return;
+    }
 
     if (btnLogin) { btnLogin.disabled = true; btnLogin.textContent = "Verificando..."; }
 
@@ -212,10 +218,16 @@ async function handleLogin(e) {
         const passHash = await sha256(passIn);
 
         // ── Admin: acepta "Admin", "admin", "ADMIN" — cualquier capitalización ──
-        if (userIn.toLowerCase() === ADMIN_USER_ID && passHash === ADMIN_HASH) {
-            resetBtn();
-            loginSuccess({ username: ADMIN_USER_ID, fullname: ADMIN_FULLNAME, isAdmin: true }, true);
-            return;
+        if (userIn.toLowerCase() === ADMIN_USER_ID) {
+            if (passHash === ADMIN_HASH) {
+                resetBtn();
+                loginSuccess({ username: ADMIN_USER_ID, fullname: ADMIN_FULLNAME, isAdmin: true }, true);
+                return;
+            } else {
+                errEl.textContent = "Contraseña incorrecta para Admin.";
+                resetBtn();
+                return;
+            }
         }
 
         // ── Operadores en Firestore ───────────────────────────────
@@ -236,7 +248,14 @@ async function handleLogin(e) {
         resetBtn();
     } catch (err) {
         console.error("Login error:", err);
-        errEl.textContent = "Error de conexión. Revisá tu internet e intentá de nuevo.";
+        // Mostrar mensaje más específico según tipo de error
+        if (err.code === "unavailable" || err.message?.includes("network")) {
+            errEl.textContent = "Sin conexión a internet. Verificá tu red e intentá de nuevo.";
+        } else if (err.code === "permission-denied") {
+            errEl.textContent = "Error de permisos en la base de datos. Contactá al administrador.";
+        } else {
+            errEl.textContent = "Error al conectar. Revisá tu internet e intentá de nuevo.";
+        }
         resetBtn();
     }
 }

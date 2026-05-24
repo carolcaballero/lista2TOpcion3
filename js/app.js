@@ -196,43 +196,48 @@ function checkSession() {
 
 async function handleLogin(e) {
     e.preventDefault();
-    const userIn  = document.getElementById("username").value.trim();
-    const passIn  = document.getElementById("password").value;
-    const errEl   = document.getElementById("login-error");
+    const userIn   = document.getElementById("username").value.trim();
+    const passIn   = document.getElementById("password").value;
+    const errEl    = document.getElementById("login-error");
     const btnLogin = e.target.querySelector("button[type=submit]");
     errEl.textContent = "";
 
-    // Deshabilitar botón mientras se procesa (evita doble clic)
     if (btnLogin) { btnLogin.disabled = true; btnLogin.textContent = "Verificando..."; }
+
+    const resetBtn = () => {
+        if (btnLogin) { btnLogin.disabled = false; btnLogin.textContent = "Ingresar al Sistema"; }
+    };
 
     try {
         const passHash = await sha256(passIn);
 
-        // ── Verificar Admin (hash local, sin Firestore) ───────────
+        // ── Admin: acepta "Admin", "admin", "ADMIN" — cualquier capitalización ──
         if (userIn.toLowerCase() === ADMIN_USER_ID && passHash === ADMIN_HASH) {
+            resetBtn();
             loginSuccess({ username: ADMIN_USER_ID, fullname: ADMIN_FULLNAME, isAdmin: true }, true);
             return;
         }
 
-        // ── Verificar Operadores (hash en Firestore) ──────────────
+        // ── Operadores en Firestore ───────────────────────────────
         const snap = await getDoc(doc(db, "usuarios", userIn.toLowerCase()));
         if (snap.exists()) {
             const u = snap.data();
-            // Soporte para cuentas antiguas (pass en texto) y nuevas (hash)
             const match = u.passwordHash
                 ? u.passwordHash === passHash
-                : u.password === passIn; // compatibilidad con cuentas viejas
+                : u.password === passIn; // compatibilidad cuentas viejas
             if (match) {
+                resetBtn();
                 loginSuccess({ username: u.username, fullname: u.fullname, isAdmin: false }, true);
                 return;
             }
         }
+
         errEl.textContent = "Usuario o contraseña incorrectos.";
+        resetBtn();
     } catch (err) {
-        console.error(err);
-        errEl.textContent = "Error de conexión con el servidor.";
-    } finally {
-        if (btnLogin) { btnLogin.disabled = false; btnLogin.textContent = "Ingresar"; }
+        console.error("Login error:", err);
+        errEl.textContent = "Error de conexión. Revisá tu internet e intentá de nuevo.";
+        resetBtn();
     }
 }
 

@@ -6,7 +6,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="theme-color" content="#DC2626">
+    <meta name="theme-color" content="#B91C1C">
     <title>Control Electoral</title>
     <link rel="stylesheet" href="css/styles.css">
     <style>
@@ -37,14 +37,14 @@
         .toast {
             background: #ffffff;
             border: 1px solid var(--color-border);
-            border-left: 4px solid var(--color-success);
+            border-left: 5px solid var(--color-success);
             color: var(--color-dark);
             padding: 14px 18px;
             border-radius: var(--r-md);
             font-size: .9rem;
-            font-weight: 500;
-            animation: toastIn .25s cubic-bezier(.34, 1.56, .64, 1);
-            box-shadow: 0 12px 36px -8px rgba(0, 0, 0, .18), 0 4px 12px -4px rgba(0, 0, 0, .08);
+            font-weight: 600;
+            animation: toastIn .35s cubic-bezier(.34, 1.56, .64, 1);
+            box-shadow: 0 14px 40px -8px rgba(0, 0, 0, .22), 0 5px 14px -4px rgba(0, 0, 0, .10);
             pointer-events: all;
             text-align: center;
             backdrop-filter: blur(20px);
@@ -52,25 +52,26 @@
         .toast.error { border-left-color: var(--color-danger); }
         .toast.warn  { border-left-color: var(--color-warn); }
         @keyframes toastIn {
-            from { opacity:0; transform: translateY(20px) scale(.95); }
-            to   { opacity:1; transform: translateY(0) scale(1); }
+            0% { opacity:0; transform: translateY(30px) scale(.9); }
+            60% { opacity:1; transform: translateY(-3px) scale(1.02); }
+            100% { opacity:1; transform: translateY(0) scale(1); }
         }
 
         /* ═══════════════════════════════════════
-           MODAL BASE — Bottom sheet móvil / centrado escritorio
+           MODAL
            ═══════════════════════════════════════ */
         .modal-overlay {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(15, 23, 42, .55);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            background: rgba(10, 10, 10, .65);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             z-index: 3000;
             align-items: flex-end;
             justify-content: center;
             padding: 0;
-            animation: overlayIn .2s ease;
+            animation: overlayIn .25s ease;
         }
         .modal-overlay.active { display: flex; }
         @keyframes overlayIn {
@@ -81,21 +82,21 @@
         .modal-box {
             background: #ffffff;
             border: 1px solid var(--color-border);
-            border-top: 4px solid var(--color-primary);
+            border-top: 5px solid var(--color-primary-accent);
             border-radius: var(--r-xl) var(--r-xl) 0 0;
             padding: 26px 22px;
             padding-bottom: calc(26px + env(safe-area-inset-bottom, 0px));
             width: 100%;
             max-width: 100%;
-            animation: slideUp .3s cubic-bezier(.34, 1.56, .64, 1);
-            box-shadow: 0 -20px 60px -10px rgba(0,0,0,.2);
+            animation: slideUp .4s cubic-bezier(.34, 1.56, .64, 1);
+            box-shadow: 0 -25px 70px -10px rgba(0,0,0,.3);
         }
         .modal-box::before {
             content: "";
             display: block;
             width: 40px;
             height: 4px;
-            background: var(--color-border);
+            background: var(--color-border-strong);
             border-radius: 2px;
             margin: -16px auto 16px;
         }
@@ -108,19 +109,19 @@
                 border-radius: var(--r-xl);
                 max-width: 460px;
                 padding: 30px 28px;
-                box-shadow: 0 25px 60px -15px rgba(0,0,0,.3);
+                box-shadow: 0 30px 70px -15px rgba(0,0,0,.4);
             }
             .modal-box::before { display: none; }
         }
         @keyframes slideUp {
-            from { opacity:0; transform: translateY(40px); }
+            from { opacity:0; transform: translateY(50px); }
             to   { opacity:1; transform: translateY(0); }
         }
         .modal-box h3 {
             font-size: 1.1rem;
-            font-weight: 700;
+            font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: .4px;
+            letter-spacing: .5px;
             margin: 0 0 8px;
             color: var(--color-dark);
             display: flex;
@@ -151,15 +152,15 @@
             box-shadow: 0 0 0 4px var(--color-primary-glow);
         }
         .modal-actions { display:flex; gap:10px; }
-        .modal-actions button { flex: 1; padding: 13px 10px; font-size: .9rem; font-weight: 700; border-radius: var(--r-md); }
+        .modal-actions button { flex: 1; padding: 13px 10px; font-size: .9rem; font-weight: 800; border-radius: var(--r-md); }
 
         /* ═══════════════════════════════════════
            STATUS DOT
            ═══════════════════════════════════════ */
         .status-dot {
             display: inline-block;
-            width: 8px;
-            height: 8px;
+            width: 9px;
+            height: 9px;
             border-radius: 50%;
             background: #9CA3AF;
             margin-right: 5px;
@@ -169,18 +170,18 @@
         }
         .status-dot.online {
             background: var(--color-success);
-            box-shadow: 0 0 0 4px rgba(22, 163, 74, .15);
+            box-shadow: 0 0 0 4px rgba(21, 128, 61, .2);
             animation: pulseDot 2s infinite;
         }
         @keyframes pulseDot {
-            0%, 100% { box-shadow: 0 0 0 4px rgba(22, 163, 74, .15); }
-            50%      { box-shadow: 0 0 0 7px rgba(22, 163, 74, .05); }
+            0%, 100% { box-shadow: 0 0 0 4px rgba(21, 128, 61, .2); }
+            50%      { box-shadow: 0 0 0 9px rgba(21, 128, 61, .05); }
         }
         .status-label {
             font-size: .76rem;
             color: var(--color-text-soft);
             vertical-align: middle;
-            font-weight: 500;
+            font-weight: 600;
         }
 
         /* ═══════════════════════════════════════
@@ -188,18 +189,19 @@
            ═══════════════════════════════════════ */
         .badge {
             display: inline-block;
-            padding: 5px 11px;
+            padding: 5px 12px;
             border-radius: 100px;
-            font-size: .72rem;
-            font-weight: 700;
+            font-size: .7rem;
+            font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: .4px;
+            letter-spacing: .5px;
             min-width: 80px;
             text-align: center;
+            transition: all var(--t-base);
         }
-        .badge-voted   { background: var(--color-success-bg);  color: var(--color-success); border: 1px solid rgba(22, 163, 74, .25); }
-        .badge-novoted { background: var(--color-primary-light); color: var(--color-primary); border: 1px solid rgba(220, 38, 38, .25); }
-        .badge-pending { background: var(--color-bg-alt);       color: var(--color-gray);    border: 1px solid var(--color-border); }
+        .badge-voted   { background: var(--color-success-bg);  color: var(--color-success); border: 1.5px solid var(--color-success-soft); }
+        .badge-novoted { background: var(--color-primary-light); color: var(--color-primary-hover); border: 1.5px solid var(--color-primary-soft); }
+        .badge-pending { background: var(--color-bg-alt);       color: var(--color-gray);    border: 1.5px solid var(--color-border-strong); }
 
         /* ═══════════════════════════════════════
            BOTONES DE ACCIÓN (voto / no voto)
@@ -207,12 +209,12 @@
         .action-btns { display:flex; gap:8px; }
         .btn-accion {
             flex: 1;
-            padding: 11px 8px;
+            padding: 12px 8px;
             border-radius: var(--r-md);
-            font-size: .76rem;
-            font-weight: 700;
+            font-size: .78rem;
+            font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: .3px;
+            letter-spacing: .4px;
             cursor: pointer;
             border: 1.5px solid var(--color-border);
             background: #fff;
@@ -226,24 +228,33 @@
             touch-action: manipulation;
             position: relative;
             overflow: hidden;
+            min-height: 44px;
         }
-        .btn-accion:active { transform: scale(.95); }
+        .btn-accion:active { transform: scale(.93); }
         .btn-accion:hover {
             border-color: var(--color-text-soft);
             color: var(--color-dark);
             transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, .08);
         }
         .btn-accion.sel-voto {
             background: linear-gradient(135deg, var(--color-success-bg), #BBF7D0);
             color: var(--color-success);
-            border-color: rgba(22, 163, 74, .4);
-            box-shadow: 0 4px 12px -4px rgba(22, 163, 74, .3);
+            border-color: var(--color-success-soft);
+            box-shadow: 0 5px 14px -4px rgba(21, 128, 61, .35);
+            animation: votePop .35s cubic-bezier(.34, 1.56, .64, 1);
         }
         .btn-accion.sel-novoto {
             background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary-soft));
             color: var(--color-primary-hover);
-            border-color: rgba(220, 38, 38, .4);
-            box-shadow: 0 4px 12px -4px rgba(220, 38, 38, .3);
+            border-color: var(--color-primary-soft);
+            box-shadow: 0 5px 14px -4px rgba(185, 28, 28, .35);
+            animation: votePop .35s cubic-bezier(.34, 1.56, .64, 1);
+        }
+        @keyframes votePop {
+            0%   { transform: scale(.95); }
+            50%  { transform: scale(1.06); }
+            100% { transform: scale(1); }
         }
 
         /* ═══════════════════════════════════════
@@ -252,9 +263,9 @@
         .btn-obs {
             width: 100%;
             margin-top: 10px;
-            padding: 10px 14px;
+            padding: 11px 14px;
             background: var(--color-bg-soft);
-            border: 1.5px dashed var(--color-border);
+            border: 1.5px dashed var(--color-border-strong);
             border-radius: var(--r-md);
             color: var(--color-gray);
             font-size: .8rem;
@@ -266,14 +277,16 @@
             transition: all var(--t-base);
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
+            min-height: 42px;
         }
         .btn-obs:active { transform: scale(.98); }
         .btn-obs:hover { border-color: var(--color-primary); color: var(--color-primary); background: var(--color-primary-light); }
         .btn-obs.has-obs {
             border-style: solid;
             border-color: var(--color-warn);
-            color: #92400E;
+            color: #78350F;
             background: var(--color-warn-bg);
+            font-weight: 700;
         }
         .btn-obs.has-obs:hover { background: #FDE68A; }
         .btn-obs .obs-preview {
@@ -289,9 +302,17 @@
            SPINNER
            ═══════════════════════════════════════ */
         .spinner-cell { text-align:center; padding:50px !important; }
+        .loading-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 50px 20px;
+            gap: 14px;
+        }
         .spinner {
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
             border: 3px solid var(--color-primary-light);
             border-top-color: var(--color-primary);
             border-radius: 50%;
@@ -299,101 +320,11 @@
             margin: 0 auto;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* ═══════════════════════════════════════
-           MÉTRICAS — Override grid 4 cols
-           ═══════════════════════════════════════ */
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            margin-bottom: 14px;
-        }
-        .metric-card {
-            background: linear-gradient(135deg, #fff 0%, #FFFAFA 100%);
-            border: 1px solid var(--color-border);
-            border-radius: var(--r-md);
-            padding: 12px 8px;
-            text-align: center;
-            box-shadow: var(--shadow-sm);
-            transition: all var(--t-base);
-            position: relative;
-            overflow: hidden;
-        }
-        .metric-card::before {
-            content: "";
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 3px;
-            background: var(--color-primary);
-            transform: scaleX(0);
-            transform-origin: center;
-            transition: transform var(--t-slow);
-        }
-        .metric-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-        .metric-card:hover::before { transform: scaleX(1); }
-        .metric-card h3 {
-            font-size: .64rem;
-            margin: 0 0 4px;
+        .loading-text {
+            font-size: .82rem;
             color: var(--color-gray);
-            text-transform: uppercase;
-            letter-spacing: .4px;
-            font-weight: 700;
+            font-weight: 600;
         }
-        .metric-card p {
-            font-size: 1.5rem;
-            margin: 0;
-            font-weight: 800;
-            letter-spacing: -.5px;
-        }
-        #metric-total   { color: var(--color-dark); }
-        #metric-voted   { color: var(--color-success); }
-        #metric-novoted { color: var(--color-primary); }
-        #metric-pending { color: var(--color-gray); }
-
-        /* ═══════════════════════════════════════
-           FILTROS
-           ═══════════════════════════════════════ */
-        .filter-btn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 9px 13px;
-            border-radius: 100px;
-            font-size: .78rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: .3px;
-            cursor: pointer;
-            border: 1.5px solid var(--color-border);
-            background: #fff;
-            color: var(--color-text-soft);
-            transition: all var(--t-base);
-            white-space: nowrap;
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
-        }
-        .filter-btn:active { transform: scale(.96); }
-        .filter-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
-        .filter-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
-        .filter-btn.f-pending {
-            border-color: var(--color-gray);
-            color: #fff;
-            background: var(--color-gray);
-        }
-        .filter-btn.f-voted {
-            border-color: var(--color-success);
-            color: #fff;
-            background: var(--color-success);
-            box-shadow: 0 2px 8px -2px rgba(22, 163, 74, .35);
-        }
-        .filter-btn.f-novoted {
-            border-color: var(--color-primary);
-            color: #fff;
-            background: var(--color-primary);
-            box-shadow: 0 2px 8px -2px rgba(220, 38, 38, .35);
-        }
-        .filter-group { display: flex; gap: 6px; flex-wrap: wrap; }
 
         /* ═══════════════════════════════════════
            VIEWS
@@ -415,16 +346,16 @@
         }
         .padron-field:hover { background: var(--color-bg-soft); }
         .padron-label {
-            font-size: .75rem;
+            font-size: .74rem;
             color: var(--color-gray);
             text-transform: uppercase;
-            letter-spacing: .4px;
+            letter-spacing: .5px;
             flex-shrink: 0;
-            font-weight: 600;
+            font-weight: 700;
         }
         .padron-value {
             font-size: .92rem;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--color-dark);
             text-align: right;
         }
@@ -439,27 +370,43 @@
         }
         .header-brand h2 {
             font-size: 1rem;
-            font-weight: 800;
+            font-weight: 900;
             text-transform: uppercase;
             letter-spacing: .3px;
             margin: 0;
             color: var(--color-dark);
         }
         .header-live {
-            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
+            background: linear-gradient(135deg, var(--color-primary-accent), var(--color-primary-hover));
             color: #fff;
             font-size: .58rem;
-            font-weight: 800;
-            letter-spacing: 1.2px;
-            padding: 4px 9px;
+            font-weight: 900;
+            letter-spacing: 1.3px;
+            padding: 4px 10px;
             border-radius: 100px;
             text-transform: uppercase;
-            box-shadow: 0 2px 6px rgba(220, 38, 38, .3);
-            animation: liveBlink 2.5s infinite;
+            box-shadow: 0 3px 8px rgba(185, 28, 28, .4);
+            animation: liveBlink 2s infinite;
+            position: relative;
+        }
+        .header-live::before {
+            content: "";
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background: #fff;
+            border-radius: 50%;
+            margin-right: 5px;
+            vertical-align: middle;
+            animation: liveDotBlink 1s infinite;
         }
         @keyframes liveBlink {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%      { opacity: .85; transform: scale(1.03); }
+        }
+        @keyframes liveDotBlink {
             0%, 100% { opacity: 1; }
-            50%      { opacity: .75; }
+            50%      { opacity: .35; }
         }
 
         /* ═══════════════════════════════════════
@@ -471,11 +418,11 @@
             align-items: center;
             gap: 6px;
             font-size: .78rem;
-            font-weight: 700;
+            font-weight: 800;
             color: var(--color-text-soft);
             margin-bottom: 6px;
             text-transform: uppercase;
-            letter-spacing: .4px;
+            letter-spacing: .5px;
         }
         .admin-card .form-group input {
             width: 100%;
@@ -493,14 +440,7 @@
             border-color: var(--color-primary);
             background: #fff;
             box-shadow: 0 0 0 4px var(--color-primary-glow);
-        }
-        code {
-            background: var(--color-primary-light);
-            padding: 3px 8px;
-            border-radius: var(--r-sm);
-            color: var(--color-primary-hover);
-            font-size: .85rem;
-            font-weight: 600;
+            transform: translateY(-1px);
         }
 
         /* ═══════════════════════════════════════
@@ -509,7 +449,7 @@
         .wa-link {
             color: #25D366;
             text-decoration: none;
-            font-weight: 600;
+            font-weight: 700;
             font-size: .88rem;
             display: inline-flex;
             align-items: center;
@@ -531,8 +471,8 @@
             box-shadow: var(--shadow-sm);
         }
         .bitacora-header {
-            background: linear-gradient(135deg, #FFF5F5 0%, #FFFAFA 100%);
-            border-bottom: 2px solid var(--color-primary);
+            background: linear-gradient(135deg, #FFF1F1 0%, #FFFAFA 100%);
+            border-bottom: 3px solid var(--color-primary-accent);
             padding: 14px 18px;
             display: flex;
             align-items: center;
@@ -544,42 +484,42 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: .9rem;
-            font-weight: 800;
+            font-size: .92rem;
+            font-weight: 900;
             text-transform: uppercase;
-            letter-spacing: .4px;
+            letter-spacing: .5px;
             color: var(--color-dark);
         }
         .bit-live-dot {
-            width: 9px;
-            height: 9px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            background: var(--color-primary);
-            box-shadow: 0 0 8px var(--color-primary);
-            animation: bitPulse 1.5s infinite;
+            background: var(--color-primary-accent);
+            box-shadow: 0 0 10px var(--color-primary-accent);
+            animation: bitPulse 1.4s infinite;
         }
         @keyframes bitPulse {
-            0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--color-primary); }
-            50%      { opacity: .5; box-shadow: 0 0 3px var(--color-primary); }
+            0%, 100% { opacity: 1; box-shadow: 0 0 10px var(--color-primary-accent); transform: scale(1); }
+            50%      { opacity: .45; box-shadow: 0 0 3px var(--color-primary-accent); transform: scale(.85); }
         }
-        .bitacora-subtitle { font-size: .74rem; color: var(--color-gray); font-weight: 500; }
+        .bitacora-subtitle { font-size: .74rem; color: var(--color-gray); font-weight: 600; }
         .bitacora-table-wrap { max-height: 380px; overflow-y: auto; }
         .bitacora-table-wrap::-webkit-scrollbar { width: 5px; }
-        .bitacora-table-wrap::-webkit-scrollbar-thumb { background: var(--color-primary); border-radius: 3px; }
+        .bitacora-table-wrap::-webkit-scrollbar-thumb { background: var(--color-primary-accent); border-radius: 3px; }
         .bitacora-table { width: 100%; border-collapse: collapse; }
         .bitacora-table th {
             background: var(--color-bg-alt);
             color: var(--color-text-soft);
-            font-size: .72rem;
+            font-size: .7rem;
             text-transform: uppercase;
-            letter-spacing: .4px;
+            letter-spacing: .5px;
             padding: 10px 14px;
             border-bottom: 1px solid var(--color-border);
             position: sticky;
             top: 0;
             z-index: 1;
             text-align: left;
-            font-weight: 700;
+            font-weight: 800;
         }
         .bitacora-table td {
             padding: 10px 14px;
@@ -588,15 +528,16 @@
             color: var(--color-text);
             font-size: .85rem;
         }
+        .bitacora-table tr { transition: background var(--t-fast); }
         .bitacora-table tr:hover td { background: var(--color-primary-light); }
         .bit-badge {
             display: inline-block;
-            padding: 3px 9px;
+            padding: 3px 10px;
             border-radius: 100px;
             font-size: .68rem;
-            font-weight: 700;
+            font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: .3px;
+            letter-spacing: .4px;
             white-space: nowrap;
         }
 
@@ -615,7 +556,7 @@
         #view-admin { flex-direction: column; gap: 18px; }
 
         /* ═══════════════════════════════════════
-           TARJETAS DE VOTANTES (móvil)
+           TARJETAS DE VOTANTES (móvil) — más vivas
            ═══════════════════════════════════════ */
         .card-votante {
             background: #fff;
@@ -627,19 +568,37 @@
             box-shadow: var(--shadow-sm);
             position: relative;
             overflow: hidden;
-            animation: fadeIn .3s var(--t-base);
+            animation: cardEnter .4s var(--t-base) both;
         }
+        @keyframes cardEnter {
+            from { opacity: 0; transform: translateY(12px) scale(.98); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        /* Stagger animation - delay variable */
+        .card-votante:nth-child(1)  { animation-delay: 0ms; }
+        .card-votante:nth-child(2)  { animation-delay: 30ms; }
+        .card-votante:nth-child(3)  { animation-delay: 60ms; }
+        .card-votante:nth-child(4)  { animation-delay: 90ms; }
+        .card-votante:nth-child(5)  { animation-delay: 120ms; }
+        .card-votante:nth-child(6)  { animation-delay: 150ms; }
+        .card-votante:nth-child(7)  { animation-delay: 180ms; }
+        .card-votante:nth-child(8)  { animation-delay: 210ms; }
+        .card-votante:nth-child(9)  { animation-delay: 240ms; }
+        .card-votante:nth-child(10) { animation-delay: 270ms; }
+
         .card-votante::before {
             content: "";
             position: absolute;
             left: 0; top: 0; bottom: 0;
-            width: 4px;
-            background: var(--color-border);
-            transition: background var(--t-base);
+            width: 5px;
+            background: var(--color-border-strong);
+            transition: background var(--t-base), width var(--t-base);
         }
-        .card-votante.estado-voto::before   { background: var(--color-success); }
-        .card-votante.estado-novoto::before { background: var(--color-primary); }
-        .card-votante:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+        .card-votante.estado-voto::before   { background: var(--color-success); width: 6px; }
+        .card-votante.estado-novoto::before { background: var(--color-primary-accent); width: 6px; }
+        .card-votante:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+        .card-votante.estado-voto { background: linear-gradient(135deg, #fff 0%, #F0FDF4 100%); }
+        .card-votante.estado-novoto { background: linear-gradient(135deg, #fff 0%, #FEF2F2 100%); }
 
         .card-top {
             display: flex;
@@ -650,15 +609,15 @@
         }
         .card-info { flex: 1; min-width: 0; }
         .card-num {
-            font-size: .72rem;
+            font-size: .7rem;
             color: var(--color-gray);
-            font-weight: 700;
+            font-weight: 800;
             margin-bottom: 3px;
-            letter-spacing: .3px;
+            letter-spacing: .4px;
         }
         .card-nombre {
-            font-size: .98rem;
-            font-weight: 700;
+            font-size: 1rem;
+            font-weight: 800;
             color: var(--color-dark);
             white-space: nowrap;
             overflow: hidden;
@@ -670,7 +629,7 @@
             color: var(--color-text-soft);
             margin-top: 3px;
             font-family: 'SF Mono', 'Monaco', monospace;
-            font-weight: 500;
+            font-weight: 600;
         }
         .card-domicilio {
             font-size: .76rem;
@@ -683,11 +642,11 @@
             margin-top: 8px;
             font-style: italic;
             padding-top: 8px;
-            border-top: 1px dashed var(--color-border-soft);
+            border-top: 1px dashed var(--color-border);
         }
 
         /* ═══════════════════════════════════════
-           OBS INPUT — tabla escritorio
+           OBS INPUT
            ═══════════════════════════════════════ */
         .obs-input {
             width: 100%;
@@ -714,11 +673,11 @@
             display: none;
             align-items: center;
             gap: 8px;
-            background: linear-gradient(135deg, #FFF5F5, #FFFAFA);
+            background: linear-gradient(135deg, #FFF1F1, #FFFAFA);
             border: 1px solid var(--color-border);
-            border-left: 4px solid var(--color-primary);
+            border-left: 5px solid var(--color-primary-accent);
             border-radius: var(--r-md);
-            padding: 11px 15px;
+            padding: 12px 15px;
             margin-bottom: 12px;
             font-size: .82rem;
             color: var(--color-text);
@@ -726,33 +685,6 @@
             box-shadow: var(--shadow-sm);
             animation: fadeIn .3s var(--t-base);
         }
-        .btn-hint-global {
-            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover));
-            color: #fff;
-            border: none;
-            border-radius: var(--r-sm);
-            padding: 5px 12px;
-            font-size: .76rem;
-            font-weight: 700;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-            transition: all var(--t-base);
-            box-shadow: 0 2px 6px rgba(220, 38, 38, .25);
-        }
-        .btn-hint-global:active { transform: scale(.96); }
-        .btn-hint-volver {
-            background: var(--color-bg-alt);
-            color: var(--color-text);
-            border: 1px solid var(--color-border);
-            border-radius: var(--r-sm);
-            padding: 5px 12px;
-            font-size: .76rem;
-            font-weight: 700;
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-            transition: all var(--t-base);
-        }
-        .btn-hint-volver:active { transform: scale(.96); }
 
         /* ═══════════════════════════════════════
            LOG SPAN
@@ -765,109 +697,6 @@
         }
 
         /* ═══════════════════════════════════════
-           TOOLBAR RESPONSIVO
-           ═══════════════════════════════════════ */
-        .toolbar-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            margin-bottom: 10px;
-            flex-wrap: wrap;
-        }
-        .toolbar-tabs {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            background: var(--color-bg-alt);
-            padding: 4px;
-            border-radius: var(--r-md);
-        }
-        .toolbar-tabs .tab-btn {
-            background: transparent;
-            color: var(--color-text-soft);
-            border: none;
-            padding: 9px 14px;
-            font-size: .82rem;
-            border-radius: var(--r-sm);
-            flex: none;
-        }
-        .toolbar-tabs .tab-btn:hover { color: var(--color-primary); }
-        .toolbar-tabs .tab-btn.active {
-            background: #fff;
-            color: var(--color-primary);
-            box-shadow: var(--shadow-sm);
-        }
-        .toolbar-filters {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            flex-wrap: wrap;
-            margin-bottom: 12px;
-        }
-        .search-box-full {
-            position: relative;
-            flex: 1;
-            min-width: 0;
-        }
-        .search-box-full .icon {
-            position: absolute;
-            left: 13px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 16px;
-            height: 16px;
-            color: var(--color-gray);
-            pointer-events: none;
-            margin: 0;
-        }
-        .search-box-full input {
-            width: 100%;
-            padding: 12px 14px 12px 38px;
-            background: var(--color-bg-soft);
-            border: 1.5px solid var(--color-border);
-            color: var(--color-dark);
-            border-radius: var(--r-md);
-            font-size: .95rem;
-            -webkit-appearance: none;
-            transition: all var(--t-base);
-        }
-        .search-box-full input::placeholder { color: #9CA3AF; }
-        .search-box-full input:focus {
-            outline: none;
-            border-color: var(--color-primary);
-            background: #fff;
-            box-shadow: 0 0 0 4px var(--color-primary-glow);
-        }
-
-        /* ═══════════════════════════════════════
-           HEADER RESPONSIVO
-           ═══════════════════════════════════════ */
-        .main-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 16px;
-            gap: 12px;
-            flex-wrap: wrap;
-            background: linear-gradient(135deg, #fff 0%, #FFF8F8 100%);
-            border: 1px solid var(--color-border);
-            border-radius: var(--r-lg);
-            box-shadow: var(--shadow-sm);
-            margin-bottom: 14px;
-        }
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            font-size: .82rem;
-            background: transparent;
-            padding: 0;
-        }
-        .user-info span { display: flex; align-items: center; gap: 5px; }
-
-        /* ═══════════════════════════════════════
            TABLA ESCRITORIO / TARJETAS MÓVIL
            ═══════════════════════════════════════ */
         .tabla-desktop { display: none; }
@@ -875,6 +704,29 @@
         @media (min-width: 768px) {
             .tabla-desktop { display: block; }
             .cards-mobile  { display: none; }
+        }
+
+        /* ═══════════════════════════════════════
+           EMPTY STATE
+           ═══════════════════════════════════════ */
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--color-gray);
+            font-size: .9rem;
+            animation: fadeIn .4s var(--t-base);
+        }
+        .empty-state svg {
+            display: block;
+            margin: 0 auto 14px;
+            opacity: .5;
+        }
+        .empty-state strong {
+            display: block;
+            color: var(--color-dark);
+            font-size: 1rem;
+            font-weight: 800;
+            margin-bottom: 6px;
         }
 
         /* ═══════════════════════════════════════
@@ -901,15 +753,23 @@
         }
 
         /* ═══════════════════════════════════════
-           RIPPLE EFFECT en tap (mobile)
+           STICKY FILTROS MÓVIL — para mejor UX
            ═══════════════════════════════════════ */
-        .btn-accion:active::after,
-        .filter-btn:active::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: rgba(0, 0, 0, .05);
-            border-radius: inherit;
+        @media (max-width: 767px) {
+            #filter-wrapper {
+                position: sticky;
+                top: 0;
+                z-index: 50;
+                background: rgba(255, 255, 255, .96);
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+                padding: 8px 0;
+                margin-left: -14px;
+                margin-right: -14px;
+                padding-left: 14px;
+                padding-right: 14px;
+                border-bottom: 1px solid var(--color-border-soft);
+            }
         }
     </style>
 </head>
@@ -934,6 +794,8 @@
     <symbol id="icon-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></symbol>
     <symbol id="icon-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></symbol>
     <symbol id="icon-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+    <symbol id="icon-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
+    <symbol id="icon-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
 </svg>
 
 <!-- TOASTS -->
@@ -943,7 +805,7 @@
 <div class="modal-overlay" id="modal-novoto">
     <div class="modal-box">
         <h3>
-            <svg width="20" height="20" style="color:var(--color-primary)"><use href="#icon-x"/></svg>
+            <svg width="20" height="20" style="color:var(--color-primary-accent)"><use href="#icon-x"/></svg>
             Registrar No Votó
         </h3>
         <p class="modal-sub" id="modal-novoto-name"></p>
@@ -961,22 +823,22 @@
 <div class="modal-overlay" id="modal-chpass">
     <div class="modal-box">
         <h3>
-            <svg width="20" height="20" style="color:var(--color-primary)"><use href="#icon-lock"/></svg>
+            <svg width="20" height="20" style="color:var(--color-primary-accent)"><use href="#icon-lock"/></svg>
             Cambiar Contraseña
         </h3>
         <input type="hidden" id="chpass-username">
         <p class="modal-hint">Operador: <strong id="chpass-user-label" style="color:var(--color-dark)"></strong></p>
         <div class="form-group" style="margin-bottom:12px">
-            <label style="font-size:.78rem;color:var(--color-text-soft);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;font-weight:700;">Nueva contraseña</label>
+            <label style="font-size:.78rem;color:var(--color-text-soft);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;font-weight:800;">Nueva contraseña</label>
             <input type="password" id="chpass-nueva" placeholder="Mínimo 4 caracteres"
                 style="width:100%;padding:12px 14px;background:var(--color-bg-soft);border:1.5px solid var(--color-border);color:var(--color-dark);border-radius:var(--r-md);font-size:1rem;-webkit-appearance:none;transition:all .25s;">
         </div>
         <div class="form-group" style="margin-bottom:16px">
-            <label style="font-size:.78rem;color:var(--color-text-soft);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:6px;font-weight:700;">Confirmar contraseña</label>
+            <label style="font-size:.78rem;color:var(--color-text-soft);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;font-weight:800;">Confirmar contraseña</label>
             <input type="password" id="chpass-confirmar" placeholder="Repetí la contraseña"
                 style="width:100%;padding:12px 14px;background:var(--color-bg-soft);border:1.5px solid var(--color-border);color:var(--color-dark);border-radius:var(--r-md);font-size:1rem;-webkit-appearance:none;transition:all .25s;">
         </div>
-        <div id="chpass-error" style="color:var(--color-primary);font-size:.82rem;margin-bottom:10px;min-height:18px;font-weight:600;"></div>
+        <div id="chpass-error" style="color:var(--color-primary);font-size:.82rem;margin-bottom:10px;min-height:18px;font-weight:700;"></div>
         <div class="modal-actions">
             <button class="btn-secondary" onclick="closeModal('modal-chpass')">Cancelar</button>
             <button class="btn-primary" onclick="confirmarCambiarPassword()">Guardar</button>
@@ -984,20 +846,20 @@
     </div>
 </div>
 
-<!-- ═══════════════ MODAL: Agregar / Editar Observación ═══════════════ -->
+<!-- ═══════════════ MODAL: Observación ═══════════════ -->
 <div class="modal-overlay" id="modal-obs-confirm">
     <div class="modal-box">
         <h3>
             <svg width="20" height="20" style="color:var(--color-warn)"><use href="#icon-pencil"/></svg>
             Agregar Observación
         </h3>
-        <p class="modal-hint" id="modal-obs-nombre" style="color:var(--color-dark);font-size:.92rem;font-weight:700;"></p>
+        <p class="modal-hint" id="modal-obs-nombre" style="color:var(--color-dark);font-size:.92rem;font-weight:800;"></p>
         <textarea class="modal-textarea" id="modal-obs-texto"
             placeholder="Escribí la observación para este votante..."></textarea>
         <div class="modal-actions">
             <button class="btn-secondary" onclick="cancelarObservacion()">Cancelar</button>
             <button class="btn-primary" onclick="confirmarObservacion()"
-                style="background:linear-gradient(135deg,var(--color-success),#15803D);border-color:var(--color-success);display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 4px 12px rgba(22,163,74,.3);">
+                style="background:linear-gradient(135deg,var(--color-success),#166534);border-color:var(--color-success);display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 5px 14px rgba(21,128,61,.35);">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Confirmar
             </button>
@@ -1008,7 +870,7 @@
 <!-- ══════════════ LOGIN ══════════════ -->
 <section id="login-section" class="auth-container">
     <div class="login-card">
-        <svg width="48" height="48" style="color:var(--color-primary);margin-bottom:10px;filter:drop-shadow(0 4px 10px rgba(220,38,38,.25));"><use href="#icon-shield"/></svg>
+        <svg width="50" height="50" style="color:var(--color-primary);margin-bottom:10px;filter:drop-shadow(0 5px 12px rgba(185,28,28,.35));"><use href="#icon-shield"/></svg>
         <h1>Control Electoral</h1>
         <h2>MGTR. CAROLINA CABALLERO</h2>
         <div class="subtitle">Elecciones Internas — Lista 2 Opción 3</div>
@@ -1038,7 +900,7 @@
     <!-- HEADER -->
     <header class="main-header">
         <div class="header-brand">
-            <svg width="22" height="22" style="color:var(--color-primary);flex-shrink:0"><use href="#icon-shield"/></svg>
+            <svg width="22" height="22" style="color:var(--color-primary-accent);flex-shrink:0"><use href="#icon-shield"/></svg>
             <h2>Control de Gestión de Votantes</h2>
             <span class="header-live">EN VIVO</span>
         </div>
@@ -1050,7 +912,7 @@
             <span style="font-size:.8rem;color:var(--color-text-soft);">
                 <svg class="icon" style="width:14px;height:14px"><use href="#icon-user"/></svg>
                 <span id="user-prefix" style="color:var(--color-text-soft)"></span>
-                <strong id="current-user-display" style="color:var(--color-dark);font-weight:700;">---</strong>
+                <strong id="current-user-display" style="color:var(--color-dark);font-weight:800;">---</strong>
             </span>
             <button id="logout-btn" class="btn-secondary"
                 style="padding:7px 12px;font-size:.76rem;display:flex;align-items:center;gap:5px;">
@@ -1062,15 +924,14 @@
 
     <!-- MÉTRICAS -->
     <div class="metrics-grid" id="metrics-wrapper" style="margin-bottom:14px;">
-        <div class="metric-card total"><h3>Total</h3><p id="metric-total">0</p></div>
-        <div class="metric-card voted"><h3>Votaron</h3><p id="metric-voted">0</p></div>
-        <div class="metric-card novoted"><h3>No Vot.</h3><p id="metric-novoted">0</p></div>
-        <div class="metric-card pending"><h3>Pendien.</h3><p id="metric-pending">0</p></div>
+        <div class="metric-card total" data-filter="todos"><h3>Total</h3><p id="metric-total">0</p></div>
+        <div class="metric-card voted" data-filter="Votó"><h3>Votaron</h3><p id="metric-voted">0</p></div>
+        <div class="metric-card novoted" data-filter="No Votó"><h3>No Vot.</h3><p id="metric-novoted">0</p></div>
+        <div class="metric-card pending" data-filter="Pendiente"><h3>Pendien.</h3><p id="metric-pending">0</p></div>
     </div>
 
-    <!-- TOOLBAR -->
+    <!-- TOOLBAR (Tabs principales) -->
     <div class="toolbar-top">
-        <!-- Tabs -->
         <div class="toolbar-tabs">
             <button id="tab-planilla" class="tab-btn active">
                 <svg class="icon" style="color:inherit;margin-right:4px;width:14px;height:14px;"><use href="#icon-clipboard"/></svg>
@@ -1085,9 +946,8 @@
                 Padrón ANR
             </button>
         </div>
-        <!-- Exportar (solo admin) -->
         <button id="btn-exportar" onclick="exportarCSV()" class="btn-secondary hidden"
-            style="display:none;align-items:center;gap:6px;padding:9px 14px;font-size:.78rem;font-weight:700;white-space:nowrap;">
+            style="display:none;align-items:center;gap:6px;padding:9px 14px;font-size:.78rem;font-weight:800;white-space:nowrap;">
             <svg style="color:var(--color-primary);width:14px;height:14px"><use href="#icon-download"/></svg>
             Exportar CSV
         </button>
@@ -1097,14 +957,22 @@
     <div id="filter-wrapper" style="margin-bottom:12px;">
         <div class="toolbar-filters" style="margin-bottom:10px;">
             <div class="filter-group">
-                <button id="btn-filter-pending" class="filter-btn f-pending">
+                <!-- ✨ NUEVO BOTÓN TODOS -->
+                <button id="btn-filter-todos" class="filter-btn f-todos">
+                    <svg><use href="#icon-list"/></svg>Todos
+                    <span class="filter-count" id="count-todos">0</span>
+                </button>
+                <button id="btn-filter-pending" class="filter-btn">
                     <svg><use href="#icon-clock"/></svg>Pendientes
+                    <span class="filter-count" id="count-pending">0</span>
                 </button>
                 <button id="btn-filter-voted" class="filter-btn">
                     <svg><use href="#icon-check"/></svg>Votaron
+                    <span class="filter-count" id="count-voted">0</span>
                 </button>
                 <button id="btn-filter-novoted" class="filter-btn">
                     <svg><use href="#icon-x"/></svg>No Votaron
+                    <span class="filter-count" id="count-novoted">0</span>
                 </button>
             </div>
         </div>
@@ -1117,12 +985,15 @@
     <!-- Search hint -->
     <div id="search-hint"></div>
 
-    <!-- ═══ PLANILLA MÓVIL (tarjetas) ═══ -->
+    <!-- ═══ PLANILLA ═══ -->
     <div id="view-planilla">
 
         <!-- Vista TARJETAS (mobile) -->
         <div class="cards-mobile" id="cards-container">
-            <tr><td class="spinner-cell" colspan="8"><div class="spinner"></div></td></tr>
+            <div class="loading-wrap">
+                <div class="spinner"></div>
+                <span class="loading-text">Cargando padrón...</span>
+            </div>
         </div>
 
         <!-- Vista TABLA (desktop) -->
@@ -1152,7 +1023,6 @@
     <div id="view-admin" class="admin-grid">
 
         <div class="admin-top-grid">
-            <!-- Registrar Votante -->
             <div class="admin-card">
                 <h3><svg class="icon"><use href="#icon-clipboard"/></svg>Registrar Votante</h3>
                 <form id="register-votante-form">
@@ -1172,7 +1042,6 @@
                 </form>
             </div>
 
-            <!-- Registrar Operador -->
             <div class="admin-card">
                 <h3><svg class="icon"><use href="#icon-useradd"/></svg>Nuevo Operador</h3>
                 <form id="register-user-form">
@@ -1197,7 +1066,6 @@
             </div>
         </div>
 
-        <!-- Lista operadores -->
         <div class="admin-card">
             <h3><svg class="icon"><use href="#icon-users"/></svg>Lista de Operadores</h3>
             <div class="table-responsive">
@@ -1218,12 +1086,11 @@
             </div>
         </div>
 
-        <!-- BITÁCORA -->
         <div class="bitacora-card">
             <div class="bitacora-header">
                 <div class="bitacora-title">
                     <span class="bit-live-dot"></span>
-                    <svg width="16" height="16" style="color:var(--color-primary)"><use href="#icon-activity"/></svg>
+                    <svg width="16" height="16" style="color:var(--color-primary-accent)"><use href="#icon-activity"/></svg>
                     Bitácora de Actividad
                 </div>
                 <span class="bitacora-subtitle">Últimas 150 · Tiempo real · PY</span>
@@ -1248,25 +1115,23 @@
             </div>
         </div>
 
-    </div><!-- /view-admin -->
+    </div>
 
     <!-- ═══ PADRÓN ANR ═══ -->
     <div id="view-padron-anr" style="display:none;">
         <div style="background:#fff;border:1px solid var(--color-border);border-radius:var(--r-lg);padding:22px;max-width:580px;margin:0 auto;box-shadow:var(--shadow-md);">
 
-            <!-- Cabecera -->
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
-                <div style="background:linear-gradient(135deg,var(--color-primary),var(--color-primary-hover));padding:10px;border-radius:var(--r-md);box-shadow:0 4px 12px rgba(220,38,38,.25);">
+                <div style="background:linear-gradient(135deg,var(--color-primary-accent),var(--color-primary-hover));padding:10px;border-radius:var(--r-md);box-shadow:0 5px 14px rgba(185,28,28,.3);">
                     <svg width="24" height="24" viewBox="0 0 640 640" fill="#fff" style="display:block"><path d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 64 386.9 64 272C64 157.1 157.1 64 272 64C386.9 64 480 157.1 480 272zM272 416C351.5 416 416 351.5 416 272C416 192.5 351.5 128 272 128C192.5 128 128 192.5 128 272C128 351.5 192.5 416 272 416z"/></svg>
                 </div>
                 <div>
-                    <h2 style="font-size:1.05rem;color:var(--color-dark);margin:0;font-weight:800;letter-spacing:-.2px;">Consulta Padrón ANR</h2>
-                    <p style="font-size:.76rem;color:var(--color-gray);margin:3px 0 0;font-weight:500;">Internas Municipales · Junio 2026</p>
+                    <h2 style="font-size:1.05rem;color:var(--color-dark);margin:0;font-weight:900;letter-spacing:-.2px;">Consulta Padrón ANR</h2>
+                    <p style="font-size:.76rem;color:var(--color-gray);margin:3px 0 0;font-weight:600;">Internas Municipales · Junio 2026</p>
                 </div>
             </div>
             <div style="border-top:2px solid var(--color-primary-light);margin-bottom:18px;"></div>
 
-            <!-- Buscador -->
             <div style="display:flex;gap:10px;margin-bottom:16px;">
                 <div class="search-box-full" style="flex:1;">
                     <svg class="icon"><use href="#icon-search"/></svg>
@@ -1282,20 +1147,17 @@
                 </button>
             </div>
 
-            <!-- Loader -->
-            <div id="padron-anr-loading" style="display:none;text-align:center;padding:26px;color:var(--color-text-soft);font-size:.9rem;font-weight:500;">
+            <div id="padron-anr-loading" style="display:none;text-align:center;padding:26px;color:var(--color-text-soft);font-size:.9rem;font-weight:600;">
                 <div class="spinner" style="margin:0 auto 12px;"></div>
                 Consultando padrón ANR...
             </div>
 
-            <!-- Error -->
-            <div id="padron-anr-error" style="display:none;background:var(--color-primary-light);border:1px solid rgba(220,38,38,.3);border-radius:var(--r-md);padding:16px;font-size:.9rem;text-align:center;color:var(--color-primary-hover);font-weight:600;"></div>
+            <div id="padron-anr-error" style="display:none;background:var(--color-primary-light);border:1px solid rgba(185,28,28,.3);border-radius:var(--r-md);padding:16px;font-size:.9rem;text-align:center;color:var(--color-primary-hover);font-weight:700;"></div>
 
-            <!-- Resultado -->
             <div id="padron-anr-resultado" style="display:none;">
                 <div style="background:#fff;border:1px solid var(--color-border);border-radius:var(--r-md);overflow:hidden;box-shadow:var(--shadow-sm);">
-                    <div style="background:linear-gradient(135deg,var(--color-primary),var(--color-primary-hover));padding:11px 16px;">
-                        <span style="font-weight:800;font-size:.82rem;letter-spacing:.4px;text-transform:uppercase;color:#fff;display:flex;align-items:center;gap:6px;">
+                    <div style="background:linear-gradient(135deg,var(--color-primary-accent),var(--color-primary-hover));padding:11px 16px;">
+                        <span style="font-weight:900;font-size:.82rem;letter-spacing:.5px;text-transform:uppercase;color:#fff;display:flex;align-items:center;gap:6px;">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                             Resultado de la Consulta
                         </span>
@@ -1314,22 +1176,21 @@
                 </div>
                 <div id="pr-btn-agregar-wrap" style="margin-top:14px;">
                     <button id="pr-btn-agregar" onclick="agregarDesdePardon()" class="btn-primary"
-                        style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 0;font-size:.92rem;font-weight:800;">
+                        style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 0;font-size:.92rem;font-weight:900;">
                         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><line x1="18" y1="13" x2="18" y2="19"/><line x1="15" y1="16" x2="21" y2="16"/></svg>
                         Añadir a la planilla
                     </button>
                 </div>
             </div>
 
-            <p style="margin-top:16px;font-size:.72rem;color:var(--color-gray);text-align:center;font-weight:500;">
-                Fuente: <a href="https://www.anr.org.py/padron-2026/" target="_blank" style="color:var(--color-primary);font-weight:700;text-decoration:none;">anr.org.py/padron-2026</a>
+            <p style="margin-top:16px;font-size:.72rem;color:var(--color-gray);text-align:center;font-weight:600;">
+                Fuente: <a href="https://www.anr.org.py/padron-2026/" target="_blank" style="color:var(--color-primary);font-weight:800;text-decoration:none;">anr.org.py/padron-2026</a>
             </p>
         </div>
-    </div><!-- /view-padron-anr -->
+    </div>
 
 </section>
 
 <script type="module" src="js/app.js"></script>
-<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>

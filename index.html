@@ -926,59 +926,73 @@
     <!-- DASHBOARD -->
     <div class="dashboard-wrap" id="metrics-wrapper" style="margin-bottom:16px;">
 
-        <!-- Fila superior: stat cards -->
-        <div class="dash-stats">
-            <div class="dash-card dash-total" data-filter="todos">
-                <div class="dash-card-left">
-                    <div class="dash-icon-wrap dash-icon-total">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                    </div>
-                    <span class="dash-label">Total</span>
-                </div>
-                <p class="dash-num" id="metric-total">0</p>
-            </div>
-            <div class="dash-card dash-voted" data-filter="Votó">
-                <div class="dash-card-left">
-                    <div class="dash-icon-wrap dash-icon-voted">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    </div>
-                    <span class="dash-label">Votaron</span>
-                </div>
-                <p class="dash-num" id="metric-voted">0</p>
-            </div>
-            <div class="dash-card dash-novoted" data-filter="No Votó">
-                <div class="dash-card-left">
-                    <div class="dash-icon-wrap dash-icon-novoted">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </div>
-                    <span class="dash-label">No Votaron</span>
-                </div>
-                <p class="dash-num" id="metric-novoted">0</p>
-            </div>
-            <div class="dash-card dash-pending" data-filter="Pendiente">
-                <div class="dash-card-left">
-                    <div class="dash-icon-wrap dash-icon-pending">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    </div>
-                    <span class="dash-label">Pendientes</span>
-                </div>
-                <p class="dash-num" id="metric-pending">0</p>
-            </div>
+        <!-- Encabezado con total -->
+        <div class="dash-header">
+            <span class="dash-header-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                Resumen en tiempo real
+            </span>
+            <span class="dash-header-total">Total: <strong id="metric-total">0</strong></span>
         </div>
 
-        <!-- Barra de progreso global -->
-        <div class="dash-progress-wrap">
-            <div class="dash-progress-bar">
-                <div class="dash-prog-voted"  id="prog-voted"  style="width:0%"></div>
-                <div class="dash-prog-novoted" id="prog-novoted" style="width:0%"></div>
-            </div>
-            <div class="dash-progress-legend">
-                <span class="dpl-item dpl-voted"><span class="dpl-dot"></span>Votaron <strong id="pct-voted">0%</strong></span>
-                <span class="dpl-item dpl-novoted"><span class="dpl-dot"></span>No Votaron <strong id="pct-novoted">0%</strong></span>
-                <span class="dpl-item dpl-pending"><span class="dpl-dot"></span>Pendientes <strong id="pct-pending">0%</strong></span>
-            </div>
-        </div>
+        <!-- 3 filas de barras -->
+        <div class="dash-rows">
 
+            <!-- Votaron -->
+            <div class="dash-row dash-row-voted" data-filter="Votó">
+                <div class="dash-row-top">
+                    <div class="dash-row-label">
+                        <span class="dash-row-dot dash-dot-voted"></span>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        Votaron
+                    </div>
+                    <div class="dash-row-right">
+                        <span class="dash-row-num" id="metric-voted">0</span>
+                        <span class="dash-row-pct" id="pct-voted">0%</span>
+                    </div>
+                </div>
+                <div class="dash-bar-track">
+                    <div class="dash-bar-fill dash-bar-voted" id="prog-voted" style="width:0%"></div>
+                </div>
+            </div>
+
+            <!-- No Votaron -->
+            <div class="dash-row dash-row-novoted" data-filter="No Votó">
+                <div class="dash-row-top">
+                    <div class="dash-row-label">
+                        <span class="dash-row-dot dash-dot-novoted"></span>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        No Votaron
+                    </div>
+                    <div class="dash-row-right">
+                        <span class="dash-row-num" id="metric-novoted">0</span>
+                        <span class="dash-row-pct" id="pct-novoted">0%</span>
+                    </div>
+                </div>
+                <div class="dash-bar-track">
+                    <div class="dash-bar-fill dash-bar-novoted" id="prog-novoted" style="width:0%"></div>
+                </div>
+            </div>
+
+            <!-- Pendientes -->
+            <div class="dash-row dash-row-pending" data-filter="Pendiente">
+                <div class="dash-row-top">
+                    <div class="dash-row-label">
+                        <span class="dash-row-dot dash-dot-pending"></span>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        Pendientes
+                    </div>
+                    <div class="dash-row-right">
+                        <span class="dash-row-num" id="metric-pending">0</span>
+                        <span class="dash-row-pct" id="pct-pending">0%</span>
+                    </div>
+                </div>
+                <div class="dash-bar-track">
+                    <div class="dash-bar-fill dash-bar-pending" id="prog-pending" style="width:0%"></div>
+                </div>
+            </div>
+
+        </div>
     </div>
 
     <!-- TOOLBAR (Tabs principales) -->

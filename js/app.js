@@ -261,29 +261,46 @@ async function handleLogin(e) {
 }
 
 function loginSuccess(user, persist) {
-    state.currentUser = user;
-    if (persist) {
-        localStorage.setItem(SESSION_KEY, JSON.stringify({
-            user,
-            loginAt: Date.now()
-        }));
+    try {
+        state.currentUser = user;
+
+        if (persist) {
+            try {
+                localStorage.setItem(SESSION_KEY, JSON.stringify({ user, loginAt: Date.now() }));
+            } catch(e) { console.warn("No se pudo guardar sesión:", e); }
+        }
+
+        // Mostrar nombre de usuario en la app
+        const prefixEl  = document.getElementById("user-prefix");
+        const displayEl = document.getElementById("current-user-display");
+        if (prefixEl)  prefixEl.textContent  = user.isAdmin ? "" : "Operador: ";
+        if (displayEl) displayEl.textContent = user.fullname;
+
+        // Mostrar/ocultar tab Admin y botón Exportar
+        const tabAdmin    = document.getElementById("tab-admin");
+        const btnExportar = document.getElementById("btn-exportar");
+        if (tabAdmin)    user.isAdmin ? tabAdmin.classList.remove("hidden")  : tabAdmin.classList.add("hidden");
+        if (btnExportar) btnExportar.style.display = user.isAdmin ? "flex" : "none";
+
+        // Cambiar vista PRIMERO, limpiar form DESPUÉS
+        showApp();
+        switchTab("planilla");
+
+        // Limpiar el formulario de login (ahora ya no se ve)
+        const loginForm = document.getElementById("login-form");
+        if (loginForm) loginForm.reset();
+
+        // Cargar datos en segundo plano
+        loadPadronYEscuchar();
+        iniciarPresencia();
+
+        registrarBitacora("Login", `${user.fullname} ingresó al sistema`);
+
+    } catch(err) {
+        console.error("Error en loginSuccess:", err);
+        // Aunque falle algo interno, al menos mostrar la app
+        try { showApp(); } catch(e2) { /**/ }
     }
-
-    document.getElementById("user-prefix").textContent          = user.isAdmin ? "" : "Operador: ";
-    document.getElementById("current-user-display").textContent = user.fullname;
-    document.getElementById("login-form").reset();
-
-    const tabAdmin   = document.getElementById("tab-admin");
-    const btnExportar = document.getElementById("btn-exportar");
-    user.isAdmin ? tabAdmin.classList.remove("hidden") : tabAdmin.classList.add("hidden");
-    if (btnExportar) btnExportar.style.display = user.isAdmin ? "flex" : "none";
-
-    showApp();
-    switchTab("planilla");
-    loadPadronYEscuchar();
-    iniciarPresencia();
-
-    registrarBitacora("Login", `${user.fullname} ingresó al sistema`);
 }
 
 function handleLogout() {
@@ -842,19 +859,21 @@ function switchTab(tab) {
     const tabPlanilla = document.getElementById("tab-planilla");
     const tabAdmin    = document.getElementById("tab-admin");
 
+    if (!planilla || !admin) return; // seguridad: elementos aún no en DOM
+
     if (tab === "planilla") {
         planilla.style.display = "";
         admin.classList.remove("visible");
-        fw.style.display = "flex";
-        tabPlanilla.classList.add("active");
-        tabAdmin.classList.remove("active");
+        if (fw) fw.style.display = "flex";
+        if (tabPlanilla) tabPlanilla.classList.add("active");
+        if (tabAdmin)    tabAdmin.classList.remove("active");
         renderTablaVotantes();
     } else {
         planilla.style.display = "none";
         admin.classList.add("visible");
-        fw.style.display = "none";
-        tabPlanilla.classList.remove("active");
-        tabAdmin.classList.add("active");
+        if (fw) fw.style.display = "none";
+        if (tabPlanilla) tabPlanilla.classList.remove("active");
+        if (tabAdmin)    tabAdmin.classList.add("active");
         cargarUsuarios();
         escucharBitacora();
     }

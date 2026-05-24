@@ -196,9 +196,9 @@ function checkSession() {
 
 async function handleLogin(e) {
     e.preventDefault();
-    // Limpia espacios al inicio/fin pero NO dentro de la contraseña (puede tenerlos)
-    const userIn   = document.getElementById("username").value.trim();
-    const passIn   = document.getElementById("password").value.trim();
+    // Limpieza exhaustiva: elimina espacios, saltos de línea y caracteres invisibles
+    const userIn   = document.getElementById("username").value.replace(/\s+/g, "").trim();
+    const passIn   = document.getElementById("password").value.replace(/\s+/g, "").trim();
     const errEl    = document.getElementById("login-error");
     const btnLogin = e.target.querySelector("button[type=submit]");
     errEl.textContent = "";
@@ -254,7 +254,7 @@ async function handleLogin(e) {
         } else if (err.code === "permission-denied") {
             errEl.textContent = "Error de permisos en la base de datos. Contactá al administrador.";
         } else {
-            errEl.textContent = `Error al conectar: ${err.message || err.code || "desconocido"}. Revisá tu internet.`;
+            errEl.textContent = "Error al conectar. Revisá tu internet e intentá de nuevo.";
         }
         resetBtn();
     }
@@ -491,7 +491,7 @@ function renderTablaVotantes() {
                 searchHint.style.display = "flex";
                 searchHint.innerHTML = `
                     <svg width="14" height="14" style="flex-shrink:0"><use href="#icon-search"/></svg>
-                    <span>Se encontraron <strong>${otros}</strong> resultado${otros>1?"s":""} en otros estados.</span>
+                    <span>Se encontraron <strong>\${otros}</strong> resultado\${otros>1?"s":""} en otros estados.</span>
                     <button onclick="activarBusquedaGlobal()" class="btn-hint-global">Ver todos</button>`;
             } else {
                 searchHint.style.display = "none";
@@ -508,7 +508,7 @@ function renderTablaVotantes() {
     }
 
     if (!lista.length) {
-        tbody.innerHTML = \`<tr><td colspan="8" style="text-align:center;color:var(--color-gray);padding:30px;">No se encontraron registros.</td></tr>\`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--color-gray);padding:30px;">No se encontraron registros.</td></tr>`;
         return;
     }
 
@@ -526,23 +526,23 @@ function renderTablaVotantes() {
         const clsVoto   = voto === "Votó"    ? "btn-accion sel-voto"   : "btn-accion";
         const clsNoVoto = voto === "No Votó" ? "btn-accion sel-novoto" : "btn-accion";
 
-        const btnVotoHtml = \`
+        const btnVotoHtml = `
             <button class="\${clsVoto}" onclick="accionVoto('\${v.cedula}','Votó')" title="\${voto==='Votó'?'Quitar voto':'Marcar como Votó'}">
                 <svg width="12" height="12"><use href="#icon-check"/></svg>
                 \${voto === "Votó" ? "Votó ✕" : "Votó"}
-            </button>\`;
+            </button>`;
 
-        const btnNoVotoHtml = \`
+        const btnNoVotoHtml = `
             <button class="\${clsNoVoto}" onclick="accionVoto('\${v.cedula}','No Votó')" title="\${voto==='No Votó'?'Quitar No Votó':'Marcar como No Votó'}">
                 <svg width="12" height="12"><use href="#icon-x"/></svg>
                 \${voto === "No Votó" ? "No Votó ✕" : "No Votó"}
-            </button>\`;
+            </button>`;
 
         const tr = document.createElement("tr");
 
         if (esMobile) {
             tr.className = "fila-mobile";
-            tr.innerHTML = \`
+            tr.innerHTML = `
                 <td colspan="8" class="celda-mobile">
                     <div class="card-mobile">
                         <div class="card-mobile-top">
@@ -562,9 +562,9 @@ function renderTablaVotantes() {
                             onchange="actualizarObservacion('\${v.cedula}', this.value)">
                         <div class="log-span" style="margin-top:4px;font-size:.7rem">\${escHtml(log)}</div>
                     </div>
-                </td>\`;
+                </td>`;
         } else {
-            tr.innerHTML = \`
+            tr.innerHTML = `
                 <td><strong>\${idx + 1}</strong></td>
                 <td>\${escHtml(v.nombre)}</td>
                 <td style="font-family:monospace">\${v.cedula}</td>
@@ -581,7 +581,7 @@ function renderTablaVotantes() {
                         placeholder="Sin observación..."
                         onchange="actualizarObservacion('\${v.cedula}', this.value)">
                 </td>
-                <td><span class="log-span">\${escHtml(log)}</span></td>\`;
+                <td><span class="log-span">\${escHtml(log)}</span></td>`;
         }
         tbody.appendChild(tr);
     });
@@ -816,7 +816,7 @@ function renderTablaUsuarios() {
                         Eliminar
                     </button>
                 </div>
-            </td>\`;
+            </td>`;
         tbody.appendChild(tr);
     });
 }

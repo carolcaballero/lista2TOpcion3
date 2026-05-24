@@ -881,8 +881,9 @@ function switchTab(tab) {
     const tabPlanilla   = document.getElementById("tab-planilla");
     const tabAdmin      = document.getElementById("tab-admin");
     const tabPadronAnr  = document.getElementById("tab-padron-anr");
+    const onlinePanel   = document.querySelector(".online-panel");
 
-    if (!planilla || !admin) return; // seguridad: elementos aún no en DOM
+    if (!planilla || !admin) return;
 
     // Ocultar todo primero
     planilla.style.display = "none";
@@ -897,16 +898,19 @@ function switchTab(tab) {
         planilla.style.display = "";
         if (fw) fw.style.display = "flex";
         if (tabPlanilla) tabPlanilla.classList.add("active");
+        if (onlinePanel) onlinePanel.style.display = "";
         state.currentFilter = "todos";
         renderTablaVotantes();
     } else if (tab === "admin") {
         admin.classList.add("visible");
         if (tabAdmin) tabAdmin.classList.add("active");
+        if (onlinePanel) onlinePanel.style.display = "none";
         cargarUsuarios();
         escucharBitacora();
     } else if (tab === "padron-anr") {
         if (padronAnr) padronAnr.style.display = "";
         if (tabPadronAnr) tabPadronAnr.classList.add("active");
+        if (onlinePanel) onlinePanel.style.display = "";
         // Limpiar búsqueda anterior al entrar
         const inp = document.getElementById("padron-anr-input");
         const err = document.getElementById("padron-anr-error");

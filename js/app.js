@@ -853,29 +853,38 @@ function switchTab(tab) {
     if (tab === "admin" && !state.currentUser?.isAdmin) {
         toast("Acceso denegado. Solo el Administrador.", "error"); return;
     }
-    const planilla    = document.getElementById("view-planilla");
-    const admin       = document.getElementById("view-admin");
-    const fw          = document.getElementById("filter-wrapper");
-    const tabPlanilla = document.getElementById("tab-planilla");
-    const tabAdmin    = document.getElementById("tab-admin");
+    const planilla      = document.getElementById("view-planilla");
+    const admin         = document.getElementById("view-admin");
+    const padronAnr     = document.getElementById("view-padron-anr");
+    const fw            = document.getElementById("filter-wrapper");
+    const tabPlanilla   = document.getElementById("tab-planilla");
+    const tabAdmin      = document.getElementById("tab-admin");
+    const tabPadronAnr  = document.getElementById("tab-padron-anr");
 
     if (!planilla || !admin) return; // seguridad: elementos aún no en DOM
 
+    // Ocultar todo primero
+    planilla.style.display = "none";
+    admin.classList.remove("visible");
+    if (padronAnr) padronAnr.style.display = "none";
+    if (fw) fw.style.display = "none";
+    if (tabPlanilla)  tabPlanilla.classList.remove("active");
+    if (tabAdmin)     tabAdmin.classList.remove("active");
+    if (tabPadronAnr) tabPadronAnr.classList.remove("active");
+
     if (tab === "planilla") {
         planilla.style.display = "";
-        admin.classList.remove("visible");
         if (fw) fw.style.display = "flex";
         if (tabPlanilla) tabPlanilla.classList.add("active");
-        if (tabAdmin)    tabAdmin.classList.remove("active");
         renderTablaVotantes();
-    } else {
-        planilla.style.display = "none";
+    } else if (tab === "admin") {
         admin.classList.add("visible");
-        if (fw) fw.style.display = "none";
-        if (tabPlanilla) tabPlanilla.classList.remove("active");
-        if (tabAdmin)    tabAdmin.classList.add("active");
+        if (tabAdmin) tabAdmin.classList.add("active");
         cargarUsuarios();
         escucharBitacora();
+    } else if (tab === "padron-anr") {
+        if (padronAnr) padronAnr.style.display = "";
+        if (tabPadronAnr) tabPadronAnr.classList.add("active");
     }
 }
 
@@ -1001,6 +1010,7 @@ function bindEvents() {
 
     document.getElementById("tab-planilla").addEventListener("click", () => switchTab("planilla"));
     document.getElementById("tab-admin").addEventListener("click",    () => switchTab("admin"));
+    document.getElementById("tab-padron-anr").addEventListener("click", () => switchTab("padron-anr"));
 
     document.getElementById("register-user-form").addEventListener("submit",    handleRegistrarUsuario);
     document.getElementById("register-votante-form").addEventListener("submit", handleRegistrarVotante);
@@ -1030,3 +1040,74 @@ function bindEvents() {
         renderTablaVotantes();
     });
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  PADRÓN ANR — Consulta al sitio oficial via iframe proxy
+// ═══════════════════════════════════════════════════════════════
+window.buscarPadronANR = async function() {
+    const input   = document.getElementById("padron-anr-input");
+    const loading = document.getElementById("padron-anr-loading");
+    const error   = document.getElementById("padron-anr-error");
+    const result  = document.getElementById("padron-anr-resultado");
+
+    const cedula = input.value.trim().replace(/\D/g, "");
+    if (!cedula || cedula.length < 4) {
+        error.textContent = "Ingresá un número de cédula válido.";
+        error.style.display = "block";
+        result.style.display = "none";
+        return;
+    }
+
+    error.style.display  = "none";
+    result.style.display = "none";
+    loading.style.display = "block";
+
+    try {
+        const url = `https://padron.anr.org.py/api/padron?cedula=${encodeURIComponent(cedula)}`;
+        const resp = await fetch(url, { headers: { "Accept": "application/json" } });
+
+        if (!resp.ok) throw new Error("Sin respuesta del servidor.");
+        const data = await resp.json();
+
+        if (!data || data.error || (!data.nombres && !data.NOMBRES && !data.nombre)) {
+            throw new Error("Afiliado no encontrado en el padrón.");
+        }
+
+        // Normalizar campos (el API puede variar en mayúsculas)
+        const get = (...keys) => { for (const k of keys) { if (data[k]) return data[k]; } return "—"; };
+
+        document.getElementById("pr-cedula").textContent      = get("cedula","CEDULA","ci","CI");
+        document.getElementById("pr-nombres").textContent     = get("nombres","NOMBRES","nombre","NOMBRE");
+        document.getElementById("pr-apellidos").textContent   = get("apellidos","APELLIDOS","apellido","APELLIDO");
+        document.getElementById("pr-departamento").textContent= get("departamento","DEPARTAMENTO");
+        document.getElementById("pr-distrito").textContent    = get("distrito","DISTRITO");
+        document.getElementById("pr-seccional").textContent   = get("seccional","SECCIONAL");
+        document.getElementById("pr-local").textContent       = get("local","LOCAL");
+        document.getElementById("pr-mesa").textContent        = get("mesa","MESA");
+        document.getElementById("pr-orden").textContent       = get("orden","ORDEN");
+
+        result.style.display = "block";
+
+    } catch (err) {
+        // Si la API falla (CORS u otro), abrir en ventana oficial como fallback
+        const msg = err.message.includes("fetch") || err.message.includes("CORS") || err.message.includes("Failed")
+            ? null
+            : err.message;
+
+        if (!msg) {
+            // Fallback: abrir el padrón oficial en nueva pestaña
+            error.innerHTML = `No se pudo consultar directamente. <a href="https://www.anr.org.py/padron-2026/" target="_blank" style="color:var(--color-primary);font-weight:bold;">Consultá en el sitio oficial →</a>`;
+        } else {
+            error.textContent = msg;
+        }
+        error.style.display = "block";
+    } finally {
+        loading.style.display = "none";
+    }
+};
+
+// Enter en el input también dispara la búsqueda
+document.addEventListener("DOMContentLoaded", () => {
+    const inp = document.getElementById("padron-anr-input");
+    if (inp) inp.addEventListener("keydown", e => { if (e.key === "Enter") buscarPadronANR(); });
+});

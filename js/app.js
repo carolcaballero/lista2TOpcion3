@@ -150,6 +150,7 @@ function renderBitacora(eventos) {
         "Observación":      "#94a3b8",
         "Login":            "#6ee7b7",
         "Logout":           "#9ca3af",
+        "Consulta Padrón":  "#facc15",
     };
 
     tbody.innerHTML = eventos.map(e => {
@@ -284,6 +285,7 @@ function loginSuccess(user, persist) {
 
         // Cambiar vista PRIMERO, limpiar form DESPUÉS
         showApp();
+        state.currentFilter = "todos";
         switchTab("planilla");
 
         // Limpiar el formulario de login (ahora ya no se ve)
@@ -470,15 +472,39 @@ function renderTablaVotantes() {
 
     const q = state.searchQuery;
 
-    // Búsqueda global: muestra todos los estados si está activada
+    // Orden de estado: Votó=0, No Votó=1, Pendiente=2
+    const ordenEstado = v => {
+        const voto = getVoto(v.cedula);
+        if (voto === "Votó")    return 0;
+        if (voto === "No Votó") return 1;
+        return 2;
+    };
+
     let lista;
     if (q && state.searchAllStates) {
         lista = state.padron.filter(v =>
             v.nombre.toLowerCase().includes(q) || v.cedula.includes(q));
+        lista.sort((a, b) => ordenEstado(a) - ordenEstado(b));
+    } else if (state.currentFilter === "todos") {
+        lista = [...state.padron];
+        if (q) lista = lista.filter(v =>
+            v.nombre.toLowerCase().includes(q) || v.cedula.includes(q));
+        lista.sort((a, b) => ordenEstado(a) - ordenEstado(b));
     } else {
         lista = state.padron.filter(v => getVoto(v.cedula) === state.currentFilter);
         if (q) lista = lista.filter(v =>
             v.nombre.toLowerCase().includes(q) || v.cedula.includes(q));
+    }
+
+    // Actualizar visualmente los botones de filtro
+    const btnP = document.getElementById("btn-filter-pending");
+    const btnV = document.getElementById("btn-filter-voted");
+    const btnN = document.getElementById("btn-filter-novoted");
+    if (btnP && btnV && btnN) {
+        [btnP, btnV, btnN].forEach(b => b.className = "filter-btn");
+        if (state.currentFilter === "Pendiente") btnP.classList.add("f-pending");
+        if (state.currentFilter === "Votó")      btnV.classList.add("f-voted");
+        if (state.currentFilter === "No Votó")   btnN.classList.add("f-novoted");
     }
 
     // Hint: avisa si hay resultados en otros estados
@@ -826,13 +852,6 @@ function renderTablaUsuarios() {
 // ═══════════════════════════════════════════════════════════════
 function cambiarFiltro(destino) {
     state.currentFilter = destino;
-    const btnP = document.getElementById("btn-filter-pending");
-    const btnV = document.getElementById("btn-filter-voted");
-    const btnN = document.getElementById("btn-filter-novoted");
-    [btnP, btnV, btnN].forEach(b => b.className = "filter-btn");
-    if (destino === "Pendiente")  btnP.classList.add("f-pending");
-    if (destino === "Votó")       btnV.classList.add("f-voted");
-    if (destino === "No Votó")    btnN.classList.add("f-novoted");
     renderTablaVotantes();
 }
 
@@ -876,6 +895,7 @@ function switchTab(tab) {
         planilla.style.display = "";
         if (fw) fw.style.display = "flex";
         if (tabPlanilla) tabPlanilla.classList.add("active");
+        state.currentFilter = "todos";
         renderTablaVotantes();
     } else if (tab === "admin") {
         admin.classList.add("visible");
@@ -885,6 +905,16 @@ function switchTab(tab) {
     } else if (tab === "padron-anr") {
         if (padronAnr) padronAnr.style.display = "";
         if (tabPadronAnr) tabPadronAnr.classList.add("active");
+        // Limpiar búsqueda anterior al entrar
+        const inp = document.getElementById("padron-anr-input");
+        const err = document.getElementById("padron-anr-error");
+        const res = document.getElementById("padron-anr-resultado");
+        const lod = document.getElementById("padron-anr-loading");
+        if (inp) inp.value = "";
+        if (err) err.style.display = "none";
+        if (res) res.style.display = "none";
+        if (lod) lod.style.display = "none";
+        setTimeout(() => { if (inp) inp.focus(); }, 100);
     }
 }
 
@@ -1116,12 +1146,14 @@ window.buscarPadronANR = async function() {
             document.getElementById("pr-mesa").textContent         = persona.MESA           || "—";
             document.getElementById("pr-orden").textContent        = persona.ORDEN          || "—";
             result.style.display = "block";
+            registrarBitacora("Consulta Padrón", `Consultó CI ${cedula} → ${persona.NOMBRES} ${persona.APELLIDOS} · Mesa ${persona.MESA} · Orden ${persona.ORDEN}`);
         } else {
             error.innerHTML     = `
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 10px;display:block;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 <div style="font-size:.95rem;font-weight:700;color:#ef4444;margin-bottom:6px;">Esta persona no está en el padrón</div>
                 <div style="font-size:.82rem;color:#999;">La cédula <strong style="color:#ccc;">${cedula}</strong> no figura en el padrón ANR de San Estanislao 2026.</div>`;
             error.style.display = "block";
+            registrarBitacora("Consulta Padrón", `CI ${cedula} — no encontrado en el padrón`);
         }
 
     } catch (err) {

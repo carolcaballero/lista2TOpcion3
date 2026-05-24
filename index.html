@@ -329,8 +329,9 @@
         /* ═══════════════════════════════════════
            VIEWS
            ═══════════════════════════════════════ */
-        #view-admin { display: none; }
-        #view-admin.visible { display: flex; }
+        #view-admin { display: none; opacity: 0; }
+        #view-admin.visible { display: flex; animation: adminFadeIn .22s ease forwards; }
+        @keyframes adminFadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
 
         /* ═══════════════════════════════════════
            PADRÓN ANR — fields
@@ -922,36 +923,62 @@
         </div>
     </header>
 
-    <!-- MÉTRICAS -->
-    <div class="metrics-grid" id="metrics-wrapper" style="margin-bottom:14px;">
-        <div class="metric-card total" data-filter="todos">
-            <div class="metric-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+    <!-- DASHBOARD -->
+    <div class="dashboard-wrap" id="metrics-wrapper" style="margin-bottom:16px;">
+
+        <!-- Fila superior: stat cards -->
+        <div class="dash-stats">
+            <div class="dash-card dash-total" data-filter="todos">
+                <div class="dash-card-left">
+                    <div class="dash-icon-wrap dash-icon-total">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                    </div>
+                    <span class="dash-label">Total</span>
+                </div>
+                <p class="dash-num" id="metric-total">0</p>
             </div>
-            <p id="metric-total">0</p>
-            <h3>Todos</h3>
-        </div>
-        <div class="metric-card voted" data-filter="Votó">
-            <div class="metric-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <div class="dash-card dash-voted" data-filter="Votó">
+                <div class="dash-card-left">
+                    <div class="dash-icon-wrap dash-icon-voted">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <span class="dash-label">Votaron</span>
+                </div>
+                <p class="dash-num" id="metric-voted">0</p>
             </div>
-            <p id="metric-voted">0</p>
-            <h3>Votaron</h3>
-        </div>
-        <div class="metric-card novoted" data-filter="No Votó">
-            <div class="metric-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <div class="dash-card dash-novoted" data-filter="No Votó">
+                <div class="dash-card-left">
+                    <div class="dash-icon-wrap dash-icon-novoted">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </div>
+                    <span class="dash-label">No Votaron</span>
+                </div>
+                <p class="dash-num" id="metric-novoted">0</p>
             </div>
-            <p id="metric-novoted">0</p>
-            <h3>No Votaron</h3>
-        </div>
-        <div class="metric-card pending" data-filter="Pendiente">
-            <div class="metric-icon">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <div class="dash-card dash-pending" data-filter="Pendiente">
+                <div class="dash-card-left">
+                    <div class="dash-icon-wrap dash-icon-pending">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </div>
+                    <span class="dash-label">Pendientes</span>
+                </div>
+                <p class="dash-num" id="metric-pending">0</p>
             </div>
-            <p id="metric-pending">0</p>
-            <h3>Pendientes</h3>
         </div>
+
+        <!-- Barra de progreso global -->
+        <div class="dash-progress-wrap">
+            <div class="dash-progress-bar">
+                <div class="dash-prog-voted"  id="prog-voted"  style="width:0%"></div>
+                <div class="dash-prog-novoted" id="prog-novoted" style="width:0%"></div>
+            </div>
+            <div class="dash-progress-legend">
+                <span class="dpl-item dpl-voted"><span class="dpl-dot"></span>Votaron <strong id="pct-voted">0%</strong></span>
+                <span class="dpl-item dpl-novoted"><span class="dpl-dot"></span>No Votaron <strong id="pct-novoted">0%</strong></span>
+                <span class="dpl-item dpl-pending"><span class="dpl-dot"></span>Pendientes <strong id="pct-pending">0%</strong></span>
+            </div>
+        </div>
+
     </div>
 
     <!-- TOOLBAR (Tabs principales) -->
@@ -981,22 +1008,17 @@
     <div id="filter-wrapper" style="margin-bottom:12px;">
         <div class="toolbar-filters" style="margin-bottom:10px;">
             <div class="filter-group">
-                <!-- ✨ NUEVO BOTÓN TODOS -->
                 <button id="btn-filter-todos" class="filter-btn f-todos">
                     <svg><use href="#icon-list"/></svg><span class="filter-label">Todos</span>
-                    <span class="filter-count" id="count-todos">0</span>
                 </button>
                 <button id="btn-filter-pending" class="filter-btn">
                     <svg><use href="#icon-clock"/></svg><span class="filter-label">Pendientes</span>
-                    <span class="filter-count" id="count-pending">0</span>
                 </button>
                 <button id="btn-filter-voted" class="filter-btn">
                     <svg><use href="#icon-check"/></svg><span class="filter-label">Votaron</span>
-                    <span class="filter-count" id="count-voted">0</span>
                 </button>
                 <button id="btn-filter-novoted" class="filter-btn">
                     <svg><use href="#icon-x"/></svg><span class="filter-label">No Votaron</span>
-                    <span class="filter-count" id="count-novoted">0</span>
                 </button>
             </div>
         </div>

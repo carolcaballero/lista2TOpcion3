@@ -406,14 +406,16 @@ function actualizarDashboard() {
 
     state.prevMetrics = { total, voted, novoted: noVoted, pending };
 
-    // Barra de progreso
+    // Barras de progreso individuales
     const pctVoted   = total > 0 ? (voted   / total * 100) : 0;
     const pctNoVoted = total > 0 ? (noVoted / total * 100) : 0;
     const pctPending = total > 0 ? (pending / total * 100) : 0;
     const progV = document.getElementById("prog-voted");
     const progN = document.getElementById("prog-novoted");
-    if (progV) progV.style.width = pctVoted.toFixed(1) + "%";
+    const progP = document.getElementById("prog-pending");
+    if (progV) progV.style.width = pctVoted.toFixed(1)   + "%";
     if (progN) progN.style.width = pctNoVoted.toFixed(1) + "%";
+    if (progP) progP.style.width = pctPending.toFixed(1) + "%";
     setText("pct-voted",   pctVoted.toFixed(0)   + "%");
     setText("pct-novoted", pctNoVoted.toFixed(0) + "%");
     setText("pct-pending", pctPending.toFixed(0) + "%");

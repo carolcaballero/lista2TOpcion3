@@ -1117,13 +1117,19 @@ window.buscarPadronANR = async function() {
             document.getElementById("pr-orden").textContent        = persona.ORDEN          || "—";
             result.style.display = "block";
         } else {
-            error.innerHTML     = `⚠️ Cédula <strong>${cedula}</strong> no encontrada en el padrón de San Estanislao 2026.`;
+            error.innerHTML     = `
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 10px;display:block;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div style="font-size:.95rem;font-weight:700;color:#ef4444;margin-bottom:6px;">Esta persona no está en el padrón</div>
+                <div style="font-size:.82rem;color:#999;">La cédula <strong style="color:#ccc;">${cedula}</strong> no figura en el padrón ANR de San Estanislao 2026.</div>`;
             error.style.display = "block";
         }
 
     } catch (err) {
         loading.style.display = "none";
-        error.innerHTML       = `❌ Error al cargar el padrón: ${err.message}`;
+        error.innerHTML       = `
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 10px;display:block;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <div style="font-size:.9rem;font-weight:700;color:#f59e0b;margin-bottom:6px;">No se pudo cargar el padrón</div>
+                <div style="font-size:.8rem;color:#999;">${err.message}</div>`;
         error.style.display   = "block";
         console.error("Error padrón CSV:", err);
     }

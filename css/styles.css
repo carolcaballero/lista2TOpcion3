@@ -387,10 +387,10 @@ body {
 }
 
 .metric-card {
-    background: linear-gradient(135deg, #fff 0%, #FFF8F8 100%);
+    background: #fff;
     border: 1px solid var(--color-border);
-    border-radius: var(--r-md);
-    padding: 12px 8px;
+    border-radius: var(--r-lg);
+    padding: 14px 10px 12px;
     text-align: center;
     box-shadow: var(--shadow-sm);
     transition: all var(--t-base);
@@ -398,55 +398,74 @@ body {
     overflow: hidden;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
 }
 
+/* Barra de color en el borde izquierdo */
 .metric-card::before {
     content: "";
     position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
     background: var(--color-primary-accent);
-    transform: scaleX(0);
-    transform-origin: center;
-    transition: transform var(--t-slow);
+    border-radius: 0;
+    transition: width var(--t-base);
 }
+.metric-card:hover::before { width: 6px; }
 
-.metric-card::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at center, rgba(185, 28, 28, .08), transparent 70%);
-    opacity: 0;
-    transition: opacity var(--t-base);
-    pointer-events: none;
+.metric-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.metric-card:active { transform: scale(.97); }
+
+/* Ícono dentro de metric-card */
+.metric-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 2px;
+    transition: transform var(--t-base);
 }
-
-.metric-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
-.metric-card:hover::before { transform: scaleX(1); }
-.metric-card:hover::after { opacity: 1; }
-.metric-card:active { transform: translateY(-1px) scale(.98); }
+.metric-card:hover .metric-icon { transform: scale(1.12); }
 
 .metric-card h3 {
-    font-size: .64rem;
-    margin: 0 0 4px;
-    color: var(--color-gray);
+    font-size: .62rem;
+    margin: 0;
     text-transform: uppercase;
-    letter-spacing: .5px;
+    letter-spacing: .4px;
     font-weight: 800;
+    line-height: 1.2;
 }
 .metric-card p {
-    font-size: 1.6rem;
+    font-size: 1.75rem;
     margin: 0;
     font-weight: 900;
     letter-spacing: -.6px;
+    line-height: 1;
     transition: transform var(--t-bounce);
 }
 .metric-card:hover p { transform: scale(1.08); }
 
+/* Colores por tipo */
+.metric-card.total::before { background: linear-gradient(180deg, var(--color-primary-accent), var(--color-primary-hover)); }
+.metric-card.total .metric-icon { background: #FEE2E2; color: var(--color-primary-accent); }
+.metric-card.total h3 { color: var(--color-gray); }
+
 .metric-card.voted::before { background: var(--color-success); }
+.metric-card.voted .metric-icon { background: #DCFCE7; color: var(--color-success); }
+.metric-card.voted h3 { color: var(--color-success); }
+
 .metric-card.novoted::before { background: var(--color-primary-accent); }
+.metric-card.novoted .metric-icon { background: #FEE2E2; color: var(--color-primary-accent); }
+.metric-card.novoted h3 { color: var(--color-primary-accent); }
+
 .metric-card.pending::before { background: var(--color-gray); }
-.metric-card.total::before { background: linear-gradient(90deg, var(--color-primary-accent), var(--color-primary-hover)); }
+.metric-card.pending .metric-icon { background: #F3F4F6; color: var(--color-gray); }
+.metric-card.pending h3 { color: var(--color-gray); }
 
 #metric-total   { color: var(--color-dark); }
 #metric-voted   { color: var(--color-success); }
@@ -466,7 +485,7 @@ body {
 }
 @keyframes numberBump {
     0%   { transform: scale(1); }
-    40%  { transform: scale(1.25); color: var(--color-primary-accent); }
+    40%  { transform: scale(1.25); }
     100% { transform: scale(1); }
 }
 
@@ -535,23 +554,24 @@ body {
    FILTROS - estilo segmented control con animaciones
 ═══════════════════════════════════════════════════════════════ */
 .filter-group {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
     gap: 6px;
-    flex-wrap: wrap;
     width: 100%;
 }
 
 .filter-btn {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    padding: 10px 13px;
-    border-radius: 100px;
-    font-size: .76rem;
+    gap: 3px;
+    padding: 9px 6px;
+    border-radius: var(--r-md);
+    font-size: .68rem;
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: .4px;
+    letter-spacing: .3px;
     cursor: pointer;
     border: 1.5px solid var(--color-border);
     background: #fff;
@@ -560,10 +580,19 @@ body {
     white-space: nowrap;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
-    flex: 1;
-    min-width: 0;
     position: relative;
     overflow: hidden;
+}
+
+.filter-btn svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.filter-label {
+    display: block;
+    line-height: 1;
 }
 
 .filter-btn::before {
@@ -578,33 +607,32 @@ body {
 .filter-btn:active { transform: scale(.95); }
 .filter-btn:active::before { opacity: .08; }
 .filter-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
-.filter-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
 
 /* TODOS - estilo gradiente negro/rojo */
 .filter-btn.f-todos {
     border-color: var(--color-dark);
     color: #fff;
     background: linear-gradient(135deg, var(--color-dark), #1F1F1F);
-    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, .35);
+    box-shadow: 0 3px 8px -2px rgba(0, 0, 0, .35);
 }
 
 .filter-btn.f-pending {
     border-color: var(--color-gray);
     color: #fff;
     background: linear-gradient(135deg, var(--color-gray), #4B5563);
-    box-shadow: 0 4px 12px -2px rgba(107, 114, 128, .4);
+    box-shadow: 0 3px 8px -2px rgba(107, 114, 128, .4);
 }
 .filter-btn.f-voted {
     border-color: var(--color-success);
     color: #fff;
     background: linear-gradient(135deg, var(--color-success), #166534);
-    box-shadow: 0 4px 12px -2px rgba(21, 128, 61, .4);
+    box-shadow: 0 3px 8px -2px rgba(21, 128, 61, .4);
 }
 .filter-btn.f-novoted {
     border-color: var(--color-primary);
     color: #fff;
     background: linear-gradient(135deg, var(--color-primary-accent), var(--color-primary-hover));
-    box-shadow: 0 4px 12px -2px rgba(185, 28, 28, .45);
+    box-shadow: 0 3px 8px -2px rgba(185, 28, 28, .45);
 }
 
 /* badge contador dentro del filtro */
@@ -612,18 +640,34 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, .18);
+    background: rgba(0, 0, 0, .2);
     color: inherit;
     border-radius: 100px;
-    padding: 1px 7px;
-    font-size: .68rem;
+    padding: 1px 6px;
+    font-size: .65rem;
     font-weight: 800;
-    min-width: 20px;
-    margin-left: 2px;
+    min-width: 18px;
+    line-height: 1.4;
 }
 .filter-btn:not(.f-todos):not(.f-pending):not(.f-voted):not(.f-novoted) .filter-count {
     background: var(--color-bg-alt);
     color: var(--color-primary);
+}
+
+@media (min-width: 768px) {
+    .filter-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .filter-btn {
+        flex-direction: row;
+        flex: none;
+        min-width: 120px;
+        padding: 10px 14px;
+        font-size: .76rem;
+        gap: 6px;
+    }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -902,7 +946,7 @@ code {
 
     th, td { font-size: .95rem; padding: 14px 16px; }
 
-    .filter-btn { flex: none; min-width: 110px; }
+    .filter-btn { flex: none; }
 }
 
 /* ═══════════════════════════════════════════════════════════════

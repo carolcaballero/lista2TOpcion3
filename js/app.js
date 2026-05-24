@@ -1042,53 +1042,114 @@ function bindEvents() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  PADRÓN ANR — Inyecta la cédula en el iframe oficial
+//  PADRÓN ANR — Consulta replicando el widget oficial
 // ═══════════════════════════════════════════════════════════════
-window.buscarPadronANR = function() {
-    const input  = document.getElementById("padron-anr-input");
-    const iframe = document.getElementById("padron-anr-iframe");
-    const loader = document.getElementById("padron-iframe-loader");
+window.buscarPadronANR = async function() {
+    const input   = document.getElementById("padron-anr-input");
+    const loading = document.getElementById("padron-anr-loading");
+    const error   = document.getElementById("padron-anr-error");
+    const result  = document.getElementById("padron-anr-resultado");
 
     const cedula = input ? input.value.trim().replace(/\D/g, "") : "";
-    if (!cedula || cedula.length < 4) {
-        input.style.borderColor = "var(--color-primary)";
+    if (!cedula || cedula.length < 3) {
+        input.style.outline = "2px solid var(--color-primary)";
         input.focus();
-        setTimeout(() => input.style.borderColor = "", 1500);
+        setTimeout(() => input.style.outline = "", 1500);
         return;
     }
 
-    // Mostrar loader y recargar el iframe con la cédula como hash
-    // El sitio de la ANR usa el input visible — lo intentamos via postMessage
-    // y como fallback recargamos la página con foco en el campo
-    if (loader) loader.style.display = "flex";
+    error.style.display  = "none";
+    result.style.display = "none";
+    loading.style.display = "block";
 
-    // Intentar inyectar la cédula en el iframe via postMessage (por si lo soporta)
-    try {
-        iframe.contentWindow.postMessage({ cedula }, "https://www.anr.org.py");
-    } catch(e) {}
+    // Intentar múltiples endpoints que el padron.js de la ANR podría usar
+    const endpoints = [
+        `https://www.anr.org.py/assets/padron.php?cedula=${cedula}`,
+        `https://www.anr.org.py/padron/?cedula=${cedula}`,
+        `https://www.anr.org.py/?action=padron_query&cedula=${cedula}`,
+        `https://www.anr.org.py/wp-admin/admin-ajax.php`,
+    ];
 
-    // Recargar iframe y cuando cargue intentar escribir en el input del sitio
-    iframe.onload = function() {
-        if (loader) loader.style.display = "none";
-        try {
-            const iDoc = iframe.contentDocument || iframe.contentWindow.document;
-            const iInput = iDoc.querySelector("input[type=text]");
-            if (iInput) {
-                iInput.value = cedula;
-                iInput.dispatchEvent(new Event("input", { bubbles: true }));
-                // Buscar botón "Consultar" y hacer click
-                const btn = iDoc.querySelector(".fsend span, .fsend, button");
-                if (btn) btn.click();
-            }
-        } catch(e) {
-            // CORS bloqueó el acceso al DOM del iframe — normal en sitios externos
-            // El usuario ve el sitio cargado y puede escribir manualmente
-        }
+    const commonHeaders = {
+        "Accept": "application/json, text/plain, */*",
+        "Referer": "https://www.anr.org.py/padron-2026/",
+        "Origin": "https://www.anr.org.py",
     };
 
-    // Si el iframe ya estaba en la misma URL, forzar reload
-    const current = iframe.src.split("?")[0];
-    iframe.src = "https://www.anr.org.py/padron-2026/?c=" + cedula + "&t=" + Date.now();
+    let data = null;
+    let lastErr = "";
+
+    for (const url of endpoints) {
+        try {
+            const isAjax = url.includes("admin-ajax");
+            const opts = isAjax
+                ? { method: "POST", headers: { ...commonHeaders, "Content-Type": "application/x-www-form-urlencoded" }, body: `action=padron_query&cedula=${cedula}` }
+                : { headers: commonHeaders, mode: "cors" };
+
+            const resp = await fetch(url, opts);
+            if (!resp.ok) continue;
+            const text = await resp.text();
+            if (!text || text.trim().startsWith("<")) continue; // HTML = error page
+            data = JSON.parse(text);
+            if (data && (data.nombres || data.NOMBRES || data.nombre || data.NOMBRE)) break;
+            data = null;
+        } catch (e) {
+            lastErr = e.message;
+        }
+    }
+
+    loading.style.display = "none";
+
+    if (data) {
+        const get = (...keys) => { for (const k of keys) if (data[k]) return data[k]; return "—"; };
+        document.getElementById("pr-cedula").textContent       = get("cedula","CEDULA","ci","CI") || cedula;
+        document.getElementById("pr-nombres").textContent      = get("nombres","NOMBRES","nombre","NOMBRE");
+        document.getElementById("pr-apellidos").textContent    = get("apellidos","APELLIDOS","apellido","APELLIDO");
+        document.getElementById("pr-departamento").textContent = get("departamento","DEPARTAMENTO");
+        document.getElementById("pr-distrito").textContent     = get("distrito","DISTRITO");
+        document.getElementById("pr-seccional").textContent    = get("seccional","SECCIONAL");
+        document.getElementById("pr-local").textContent        = get("local","LOCAL");
+        document.getElementById("pr-mesa").textContent         = get("mesa","MESA");
+        document.getElementById("pr-orden").textContent        = get("orden","ORDEN");
+        result.style.display = "block";
+    } else {
+        // El sitio ANR bloquea CORS — mostrar botón que abre popup nativo
+        error.innerHTML = `
+            <div style="margin-bottom:10px;">⚠️ El servidor de la ANR bloquea consultas externas (CORS).</div>
+            <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+                <button onclick="abrirPadronPopup('${cedula}')" class="btn-primary" style="width:auto;padding:10px 18px;">
+                    🔍 Consultar en ventana ANR
+                </button>
+                <a href="https://www.anr.org.py/padron-2026/" target="_blank" class="btn-secondary" style="padding:10px 14px;text-decoration:none;">
+                    Abrir sitio oficial ↗
+                </a>
+            </div>`;
+        error.style.display = "block";
+    }
+};
+
+window.abrirPadronPopup = function(cedula) {
+    const w = 520, h = 680;
+    const left = Math.round((screen.width - w) / 2);
+    const top  = Math.round((screen.height - h) / 2);
+    const popup = window.open(
+        "https://www.anr.org.py/padron-2026/",
+        "padronANR",
+        `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`
+    );
+    if (popup) {
+        // Cuando cargue intentar autocompletar
+        popup.addEventListener("load", () => {
+            try {
+                const inp = popup.document.querySelector(".padron2026search input");
+                const btn = popup.document.querySelector(".fsend");
+                if (inp) { inp.value = cedula; }
+                if (btn) { setTimeout(() => btn.click(), 300); }
+            } catch(e) {}
+        });
+    } else {
+        alert("El navegador bloqueó el popup. Permitilo en la barra de direcciones.");
+    }
 };
 
 // Enter en el input también dispara la búsqueda

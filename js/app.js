@@ -51,6 +51,7 @@ const state = {
     usuarios:         [],
     currentFilter:    "Pendiente",
     searchQuery:      "",
+    searchAllStates:  false,
     pendingNoVoto:    null,
     unsubVotos:       null,
     unsubPresencia:   null,
@@ -248,8 +249,10 @@ function loginSuccess(user, persist) {
     document.getElementById("current-user-display").textContent = user.fullname;
     document.getElementById("login-form").reset();
 
-    const tabAdmin = document.getElementById("tab-admin");
+    const tabAdmin   = document.getElementById("tab-admin");
+    const btnExportar = document.getElementById("btn-exportar");
     user.isAdmin ? tabAdmin.classList.remove("hidden") : tabAdmin.classList.add("hidden");
+    if (btnExportar) btnExportar.style.display = user.isAdmin ? "flex" : "none";
 
     showApp();
     switchTab("planilla");
@@ -417,22 +420,58 @@ function actualizarDashboard() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  TABLA VOTANTES
+//  TABLA VOTANTES — con búsqueda global y vista móvil
 // ═══════════════════════════════════════════════════════════════
 function renderTablaVotantes() {
-    const tbody = document.getElementById("votantes-table-body");
-    tbody.innerHTML = "";
+    const tbody      = document.getElementById("votantes-table-body");
+    const searchHint = document.getElementById("search-hint");
+    tbody.innerHTML  = "";
 
-    let lista = state.padron.filter(v => getVoto(v.cedula) === state.currentFilter);
-    if (state.searchQuery) {
-        const q = state.searchQuery;
-        lista = lista.filter(v => v.nombre.toLowerCase().includes(q) || v.cedula.includes(q));
+    const q = state.searchQuery;
+
+    // Búsqueda global: muestra todos los estados si está activada
+    let lista;
+    if (q && state.searchAllStates) {
+        lista = state.padron.filter(v =>
+            v.nombre.toLowerCase().includes(q) || v.cedula.includes(q));
+    } else {
+        lista = state.padron.filter(v => getVoto(v.cedula) === state.currentFilter);
+        if (q) lista = lista.filter(v =>
+            v.nombre.toLowerCase().includes(q) || v.cedula.includes(q));
+    }
+
+    // Hint: avisa si hay resultados en otros estados
+    if (searchHint) {
+        if (q && !state.searchAllStates) {
+            const totalMatch = state.padron.filter(v =>
+                v.nombre.toLowerCase().includes(q) || v.cedula.includes(q)).length;
+            const otros = totalMatch - lista.length;
+            if (otros > 0) {
+                searchHint.style.display = "flex";
+                searchHint.innerHTML = \`
+                    <svg width="14" height="14" style="flex-shrink:0"><use href="#icon-search"/></svg>
+                    <span>Se encontraron <strong>\${otros}</strong> resultado\${otros>1?"s":""} en otros estados.</span>
+                    <button onclick="activarBusquedaGlobal()" class="btn-hint-global">Ver todos</button>\`;
+            } else {
+                searchHint.style.display = "none";
+            }
+        } else if (q && state.searchAllStates) {
+            searchHint.style.display = "flex";
+            searchHint.innerHTML = \`
+                <svg width="14" height="14" style="flex-shrink:0"><use href="#icon-search"/></svg>
+                <span>Mostrando resultados de <strong>todos los estados</strong>.</span>
+                <button onclick="desactivarBusquedaGlobal()" class="btn-hint-volver">Volver al filtro</button>\`;
+        } else {
+            searchHint.style.display = "none";
+        }
     }
 
     if (!lista.length) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--color-gray);padding:30px;">No se encontraron registros.</td></tr>`;
+        tbody.innerHTML = \`<tr><td colspan="8" style="text-align:center;color:var(--color-gray);padding:30px;">No se encontraron registros.</td></tr>\`;
         return;
     }
+
+    const esMobile = window.innerWidth < 640;
 
     lista.forEach((v, idx) => {
         const voto = getVoto(v.cedula);
@@ -446,41 +485,75 @@ function renderTablaVotantes() {
         const clsVoto   = voto === "Votó"    ? "btn-accion sel-voto"   : "btn-accion";
         const clsNoVoto = voto === "No Votó" ? "btn-accion sel-novoto" : "btn-accion";
 
-        // Cualquier usuario puede quitar tanto Voto como No Votó
-        const btnVotoHtml = `
-            <button class="${clsVoto}" onclick="accionVoto('${v.cedula}','Votó')" title="${voto==='Votó'?'Quitar voto':'Marcar como Votó'}">
+        const btnVotoHtml = \`
+            <button class="\${clsVoto}" onclick="accionVoto('\${v.cedula}','Votó')" title="\${voto==='Votó'?'Quitar voto':'Marcar como Votó'}">
                 <svg width="12" height="12"><use href="#icon-check"/></svg>
-                ${voto === "Votó" ? "Votó ✕" : "Votó"}
-            </button>`;
+                \${voto === "Votó" ? "Votó ✕" : "Votó"}
+            </button>\`;
 
-        const btnNoVotoHtml = `
-            <button class="${clsNoVoto}" onclick="accionVoto('${v.cedula}','No Votó')" title="${voto==='No Votó'?'Quitar No Votó':'Marcar como No Votó'}">
+        const btnNoVotoHtml = \`
+            <button class="\${clsNoVoto}" onclick="accionVoto('\${v.cedula}','No Votó')" title="\${voto==='No Votó'?'Quitar No Votó':'Marcar como No Votó'}">
                 <svg width="12" height="12"><use href="#icon-x"/></svg>
-                ${voto === "No Votó" ? "No Votó ✕" : "No Votó"}
-            </button>`;
+                \${voto === "No Votó" ? "No Votó ✕" : "No Votó"}
+            </button>\`;
 
         const tr = document.createElement("tr");
-        tr.innerHTML = `
-            <td><strong>${idx + 1}</strong></td>
-            <td>${escHtml(v.nombre)}</td>
-            <td style="font-family:monospace">${v.cedula}</td>
-            <td>${escHtml(v.domicilio)}</td>
-            <td><span class="${badgeClass}">${badgeLabel}</span></td>
-            <td>
-                <div class="action-btns">
-                    ${btnVotoHtml}
-                    ${btnNoVotoHtml}
-                </div>
-            </td>
-            <td>
-                <input class="obs-input" value="${escHtml(obs)}"
-                    placeholder="Sin observación..."
-                    onchange="actualizarObservacion('${v.cedula}', this.value)">
-            </td>
-            <td><span class="log-span">${escHtml(log)}</span></td>`;
+
+        if (esMobile) {
+            tr.className = "fila-mobile";
+            tr.innerHTML = \`
+                <td colspan="8" class="celda-mobile">
+                    <div class="card-mobile">
+                        <div class="card-mobile-top">
+                            <div style="min-width:0;flex:1">
+                                <span class="card-mobile-num">\${idx+1}.</span>
+                                <strong class="card-mobile-nombre">\${escHtml(v.nombre)}</strong>
+                                <div class="card-mobile-cedula">CI: \${v.cedula} · \${escHtml(v.domicilio)}</div>
+                            </div>
+                            <span class="\${badgeClass}" style="flex-shrink:0">\${badgeLabel}</span>
+                        </div>
+                        <div class="card-mobile-btns action-btns">
+                            \${btnVotoHtml}
+                            \${btnNoVotoHtml}
+                        </div>
+                        <input class="obs-input obs-mobile" value="\${escHtml(obs)}"
+                            placeholder="Observación..."
+                            onchange="actualizarObservacion('\${v.cedula}', this.value)">
+                        <div class="log-span" style="margin-top:4px;font-size:.7rem">\${escHtml(log)}</div>
+                    </div>
+                </td>\`;
+        } else {
+            tr.innerHTML = \`
+                <td><strong>\${idx + 1}</strong></td>
+                <td>\${escHtml(v.nombre)}</td>
+                <td style="font-family:monospace">\${v.cedula}</td>
+                <td>\${escHtml(v.domicilio)}</td>
+                <td><span class="\${badgeClass}">\${badgeLabel}</span></td>
+                <td>
+                    <div class="action-btns">
+                        \${btnVotoHtml}
+                        \${btnNoVotoHtml}
+                    </div>
+                </td>
+                <td>
+                    <input class="obs-input" value="\${escHtml(obs)}"
+                        placeholder="Sin observación..."
+                        onchange="actualizarObservacion('\${v.cedula}', this.value)">
+                </td>
+                <td><span class="log-span">\${escHtml(log)}</span></td>\`;
+        }
         tbody.appendChild(tr);
     });
 }
+
+window.activarBusquedaGlobal = function() {
+    state.searchAllStates = true;
+    renderTablaVotantes();
+};
+window.desactivarBusquedaGlobal = function() {
+    state.searchAllStates = false;
+    renderTablaVotantes();
+};
 
 // ═══════════════════════════════════════════════════════════════
 //  ACCIONES DE VOTO
@@ -691,12 +764,18 @@ function renderTablaUsuarios() {
                 }
             </td>
             <td><code>${escHtml(u.username)}</code></td>
-            <td>
-                <button class="btn-danger" onclick="deleteUser('${escHtml(u.username)}')" style="display:flex;align-items:center;gap:5px;justify-content:center;">
-                    <svg class="icon" style="color:#fff;width:14px;height:14px"><use href="#icon-trash"/></svg>
-                    Eliminar
-                </button>
-            </td>`;
+            <td style="white-space:nowrap">
+                <div style="display:flex;gap:6px;">
+                    <button class="btn-secondary" onclick="abrirCambiarPassword('${escHtml(u.username)}')" style="padding:7px 10px;font-size:.75rem;display:flex;align-items:center;gap:4px;">
+                        <svg class="icon" style="width:13px;height:13px;color:var(--color-primary)"><use href="#icon-lock"/></svg>
+                        Clave
+                    </button>
+                    <button class="btn-danger" onclick="deleteUser('${escHtml(u.username)}')" style="padding:7px 10px;display:flex;align-items:center;gap:4px;justify-content:center;font-size:.75rem;">
+                        <svg class="icon" style="color:#fff;width:13px;height:13px"><use href="#icon-trash"/></svg>
+                        Eliminar
+                    </button>
+                </div>
+            </td>\`;
         tbody.appendChild(tr);
     });
 }
@@ -795,16 +874,83 @@ function escHtml(str) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  EXPORTAR CSV
+// ═══════════════════════════════════════════════════════════════
+window.exportarCSV = function() {
+    const filas = [["N°","Nombre","Cédula","Domicilio","Estado","Operador","Observación"]];
+    state.padron.forEach((v, i) => {
+        filas.push([
+            i + 1,
+            v.nombre,
+            v.cedula,
+            v.domicilio,
+            getVoto(v.cedula),
+            getLog(v.cedula),
+            getObs(v.cedula)
+        ]);
+    });
+    const bom  = "\uFEFF"; // BOM para que Excel abra con tildes correctas
+    const csv  = bom + filas.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    const fecha = new Date().toLocaleString("es-PY", { timeZone: "America/Asuncion",
+        day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" })
+        .replace(/[\/:, ]/g, "-").replace(/--/g, "-");
+    a.href     = url;
+    a.download = `padron-electoral-${fecha}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("✔ Padrón exportado correctamente.", "ok");
+    registrarBitacora("Exportar CSV", `Exportó el padrón completo (${state.padron.length} registros)`);
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  CAMBIAR CONTRASEÑA DE OPERADOR
+// ═══════════════════════════════════════════════════════════════
+window.abrirCambiarPassword = function(username) {
+    const u = state.usuarios.find(x => x.username === username);
+    document.getElementById("chpass-username").value    = username;
+    document.getElementById("chpass-nueva").value       = "";
+    document.getElementById("chpass-confirmar").value   = "";
+    document.getElementById("chpass-error").textContent = "";
+    const lbl = document.getElementById("chpass-user-label");
+    if (lbl) lbl.textContent = u?.fullname ? `${u.fullname} (${username})` : username;
+    abrirModal("modal-chpass");
+};
+
+window.confirmarCambiarPassword = async function() {
+    const username  = document.getElementById("chpass-username").value;
+    const nueva     = document.getElementById("chpass-nueva").value;
+    const confirmar = document.getElementById("chpass-confirmar").value;
+    const errEl     = document.getElementById("chpass-error");
+    errEl.textContent = "";
+
+    if (nueva.length < 4) { errEl.textContent = "La contraseña debe tener al menos 4 caracteres."; return; }
+    if (nueva !== confirmar) { errEl.textContent = "Las contraseñas no coinciden."; return; }
+
+    try {
+        const passwordHash = await sha256(nueva);
+        const ref = doc(db, "usuarios", username);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) { errEl.textContent = "Operador no encontrado."; return; }
+        const u = snap.data();
+        await setDoc(ref, { ...u, passwordHash, password: null }, { merge: true });
+        toast(`✔ Contraseña de "${username}" actualizada.`, "ok");
+        await registrarBitacora("Cambio Contraseña", `Cambió contraseña del operador ${u.fullname} (${username})`);
+        cerrarModal("modal-chpass");
+    } catch (err) {
+        console.error(err);
+        errEl.textContent = "Error al guardar. Intentá de nuevo.";
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
 //  BIND EVENTOS
 // ═══════════════════════════════════════════════════════════════
 function bindEvents() {
     document.getElementById("login-form").addEventListener("submit", handleLogin);
     document.getElementById("logout-btn").addEventListener("click", handleLogout);
-
-    document.getElementById("search-input").addEventListener("input", e => {
-        state.searchQuery = e.target.value.toLowerCase().trim();
-        renderTablaVotantes();
-    });
 
     document.getElementById("btn-filter-pending").addEventListener("click", () => cambiarFiltro("Pendiente"));
     document.getElementById("btn-filter-voted").addEventListener("click",   () => cambiarFiltro("Votó"));
@@ -818,5 +964,26 @@ function bindEvents() {
 
     document.getElementById("modal-novoto").addEventListener("click", function(e) {
         if (e.target === this) cerrarModal("modal-novoto");
+    });
+
+    // Modal cambiar contraseña
+    document.getElementById("modal-chpass").addEventListener("click", function(e) {
+        if (e.target === this) cerrarModal("modal-chpass");
+    });
+
+    // Re-render tabla al cambiar tamaño de pantalla (móvil ↔ escritorio)
+    let resizeTimer;
+    window.addEventListener("resize", () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            if (state.padron.length) renderTablaVotantes();
+        }, 200);
+    });
+
+    // Búsqueda: resetear búsqueda global al limpiar el campo
+    document.getElementById("search-input").addEventListener("input", e => {
+        state.searchQuery = e.target.value.toLowerCase().trim();
+        if (!state.searchQuery) state.searchAllStates = false;
+        renderTablaVotantes();
     });
 }

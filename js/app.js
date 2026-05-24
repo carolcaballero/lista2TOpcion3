@@ -491,7 +491,7 @@ function renderTablaVotantes() {
                 searchHint.style.display = "flex";
                 searchHint.innerHTML = `
                     <svg width="14" height="14" style="flex-shrink:0"><use href="#icon-search"/></svg>
-                    <span>Se encontraron <strong>\${otros}</strong> resultado\${otros>1?"s":""} en otros estados.</span>
+                    <span>Se encontraron <strong>${otros}</strong> resultado${otros>1?"s":""} en otros estados.</span>
                     <button onclick="activarBusquedaGlobal()" class="btn-hint-global">Ver todos</button>`;
             } else {
                 searchHint.style.display = "none";
@@ -527,15 +527,15 @@ function renderTablaVotantes() {
         const clsNoVoto = voto === "No Votó" ? "btn-accion sel-novoto" : "btn-accion";
 
         const btnVotoHtml = `
-            <button class="\${clsVoto}" onclick="accionVoto('\${v.cedula}','Votó')" title="\${voto==='Votó'?'Quitar voto':'Marcar como Votó'}">
+            <button class="${clsVoto}" onclick="accionVoto('${v.cedula}','Votó')" title="${voto==='Votó'?'Quitar voto':'Marcar como Votó'}">
                 <svg width="12" height="12"><use href="#icon-check"/></svg>
-                \${voto === "Votó" ? "Votó ✕" : "Votó"}
+                ${voto === "Votó" ? "Votó ✕" : "Votó"}
             </button>`;
 
         const btnNoVotoHtml = `
-            <button class="\${clsNoVoto}" onclick="accionVoto('\${v.cedula}','No Votó')" title="\${voto==='No Votó'?'Quitar No Votó':'Marcar como No Votó'}">
+            <button class="${clsNoVoto}" onclick="accionVoto('${v.cedula}','No Votó')" title="${voto==='No Votó'?'Quitar No Votó':'Marcar como No Votó'}">
                 <svg width="12" height="12"><use href="#icon-x"/></svg>
-                \${voto === "No Votó" ? "No Votó ✕" : "No Votó"}
+                ${voto === "No Votó" ? "No Votó ✕" : "No Votó"}
             </button>`;
 
         const tr = document.createElement("tr");
@@ -547,41 +547,41 @@ function renderTablaVotantes() {
                     <div class="card-mobile">
                         <div class="card-mobile-top">
                             <div style="min-width:0;flex:1">
-                                <span class="card-mobile-num">\${idx+1}.</span>
-                                <strong class="card-mobile-nombre">\${escHtml(v.nombre)}</strong>
-                                <div class="card-mobile-cedula">CI: \${v.cedula} · \${escHtml(v.domicilio)}</div>
+                                <span class="card-mobile-num">${idx+1}.</span>
+                                <strong class="card-mobile-nombre">${escHtml(v.nombre)}</strong>
+                                <div class="card-mobile-cedula">CI: ${v.cedula} · ${escHtml(v.domicilio)}</div>
                             </div>
-                            <span class="\${badgeClass}" style="flex-shrink:0">\${badgeLabel}</span>
+                            <span class="${badgeClass}" style="flex-shrink:0">${badgeLabel}</span>
                         </div>
                         <div class="card-mobile-btns action-btns">
-                            \${btnVotoHtml}
-                            \${btnNoVotoHtml}
+                            ${btnVotoHtml}
+                            ${btnNoVotoHtml}
                         </div>
-                        <input class="obs-input obs-mobile" value="\${escHtml(obs)}"
+                        <input class="obs-input obs-mobile" value="${escHtml(obs)}"
                             placeholder="Observación..."
-                            onchange="actualizarObservacion('\${v.cedula}', this.value)">
-                        <div class="log-span" style="margin-top:4px;font-size:.7rem">\${escHtml(log)}</div>
+                            onchange="actualizarObservacion('${v.cedula}', this.value)">
+                        <div class="log-span" style="margin-top:4px;font-size:.7rem">${escHtml(log)}</div>
                     </div>
                 </td>`;
         } else {
             tr.innerHTML = `
-                <td><strong>\${idx + 1}</strong></td>
-                <td>\${escHtml(v.nombre)}</td>
-                <td style="font-family:monospace">\${v.cedula}</td>
-                <td>\${escHtml(v.domicilio)}</td>
-                <td><span class="\${badgeClass}">\${badgeLabel}</span></td>
+                <td><strong>${idx + 1}</strong></td>
+                <td>${escHtml(v.nombre)}</td>
+                <td style="font-family:monospace">${v.cedula}</td>
+                <td>${escHtml(v.domicilio)}</td>
+                <td><span class="${badgeClass}">${badgeLabel}</span></td>
                 <td>
                     <div class="action-btns">
-                        \${btnVotoHtml}
-                        \${btnNoVotoHtml}
+                        ${btnVotoHtml}
+                        ${btnNoVotoHtml}
                     </div>
                 </td>
                 <td>
-                    <input class="obs-input" value="\${escHtml(obs)}"
+                    <input class="obs-input" value="${escHtml(obs)}"
                         placeholder="Sin observación..."
-                        onchange="actualizarObservacion('\${v.cedula}', this.value)">
+                        onchange="actualizarObservacion('${v.cedula}', this.value)">
                 </td>
-                <td><span class="log-span">\${escHtml(log)}</span></td>`;
+                <td><span class="log-span">${escHtml(log)}</span></td>`;
         }
         tbody.appendChild(tr);
     });

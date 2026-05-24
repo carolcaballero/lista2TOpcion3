@@ -196,9 +196,9 @@ function checkSession() {
 
 async function handleLogin(e) {
     e.preventDefault();
-    // Limpieza exhaustiva: elimina espacios, saltos de línea y caracteres invisibles
-    const userIn   = document.getElementById("username").value.replace(/\s+/g, "").trim();
-    const passIn   = document.getElementById("password").value.replace(/\s+/g, "").trim();
+    // Limpia espacios al inicio/fin pero NO dentro de la contraseña (puede tenerlos)
+    const userIn   = document.getElementById("username").value.trim();
+    const passIn   = document.getElementById("password").value.trim();
     const errEl    = document.getElementById("login-error");
     const btnLogin = e.target.querySelector("button[type=submit]");
     errEl.textContent = "";
@@ -254,7 +254,7 @@ async function handleLogin(e) {
         } else if (err.code === "permission-denied") {
             errEl.textContent = "Error de permisos en la base de datos. Contactá al administrador.";
         } else {
-            errEl.textContent = "Error al conectar. Revisá tu internet e intentá de nuevo.";
+            errEl.textContent = `Error al conectar: ${err.message || err.code || "desconocido"}. Revisá tu internet.`;
         }
         resetBtn();
     }
@@ -489,19 +489,19 @@ function renderTablaVotantes() {
             const otros = totalMatch - lista.length;
             if (otros > 0) {
                 searchHint.style.display = "flex";
-                searchHint.innerHTML = \`
+                searchHint.innerHTML = `
                     <svg width="14" height="14" style="flex-shrink:0"><use href="#icon-search"/></svg>
-                    <span>Se encontraron <strong>\${otros}</strong> resultado\${otros>1?"s":""} en otros estados.</span>
-                    <button onclick="activarBusquedaGlobal()" class="btn-hint-global">Ver todos</button>\`;
+                    <span>Se encontraron <strong>${otros}</strong> resultado${otros>1?"s":""} en otros estados.</span>
+                    <button onclick="activarBusquedaGlobal()" class="btn-hint-global">Ver todos</button>`;
             } else {
                 searchHint.style.display = "none";
             }
         } else if (q && state.searchAllStates) {
             searchHint.style.display = "flex";
-            searchHint.innerHTML = \`
+            searchHint.innerHTML = `
                 <svg width="14" height="14" style="flex-shrink:0"><use href="#icon-search"/></svg>
                 <span>Mostrando resultados de <strong>todos los estados</strong>.</span>
-                <button onclick="desactivarBusquedaGlobal()" class="btn-hint-volver">Volver al filtro</button>\`;
+                <button onclick="desactivarBusquedaGlobal()" class="btn-hint-volver">Volver al filtro</button>`;
         } else {
             searchHint.style.display = "none";
         }

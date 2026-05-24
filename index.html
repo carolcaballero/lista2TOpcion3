@@ -2,172 +2,481 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Control de Votaciones</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Control Electoral</title>
     <link rel="stylesheet" href="css/styles.css">
     <style>
-        /* Toast */
-        #toast-container { position:fixed;bottom:20px;right:16px;display:flex;flex-direction:column;gap:8px;z-index:3000; }
-        .toast { background:var(--color-card-bg);border:1px solid var(--color-border);border-left:4px solid #22c55e;color:var(--color-light);padding:12px 16px;border-radius:6px;font-size:.88rem;max-width:300px;animation:toastIn .2s ease;box-shadow:0 4px 20px rgba(0,0,0,.6); }
-        .toast.error { border-left-color:var(--color-primary); }
-        .toast.warn  { border-left-color:#f59e0b; }
-        @keyframes toastIn { from{opacity:0;transform:translateX(16px)} to{opacity:1;transform:translateX(0)} }
+        /* ═══════════════════════════════════════
+           VARIABLES Y RESET BASE
+           ═══════════════════════════════════════ */
+        *, *::before, *::after { box-sizing: border-box; }
+        html { -webkit-text-size-adjust: 100%; }
+        body { margin:0; padding:0; overscroll-behavior: none; }
 
-        /* Modal */
-        .modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(3px);z-index:2000;align-items:center;justify-content:center;padding:16px; }
-        .modal-overlay.active { display:flex; }
-        .modal-box { background:var(--color-card-bg);border:1px solid var(--color-border);border-top:3px solid var(--color-primary);border-radius:10px;padding:28px 24px;width:100%;max-width:420px;animation:slideUp .2s ease; }
-        @keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-        .modal-box h3 { font-size:1.1rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;color:var(--color-light);display:flex;align-items:center;gap:8px; }
-        .modal-box .modal-sub  { font-size:.9rem;color:var(--color-light);margin-bottom:4px;font-weight:600; }
-        .modal-box .modal-hint { font-size:.78rem;color:var(--color-gray);margin-bottom:14px; }
-        .modal-textarea { width:100%;background:#1a1a1a;border:1px solid var(--color-border);color:var(--color-light);padding:10px 12px;border-radius:6px;font-size:.9rem;font-family:inherit;resize:vertical;min-height:80px;margin-bottom:18px; }
-        .modal-textarea:focus { outline:none;border-color:var(--color-primary); }
-        .modal-actions { display:flex;gap:10px;justify-content:flex-end; }
-        .modal-actions .btn-primary  { width:auto;padding:10px 22px;font-size:.88rem; }
-        .modal-actions .btn-secondary { font-size:.88rem; }
+        /* ═══════════════════════════════════════
+           TOAST
+           ═══════════════════════════════════════ */
+        #toast-container {
+            position: fixed;
+            bottom: env(safe-area-inset-bottom, 16px);
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 4000;
+            width: calc(100% - 32px);
+            max-width: 400px;
+            pointer-events: none;
+        }
+        .toast {
+            background: #1e1e1e;
+            border: 1px solid #333;
+            border-left: 4px solid #22c55e;
+            color: #f0f0f0;
+            padding: 13px 16px;
+            border-radius: 8px;
+            font-size: .9rem;
+            animation: toastIn .2s ease;
+            box-shadow: 0 8px 32px rgba(0,0,0,.7);
+            pointer-events: all;
+            text-align: center;
+        }
+        .toast.error { border-left-color: #ef4444; }
+        .toast.warn  { border-left-color: #f59e0b; }
+        @keyframes toastIn {
+            from { opacity:0; transform:translateY(12px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
 
-        /* Status */
-        .status-dot { display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--color-gray);margin-right:5px;vertical-align:middle;transition:background .3s; }
-        .status-dot.online { background:#22c55e;box-shadow:0 0 5px #22c55e; }
+        /* ═══════════════════════════════════════
+           MODAL BASE
+           ═══════════════════════════════════════ */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.82);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 3000;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 0;
+        }
+        .modal-overlay.active { display: flex; }
+
+        /* Modal tipo bottom-sheet en mobile, centrado en desktop */
+        .modal-box {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-top: 3px solid var(--color-primary);
+            border-radius: 16px 16px 0 0;
+            padding: 24px 20px;
+            padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+            width: 100%;
+            max-width: 100%;
+            animation: slideUp .25s cubic-bezier(.4,0,.2,1);
+        }
+        @media (min-width: 600px) {
+            .modal-overlay {
+                align-items: center;
+                padding: 20px;
+            }
+            .modal-box {
+                border-radius: 12px;
+                max-width: 440px;
+                padding: 28px 26px;
+            }
+        }
+        @keyframes slideUp {
+            from { opacity:0; transform:translateY(20px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+        .modal-box h3 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            margin: 0 0 6px;
+            color: var(--color-light);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .modal-box .modal-sub  { font-size:.9rem;color:var(--color-light);margin:0 0 4px;font-weight:600; }
+        .modal-box .modal-hint { font-size:.82rem;color:var(--color-gray);margin:0 0 16px; }
+        .modal-textarea {
+            width: 100%;
+            background: #111;
+            border: 1px solid var(--color-border);
+            color: var(--color-light);
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: none;
+            min-height: 90px;
+            margin-bottom: 18px;
+            -webkit-appearance: none;
+        }
+        .modal-textarea:focus { outline: none; border-color: var(--color-primary); }
+        .modal-actions { display:flex; gap:10px; }
+        .modal-actions button { flex: 1; padding: 13px 10px; font-size: .9rem; font-weight: 700; border-radius: 8px; }
+
+        /* ═══════════════════════════════════════
+           STATUS DOT
+           ═══════════════════════════════════════ */
+        .status-dot { display:inline-block;width:8px;height:8px;border-radius:50%;background:#555;margin-right:5px;vertical-align:middle;transition:background .3s; }
+        .status-dot.online { background:#22c55e;box-shadow:0 0 6px #22c55e55; }
         .status-label { font-size:.75rem;color:var(--color-gray);vertical-align:middle; }
 
-        /* Badges */
-        .badge { display:inline-block;padding:4px 10px;border-radius:4px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;min-width:80px;text-align:center; }
+        /* ═══════════════════════════════════════
+           BADGES
+           ═══════════════════════════════════════ */
+        .badge { display:inline-block;padding:4px 10px;border-radius:5px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;min-width:78px;text-align:center; }
         .badge-voted   { background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.4); }
         .badge-novoted { background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.4); }
-        .badge-pending { background:rgba(255,255,255,.05);color:#666;border:1px solid #333; }
+        .badge-pending { background:rgba(255,255,255,.04);color:#555;border:1px solid #2a2a2a; }
 
-        /* Botones tabla */
-        .action-btns { display:flex;gap:6px;min-width:150px; }
-        .btn-accion { flex:1;padding:9px 8px;border-radius:4px;font-size:.75rem;font-weight:700;text-transform:uppercase;cursor:pointer;border:1px solid var(--color-border);background:#1a1a1a;color:#666;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:4px; }
-        .btn-accion svg { width:12px;height:12px; }
-        .btn-accion:hover { border-color:#555;color:var(--color-light); }
-        .btn-accion.sel-voto   { background:rgba(34,197,94,.2);color:#22c55e;border-color:rgba(34,197,94,.5); }
-        .btn-accion.sel-novoto { background:rgba(239,68,68,.2);color:#ef4444;border-color:rgba(239,68,68,.5); }
+        /* ═══════════════════════════════════════
+           BOTONES DE ACCIÓN
+           ═══════════════════════════════════════ */
+        .action-btns { display:flex;gap:6px; }
+        .btn-accion {
+            flex: 1;
+            padding: 10px 8px;
+            border-radius: 6px;
+            font-size: .75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            cursor: pointer;
+            border: 1px solid #333;
+            background: #1a1a1a;
+            color: #555;
+            transition: all .15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        .btn-accion:active { opacity:.75; }
+        .btn-accion:hover  { border-color:#555;color:var(--color-light); }
+        .btn-accion.sel-voto   { background:rgba(34,197,94,.18);color:#22c55e;border-color:rgba(34,197,94,.5); }
+        .btn-accion.sel-novoto { background:rgba(239,68,68,.18);color:#ef4444;border-color:rgba(239,68,68,.5); }
 
-        /* Spinner */
-        .spinner-cell { text-align:center;padding:40px !important; }
-        .spinner { width:28px;height:28px;border:2px solid var(--color-border);border-top-color:var(--color-primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto; }
+        /* Botón observación */
+        .btn-obs {
+            width: 100%;
+            margin-top: 8px;
+            padding: 9px 12px;
+            background: transparent;
+            border: 1px dashed #333;
+            border-radius: 6px;
+            color: #555;
+            font-size: .78rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all .15s;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        .btn-obs:active { opacity:.75; }
+        .btn-obs.has-obs {
+            border-color: rgba(250,204,21,.35);
+            color: #facc15;
+            background: rgba(250,204,21,.06);
+        }
+        .btn-obs .obs-preview {
+            flex: 1;
+            text-align: left;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-style: italic;
+        }
+
+        /* ═══════════════════════════════════════
+           SPINNER
+           ═══════════════════════════════════════ */
+        .spinner-cell { text-align:center;padding:50px !important; }
+        .spinner { width:28px;height:28px;border:2px solid #333;border-top-color:var(--color-primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto; }
         @keyframes spin { to{transform:rotate(360deg)} }
 
-        /* Métricas */
+        /* ═══════════════════════════════════════
+           MÉTRICAS
+           ═══════════════════════════════════════ */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+        .metric-card {
+            background: var(--color-card-bg);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 10px 10px;
+            text-align: center;
+        }
+        .metric-card h3 { font-size:.62rem;margin:0 0 4px;color:var(--color-gray);text-transform:uppercase;letter-spacing:.3px; }
+        .metric-card p  { font-size:1.4rem;margin:0;font-weight:700; }
         #metric-voted   { color:#22c55e; }
         #metric-novoted { color:#ef4444; }
         #metric-pending { color:#555; }
 
-        /* Filtros */
-        .filter-btn { display:flex;align-items:center;gap:6px;padding:9px 13px;border-radius:4px;font-size:.78rem;font-weight:700;text-transform:uppercase;cursor:pointer;border:1px solid var(--color-border);background:#1a1a1a;color:var(--color-gray);transition:all .15s; }
-        .filter-btn svg { width:13px;height:13px;flex-shrink:0; }
-        .filter-btn:hover { border-color:#555;color:var(--color-light); }
-        .filter-btn.f-pending { border-color:#555;color:var(--color-light);background:#222; }
+        /* ═══════════════════════════════════════
+           FILTROS
+           ═══════════════════════════════════════ */
+        .filter-btn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 9px 11px;
+            border-radius: 6px;
+            font-size: .76rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            cursor: pointer;
+            border: 1px solid #333;
+            background: #111;
+            color: #555;
+            transition: all .15s;
+            white-space: nowrap;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        .filter-btn:active { opacity:.75; }
+        .filter-btn svg { width:12px;height:12px;flex-shrink:0; }
+        .filter-btn.f-pending { border-color:#555;color:var(--color-light);background:#1e1e1e; }
         .filter-btn.f-voted   { border-color:rgba(34,197,94,.5);color:#22c55e;background:rgba(34,197,94,.08); }
         .filter-btn.f-novoted { border-color:rgba(239,68,68,.5);color:#ef4444;background:rgba(239,68,68,.08); }
         .filter-group { display:flex;gap:5px;flex-wrap:wrap; }
 
-        /* Views */
+        /* ═══════════════════════════════════════
+           VIEWS
+           ═══════════════════════════════════════ */
         #view-admin { display:none; }
         #view-admin.visible { display:flex; }
-        .padron-field { display:flex; justify-content:space-between; align-items:center; padding:10px 16px; border-bottom:1px solid #222; gap:12px; }
-        .padron-label { font-size:.78rem; color:var(--color-gray); text-transform:uppercase; letter-spacing:.4px; flex-shrink:0; }
-        .padron-value { font-size:.92rem; font-weight:600; color:var(--color-light); text-align:right; }
 
-        /* Header */
-        .header-brand { display:flex;align-items:center;gap:10px; }
-        .header-brand h2 { font-size:1.1rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px; }
-        .header-live { background:var(--color-primary);color:#fff;font-size:.6rem;font-weight:700;letter-spacing:1px;padding:3px 7px;border-radius:3px;text-transform:uppercase; }
+        /* Padrón fields */
+        .padron-field { display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #1e1e1e;gap:12px; }
+        .padron-label { font-size:.75rem;color:var(--color-gray);text-transform:uppercase;letter-spacing:.4px;flex-shrink:0; }
+        .padron-value { font-size:.9rem;font-weight:600;color:var(--color-light);text-align:right; }
 
-        /* Inputs admin */
-        .admin-card .form-group { margin-bottom:14px; }
-        .admin-card .form-group label { display:block;font-size:.8rem;font-weight:600;color:var(--color-gray);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px; }
-        .admin-card .form-group input { width:100%;padding:10px 12px;background:#111;border:1px solid var(--color-border);color:var(--color-light);border-radius:6px;font-size:.95rem; }
+        /* ═══════════════════════════════════════
+           HEADER
+           ═══════════════════════════════════════ */
+        .header-brand { display:flex;align-items:center;gap:8px; }
+        .header-brand h2 { font-size:.95rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin:0; }
+        .header-live { background:var(--color-primary);color:#fff;font-size:.55rem;font-weight:700;letter-spacing:1px;padding:3px 7px;border-radius:3px;text-transform:uppercase; }
+
+        /* ═══════════════════════════════════════
+           ADMIN CARDS
+           ═══════════════════════════════════════ */
+        .admin-card .form-group { margin-bottom:13px; }
+        .admin-card .form-group label { display:block;font-size:.78rem;font-weight:600;color:var(--color-gray);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px; }
+        .admin-card .form-group input {
+            width:100%;padding:11px 12px;background:#111;border:1px solid var(--color-border);
+            color:var(--color-light);border-radius:8px;font-size:1rem;
+            -webkit-appearance:none;
+        }
         .admin-card .form-group input:focus { outline:none;border-color:var(--color-primary); }
-        .admin-card .btn-primary { margin-top:4px; }
-        code { background:#222;padding:2px 7px;border-radius:4px;color:var(--color-primary);font-size:.85rem; }
+        code { background:#1e1e1e;padding:2px 7px;border-radius:4px;color:var(--color-primary);font-size:.83rem; }
 
-        /* WhatsApp */
-        .wa-link { color:#25D366;text-decoration:none;font-weight:600;font-size:.9rem;display:inline-flex;align-items:center;gap:4px;transition:opacity .15s; }
-        .wa-link:hover { opacity:.8;text-decoration:underline; }
-
-        /* Panel Online */
-        .online-panel { background:var(--color-card-bg);border:1px solid var(--color-border);border-left:3px solid #22c55e;border-radius:6px;padding:8px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap; }
-        .online-panel-header { display:flex;align-items:center;gap:6px;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--color-gray);white-space:nowrap;flex-shrink:0; }
-        .online-dot-lg { width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 4px #22c55e;flex-shrink:0; }
-        .online-dot-sm { width:6px;height:6px;border-radius:50%;background:#22c55e;flex-shrink:0;display:inline-block; }
-        .online-count-badge { background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);border-radius:10px;padding:1px 7px;font-size:.7rem;font-weight:700; }
-        .online-users-grid { display:flex;flex-wrap:wrap;gap:5px;flex:1; }
-        .online-user-item { display:flex;align-items:center;gap:5px;background:#1a1a1a;border:1px solid var(--color-border);border-radius:20px;padding:3px 10px;font-size:.75rem; }
-        .online-name { color:var(--color-light); }
-        .online-badge-admin { background:rgba(229,0,0,.2);color:var(--color-primary);border:1px solid rgba(229,0,0,.3);border-radius:4px;padding:1px 5px;font-size:.6rem;font-weight:700;text-transform:uppercase; }
-        .online-empty { font-size:.75rem;color:var(--color-gray);font-style:italic; }
+        /* ═══════════════════════════════════════
+           WHATSAPP
+           ═══════════════════════════════════════ */
+        .wa-link { color:#25D366;text-decoration:none;font-weight:600;font-size:.88rem;display:inline-flex;align-items:center;gap:4px; }
 
         /* ═══════════════════════════════════════
            BITÁCORA
            ═══════════════════════════════════════ */
         .bitacora-card {
-            background:var(--color-card-bg);
-            border:1px solid var(--color-border);
-            border-radius:8px;
-            overflow:hidden;
-            grid-column: 1 / -1; /* ancho completo */
+            background: var(--color-card-bg);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            overflow: hidden;
+            grid-column: 1 / -1;
             margin-top: 4px;
         }
-        .bitacora-header {
-            background: linear-gradient(90deg, #0f0f0f, #1a1a1a);
-            border-bottom: 2px solid var(--color-primary);
-            padding: 14px 18px;
+        .bitacora-header { background:linear-gradient(90deg,#0f0f0f,#1a1a1a);border-bottom:2px solid var(--color-primary);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap; }
+        .bitacora-title  { display:flex;align-items:center;gap:8px;font-size:.88rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--color-light); }
+        .bit-live-dot    { width:8px;height:8px;border-radius:50%;background:var(--color-primary);box-shadow:0 0 6px var(--color-primary);animation:bitPulse 1.5s infinite; }
+        @keyframes bitPulse { 0%,100%{opacity:1;box-shadow:0 0 6px var(--color-primary)} 50%{opacity:.5;box-shadow:0 0 2px var(--color-primary)} }
+        .bitacora-subtitle { font-size:.7rem;color:var(--color-gray); }
+        .bitacora-table-wrap { max-height:360px;overflow-y:auto; }
+        .bitacora-table-wrap::-webkit-scrollbar { width:4px; }
+        .bitacora-table-wrap::-webkit-scrollbar-thumb { background:var(--color-primary);border-radius:2px; }
+        .bitacora-table { width:100%;border-collapse:collapse; }
+        .bitacora-table th { background:#0f0f0f;color:var(--color-gray);font-size:.7rem;text-transform:uppercase;letter-spacing:.4px;padding:9px 12px;border-bottom:1px solid var(--color-border);position:sticky;top:0;z-index:1;text-align:left; }
+        .bitacora-table td { padding:8px 12px;border-bottom:1px solid #1a1a1a;vertical-align:middle; }
+        .bitacora-table tr:hover td { background:rgba(255,255,255,.02); }
+        .bit-badge { display:inline-block;padding:3px 8px;border-radius:4px;font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap; }
+
+        /* ═══════════════════════════════════════
+           ADMIN LAYOUT
+           ═══════════════════════════════════════ */
+        .admin-top-grid { display:grid;grid-template-columns:1fr;gap:18px;margin-bottom:18px; }
+        @media (min-width: 768px) {
+            .admin-top-grid { grid-template-columns:1fr 1fr; }
+        }
+        #view-admin { flex-direction:column;gap:18px; }
+
+        /* ═══════════════════════════════════════
+           PLANILLA MÓVIL — tarjetas
+           ═══════════════════════════════════════ */
+        .card-votante {
+            background: var(--color-card-bg);
+            border: 1px solid var(--color-border);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 8px;
+            transition: border-color .15s;
+        }
+        .card-votante.estado-voto   { border-left: 3px solid #22c55e; }
+        .card-votante.estado-novoto { border-left: 3px solid #ef4444; }
+
+        .card-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .card-info { flex: 1; min-width: 0; }
+        .card-num  { font-size:.7rem;color:var(--color-gray);font-weight:600;margin-bottom:2px; }
+        .card-nombre {
+            font-size: .95rem;
+            font-weight: 700;
+            color: var(--color-light);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .card-cedula { font-size:.78rem;color:var(--color-gray);margin-top:2px;font-family:monospace; }
+        .card-domicilio { font-size:.75rem;color:#444;margin-top:2px; }
+
+        .card-log { font-size:.68rem;color:#444;margin-top:6px;font-style:italic; }
+
+        /* Tabla escritorio */
+        .obs-input {
+            width:100%;background:#111;border:1px solid #2a2a2a;color:var(--color-light);
+            padding:8px 10px;border-radius:6px;font-size:.85rem;font-family:inherit;
+        }
+        .obs-input:focus { outline:none;border-color:var(--color-primary); }
+
+        /* Search hint */
+        #search-hint { display:none;align-items:center;gap:8px;background:#1a1a1a;border:1px solid #333;border-left:3px solid var(--color-primary);border-radius:6px;padding:9px 13px;margin-bottom:10px;font-size:.8rem;color:var(--color-gray);flex-wrap:wrap; }
+        .btn-hint-global { background:var(--color-primary);color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:.76rem;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent; }
+        .btn-hint-volver { background:#333;color:var(--color-light);border:none;border-radius:4px;padding:4px 10px;font-size:.76rem;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent; }
+
+        /* Log span */
+        .log-span { font-size:.7rem;color:#444;display:block; }
+
+        /* ═══════════════════════════════════════
+           TOOLBAR RESPONSIVO
+           ═══════════════════════════════════════ */
+        .toolbar-top {
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .toolbar-tabs {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        .toolbar-filters {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .search-box-full {
+            position: relative;
+            flex: 1;
+            min-width: 0;
+        }
+        .search-box-full .icon {
+            position: absolute;
+            left: 11px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 15px;
+            height: 15px;
+            color: var(--color-gray);
+            pointer-events: none;
+        }
+        .search-box-full input {
+            width: 100%;
+            padding: 10px 12px 10px 34px;
+            background: #111;
+            border: 1px solid var(--color-border);
+            color: var(--color-light);
+            border-radius: 8px;
+            font-size: .9rem;
+            -webkit-appearance: none;
+        }
+        .search-box-full input:focus { outline: none; border-color: var(--color-primary); }
+
+        /* ═══════════════════════════════════════
+           HEADER RESPONSIVO
+           ═══════════════════════════════════════ */
+        .main-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
             gap: 10px;
+            flex-wrap: wrap;
         }
-        .bitacora-title {
-            display:flex;align-items:center;gap:8px;
-            font-size:.9rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
-            color:var(--color-light);
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            font-size: .8rem;
         }
-        .bit-live-dot {
-            width:8px;height:8px;border-radius:50%;
-            background:var(--color-primary);
-            box-shadow:0 0 6px var(--color-primary);
-            animation: bitPulse 1.5s infinite;
-        }
-        @keyframes bitPulse {
-            0%,100% { opacity:1; box-shadow:0 0 6px var(--color-primary); }
-            50%      { opacity:.5; box-shadow:0 0 2px var(--color-primary); }
-        }
-        .bitacora-subtitle { font-size:.73rem;color:var(--color-gray);margin-left:auto; }
-        .bitacora-table-wrap { max-height:380px;overflow-y:auto; }
-        .bitacora-table-wrap::-webkit-scrollbar { width:4px; }
-        .bitacora-table-wrap::-webkit-scrollbar-track { background:#111; }
-        .bitacora-table-wrap::-webkit-scrollbar-thumb { background:var(--color-primary);border-radius:2px; }
-        .bitacora-table { width:100%;border-collapse:collapse; }
-        .bitacora-table th {
-            background:#0f0f0f;color:var(--color-gray);font-size:.72rem;
-            text-transform:uppercase;letter-spacing:.5px;
-            padding:10px 14px;border-bottom:1px solid var(--color-border);
-            position:sticky;top:0;z-index:1;text-align:left;
-        }
-        .bitacora-table td { padding:9px 14px;border-bottom:1px solid #1a1a1a;vertical-align:middle; }
-        .bitacora-table tr:hover td { background:rgba(255,255,255,.02); }
-        .bit-badge {
-            display:inline-block;padding:3px 9px;border-radius:4px;
-            font-size:.7rem;font-weight:700;text-transform:uppercase;
-            letter-spacing:.3px;white-space:nowrap;
+        .user-info span { display:flex;align-items:center;gap:4px; }
+
+        /* ═══════════════════════════════════════
+           TABLA ESCRITORIO — oculta en mobile
+           ═══════════════════════════════════════ */
+        .tabla-desktop { display: none; }
+        .cards-mobile  { display: block; }
+        @media (min-width: 768px) {
+            .tabla-desktop { display: block; }
+            .cards-mobile  { display: none; }
         }
 
-        /* Admin layout */
-        .admin-top-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
+        /* ═══════════════════════════════════════
+           HIDDEN GLOBAL
+           ═══════════════════════════════════════ */
+        .hidden { display: none !important; }
+
+        /* ═══════════════════════════════════════
+           APP CONTAINER PADDING SAFE AREA
+           ═══════════════════════════════════════ */
+        .app-container {
+            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
         }
-        @media (min-width: 768px) {
-            .admin-top-grid { grid-template-columns: 1fr 1fr; }
-            .forms-container { display:grid;grid-template-columns:1fr 1fr;gap:20px; }
+        .auth-container {
+            padding-bottom: env(safe-area-inset-bottom, 0px);
         }
-        #view-admin { flex-direction:column; gap:20px; }
     </style>
 </head>
 <body>
@@ -188,24 +497,24 @@
     <symbol id="icon-useradd" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></symbol>
     <symbol id="icon-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
     <symbol id="icon-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.79a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
-    <symbol id="icon-wifi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></symbol>
     <symbol id="icon-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></symbol>
+    <symbol id="icon-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></symbol>
 </svg>
 
 <!-- TOASTS -->
 <div id="toast-container"></div>
 
-<!-- MODAL: No Votó -->
+<!-- ═══════════════ MODAL: No Votó ═══════════════ -->
 <div class="modal-overlay" id="modal-novoto">
     <div class="modal-box">
         <h3>
-            <svg width="18" height="18" style="color:var(--color-primary)"><use href="#icon-x"/></svg>
+            <svg width="18" height="18" style="color:#ef4444"><use href="#icon-x"/></svg>
             Registrar No Votó
         </h3>
-        <p class="modal-sub" id="modal-novoto-name">Nombre del votante</p>
-        <p class="modal-hint">Podés dejar un motivo (opcional) o confirmar directamente.</p>
+        <p class="modal-sub" id="modal-novoto-name"></p>
+        <p class="modal-hint">Podés dejar un motivo opcional o confirmar directamente.</p>
         <textarea class="modal-textarea" id="modal-obs-input"
-            placeholder="Motivo opcional: viaje, enfermedad, trabajo... (podés dejarlo en blanco)"></textarea>
+            placeholder="Motivo (opcional): viaje, enfermedad, trabajo..."></textarea>
         <div class="modal-actions">
             <button class="btn-secondary" onclick="closeModal('modal-novoto')">Cancelar</button>
             <button class="btn-primary" onclick="confirmNoVoto()">Confirmar No Votó</button>
@@ -213,7 +522,7 @@
     </div>
 </div>
 
-<!-- MODAL: Cambiar Contraseña -->
+<!-- ═══════════════ MODAL: Cambiar Contraseña ═══════════════ -->
 <div class="modal-overlay" id="modal-chpass">
     <div class="modal-box">
         <h3>
@@ -221,39 +530,41 @@
             Cambiar Contraseña
         </h3>
         <input type="hidden" id="chpass-username">
-        <p class="modal-hint">Ingresá la nueva contraseña para el operador <strong id="chpass-user-label"></strong>.</p>
+        <p class="modal-hint">Operador: <strong id="chpass-user-label" style="color:var(--color-light)"></strong></p>
         <div class="form-group" style="margin-bottom:12px">
-            <label style="font-size:.8rem;color:var(--color-gray);text-transform:uppercase;letter-spacing:.5px">Nueva contraseña</label>
+            <label style="font-size:.78rem;color:var(--color-gray);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Nueva contraseña</label>
             <input type="password" id="chpass-nueva" placeholder="Mínimo 4 caracteres"
-                style="width:100%;padding:10px 12px;background:#111;border:1px solid var(--color-border);color:#fff;border-radius:6px;font-size:.95rem;">
+                style="width:100%;padding:11px 12px;background:#111;border:1px solid var(--color-border);color:#fff;border-radius:8px;font-size:1rem;-webkit-appearance:none;">
         </div>
-        <div class="form-group" style="margin-bottom:14px">
-            <label style="font-size:.8rem;color:var(--color-gray);text-transform:uppercase;letter-spacing:.5px">Confirmar contraseña</label>
+        <div class="form-group" style="margin-bottom:16px">
+            <label style="font-size:.78rem;color:var(--color-gray);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Confirmar contraseña</label>
             <input type="password" id="chpass-confirmar" placeholder="Repetí la contraseña"
-                style="width:100%;padding:10px 12px;background:#111;border:1px solid var(--color-border);color:#fff;border-radius:6px;font-size:.95rem;">
+                style="width:100%;padding:11px 12px;background:#111;border:1px solid var(--color-border);color:#fff;border-radius:8px;font-size:1rem;-webkit-appearance:none;">
         </div>
-        <div id="chpass-error" style="color:#ff4444;font-size:.82rem;margin-bottom:10px;min-height:18px;"></div>
+        <div id="chpass-error" style="color:#ef4444;font-size:.82rem;margin-bottom:10px;min-height:18px;"></div>
         <div class="modal-actions">
             <button class="btn-secondary" onclick="closeModal('modal-chpass')">Cancelar</button>
-            <button class="btn-primary" onclick="confirmarCambiarPassword()">Guardar Contraseña</button>
+            <button class="btn-primary" onclick="confirmarCambiarPassword()">Guardar</button>
         </div>
     </div>
 </div>
 
-<!-- Modal confirmar observación -->
+<!-- ═══════════════ MODAL: Agregar / Editar Observación ═══════════════ -->
 <div class="modal-overlay" id="modal-obs-confirm">
     <div class="modal-box">
         <h3>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            Confirmar Observación
+            <svg width="18" height="18" style="color:#facc15"><use href="#icon-pencil"/></svg>
+            Agregar Observación
         </h3>
-        <p class="modal-hint" id="modal-obs-nombre" style="color:var(--color-light);font-size:.88rem;margin-bottom:10px;"></p>
-        <div style="background:#111;border:1px solid var(--color-border);border-radius:6px;padding:10px 14px;margin-bottom:18px;font-size:.9rem;color:#ccc;font-style:italic;" id="modal-obs-preview"></div>
+        <p class="modal-hint" id="modal-obs-nombre" style="color:var(--color-light);font-size:.88rem;font-weight:600;"></p>
+        <textarea class="modal-textarea" id="modal-obs-texto"
+            placeholder="Escribí la observación para este votante..."></textarea>
         <div class="modal-actions">
             <button class="btn-secondary" onclick="cancelarObservacion()">Cancelar</button>
-            <button class="btn-primary" onclick="confirmarObservacion()" style="background:#22c55e;border-color:#22c55e;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px"><polyline points="20 6 9 17 4 12"/></svg>
-                Guardar Observación
+            <button class="btn-primary" onclick="confirmarObservacion()"
+                style="background:#22c55e;border-color:#22c55e;display:flex;align-items:center;justify-content:center;gap:6px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Confirmar
             </button>
         </div>
     </div>
@@ -262,18 +573,23 @@
 <!-- ══════════════ LOGIN ══════════════ -->
 <section id="login-section" class="auth-container">
     <div class="login-card">
-        <svg width="40" height="40" style="color:var(--color-primary);margin-bottom:8px"><use href="#icon-shield"/></svg>
+        <svg width="42" height="42" style="color:var(--color-primary);margin-bottom:8px"><use href="#icon-shield"/></svg>
         <h1>Control Electoral</h1>
         <h2>MGTR. CAROLINA CABALLERO</h2>
         <div class="subtitle">Elecciones Internas — Lista 2 Opción 3</div>
         <form id="login-form">
             <div class="form-group">
                 <label for="username"><svg class="icon"><use href="#icon-user"/></svg>Usuario</label>
-                <input type="text" id="username" required autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Ingrese su usuario">
+                <input type="text" id="username" required
+                    autocomplete="off" autocorrect="off" autocapitalize="off"
+                    spellcheck="false" placeholder="Ingrese su usuario"
+                    inputmode="text">
             </div>
             <div class="form-group">
                 <label for="password"><svg class="icon"><use href="#icon-lock"/></svg>Contraseña</label>
-                <input type="password" id="password" required autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="••••••••">
+                <input type="password" id="password" required
+                    autocomplete="off" autocorrect="off" autocapitalize="off"
+                    spellcheck="false" placeholder="••••••••">
             </div>
             <button type="submit" class="btn-primary">Ingresar al Sistema</button>
             <div id="login-error" class="error-msg"></div>
@@ -284,9 +600,10 @@
 <!-- ══════════════ APP ══════════════ -->
 <section id="app-section" class="app-container hidden">
 
+    <!-- HEADER -->
     <header class="main-header">
         <div class="header-brand">
-            <svg width="22" height="22" style="color:var(--color-primary)"><use href="#icon-shield"/></svg>
+            <svg width="20" height="20" style="color:var(--color-primary);flex-shrink:0"><use href="#icon-shield"/></svg>
             <h2>Control de Gestión de Votantes</h2>
             <span class="header-live">EN VIVO</span>
         </div>
@@ -295,113 +612,111 @@
                 <span class="status-dot" id="status-dot"></span>
                 <span class="status-label" id="status-label">conectando...</span>
             </span>
-            <span>
-                <svg class="icon"><use href="#icon-user"/></svg>
-                <span id="user-prefix">Usuario: </span>
-                <strong id="current-user-display">---</strong>
+            <span style="font-size:.78rem;color:var(--color-gray)">
+                <svg class="icon" style="width:13px;height:13px"><use href="#icon-user"/></svg>
+                <span id="user-prefix" style="color:var(--color-gray)"></span>
+                <strong id="current-user-display" style="color:var(--color-light)">---</strong>
             </span>
-            <button id="logout-btn" class="btn-secondary">
-                <svg class="icon"><use href="#icon-logout"/></svg>
+            <button id="logout-btn" class="btn-secondary"
+                style="padding:7px 12px;font-size:.76rem;display:flex;align-items:center;gap:5px;">
+                <svg class="icon" style="width:13px;height:13px"><use href="#icon-logout"/></svg>
                 Salir
             </button>
         </div>
     </header>
 
-    <!-- Panel Usuarios en Línea — visible para todos -->
-    <div class="online-panel">
-        <div class="online-panel-header">
-            <span class="online-dot-lg"></span>
-            <svg width="14" height="14" style="color:#22c55e"><use href="#icon-wifi"/></svg>
-            Operadores en línea
-            <span class="online-count-badge" id="online-count">0</span>
-        </div>
-        <div class="online-users-grid" id="online-users-list">
-            <div class="online-empty">Cargando...</div>
-        </div>
+    <!-- MÉTRICAS -->
+    <div class="metrics-grid" id="metrics-wrapper" style="margin-bottom:12px;">
+        <div class="metric-card total" style=""><h3>Total</h3><p id="metric-total">0</p></div>
+        <div class="metric-card voted" style=""><h3>Votaron</h3><p id="metric-voted">0</p></div>
+        <div class="metric-card novoted" style=""><h3>No Vot.</h3><p id="metric-novoted">0</p></div>
+        <div class="metric-card pending" style=""><h3>Pendien.</h3><p id="metric-pending">0</p></div>
     </div>
 
     <!-- TOOLBAR -->
-    <nav class="toolbar" style="flex-wrap:wrap;gap:8px;align-items:center;">
-        <!-- IZQUIERDA: tab Planilla + filtros + búsqueda -->
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1;">
+    <div class="toolbar-top">
+        <!-- Tabs -->
+        <div class="toolbar-tabs">
             <button id="tab-planilla" class="tab-btn active">
                 <svg class="icon" style="color:inherit"><use href="#icon-clipboard"/></svg>
                 Planilla
             </button>
-            <div id="filter-wrapper" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;">
-                <div class="filter-group">
-                    <button id="btn-filter-pending" class="filter-btn f-pending">
-                        <svg><use href="#icon-clock"/></svg>Pendientes
-                    </button>
-                    <button id="btn-filter-voted" class="filter-btn">
-                        <svg><use href="#icon-check"/></svg>Votaron
-                    </button>
-                    <button id="btn-filter-novoted" class="filter-btn">
-                        <svg><use href="#icon-x"/></svg>No Votaron
-                    </button>
-                </div>
-                <div class="search-box" style="min-width:160px;max-width:240px;">
-                    <svg class="icon"><use href="#icon-search"/></svg>
-                    <input type="text" id="search-input" placeholder="Nombre o cédula...">
-                </div>
-            </div>
-        </div>
-        <!-- DERECHA: Admin + Padrón + Exportar -->
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
             <button id="tab-admin" class="tab-btn hidden">
                 <svg class="icon" style="color:inherit"><use href="#icon-settings"/></svg>
-                Administración
+                Admin
             </button>
             <button id="tab-padron-anr" class="tab-btn">
-                <svg class="icon" style="color:inherit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <svg class="icon" style="color:inherit;width:13px;height:13px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 Padrón ANR
             </button>
-            <button id="btn-exportar" onclick="exportarCSV()" class="btn-secondary hidden"
-                style="display:none;align-items:center;gap:6px;padding:9px 13px;font-size:.78rem;font-weight:700;white-space:nowrap;">
-                <svg class="icon" style="color:var(--color-primary);width:13px;height:13px"><use href="#icon-clipboard"/></svg>
-                Exportar CSV
-            </button>
         </div>
-    </nav>
-
-    <!-- BARRA DE BÚSQUEDA GLOBAL -->
-    <div id="search-hint" style="display:none;align-items:center;gap:8px;background:#1a1a1a;border:1px solid #333;border-left:3px solid var(--color-primary);border-radius:6px;padding:9px 14px;margin-bottom:12px;font-size:.82rem;color:var(--color-gray);flex-wrap:wrap;"></div>
-
-    <!-- MÉTRICAS compactas — una sola fila -->
-    <div class="metrics-grid" style="grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
-        <div class="metric-card total"  style="padding:10px 14px;"><h3 style="font-size:.68rem;margin-bottom:3px;">Total Padrón</h3><p id="metric-total"  style="font-size:1.5rem;">0</p></div>
-        <div class="metric-card voted"  style="padding:10px 14px;"><h3 style="font-size:.68rem;margin-bottom:3px;">Ya Votaron</h3>  <p id="metric-voted"  style="font-size:1.5rem;">0</p></div>
-        <div class="metric-card novoted"style="padding:10px 14px;"><h3 style="font-size:.68rem;margin-bottom:3px;">No Votaron</h3>  <p id="metric-novoted"style="font-size:1.5rem;">0</p></div>
-        <div class="metric-card pending"style="padding:10px 14px;"><h3 style="font-size:.68rem;margin-bottom:3px;">Pendientes</h3>  <p id="metric-pending"style="font-size:1.5rem;">0</p></div>
+        <!-- Exportar (solo admin) -->
+        <button id="btn-exportar" onclick="exportarCSV()" class="btn-secondary hidden"
+            style="display:none;align-items:center;gap:5px;padding:8px 12px;font-size:.76rem;font-weight:700;white-space:nowrap;">
+            <svg class="icon" style="color:var(--color-primary);width:13px;height:13px"><use href="#icon-clipboard"/></svg>
+            Exportar CSV
+        </button>
     </div>
 
-    <!-- PLANILLA -->
-    <div id="view-planilla" class="table-responsive">
-        <table>
-            <thead>
-                <tr>
-                    <th>N°</th>
-                    <th>Nombre y Apellido</th>
-                    <th>Cédula</th>
-                    <th>Domicilio</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                    <th>Observaciones</th>
-                    <th>Último cambio</th>
-                </tr>
-            </thead>
-            <tbody id="votantes-table-body">
-                <tr><td class="spinner-cell" colspan="8"><div class="spinner"></div></td></tr>
-            </tbody>
-        </table>
+    <!-- FILTROS + BÚSQUEDA (solo planilla) -->
+    <div id="filter-wrapper" style="margin-bottom:10px;">
+        <div class="toolbar-filters" style="margin-bottom:8px;">
+            <div class="filter-group">
+                <button id="btn-filter-pending" class="filter-btn f-pending">
+                    <svg><use href="#icon-clock"/></svg>Pendientes
+                </button>
+                <button id="btn-filter-voted" class="filter-btn">
+                    <svg><use href="#icon-check"/></svg>Votaron
+                </button>
+                <button id="btn-filter-novoted" class="filter-btn">
+                    <svg><use href="#icon-x"/></svg>No Votaron
+                </button>
+            </div>
+        </div>
+        <div class="search-box-full">
+            <svg class="icon"><use href="#icon-search"/></svg>
+            <input type="text" id="search-input" placeholder="Buscar por nombre o cédula..." inputmode="search">
+        </div>
     </div>
 
-    <!-- ADMINISTRACIÓN -->
+    <!-- Search hint -->
+    <div id="search-hint"></div>
+
+    <!-- ═══ PLANILLA MÓVIL (tarjetas) ═══ -->
+    <div id="view-planilla">
+
+        <!-- Vista TARJETAS (mobile) -->
+        <div class="cards-mobile" id="cards-container">
+            <tr><td class="spinner-cell" colspan="8"><div class="spinner"></div></td></tr>
+        </div>
+
+        <!-- Vista TABLA (desktop) -->
+        <div class="tabla-desktop table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>Nombre y Apellido</th>
+                        <th>Cédula</th>
+                        <th>Domicilio</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                        <th>Observaciones</th>
+                        <th>Último cambio</th>
+                    </tr>
+                </thead>
+                <tbody id="votantes-table-body">
+                    <tr><td class="spinner-cell" colspan="8"><div class="spinner"></div></td></tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <!-- ═══ ADMINISTRACIÓN ═══ -->
     <div id="view-admin" class="admin-grid">
 
-        <!-- Fila superior: formularios -->
         <div class="admin-top-grid">
-
             <!-- Registrar Votante -->
             <div class="admin-card">
                 <h3><svg class="icon"><use href="#icon-clipboard"/></svg>Registrar Votante</h3>
@@ -411,8 +726,8 @@
                         <input type="text" id="vot-fullname" required placeholder="Ej. Carlos Alberto Gómez">
                     </div>
                     <div class="form-group">
-                        <label>Documento de Cédula</label>
-                        <input type="text" id="vot-cedula" required placeholder="Ej. 1234567">
+                        <label>Cédula</label>
+                        <input type="text" id="vot-cedula" required placeholder="Ej. 1234567" inputmode="numeric">
                     </div>
                     <div class="form-group">
                         <label>Domicilio / Dirección</label>
@@ -424,25 +739,25 @@
 
             <!-- Registrar Operador -->
             <div class="admin-card">
-                <h3><svg class="icon"><use href="#icon-useradd"/></svg>Registrar Nuevo Operador</h3>
+                <h3><svg class="icon"><use href="#icon-useradd"/></svg>Nuevo Operador</h3>
                 <form id="register-user-form">
                     <div class="form-group">
                         <label>Nombre Completo</label>
                         <input type="text" id="reg-fullname" required placeholder="Ej. Juan Pérez">
                     </div>
                     <div class="form-group">
-                        <label><svg class="icon" style="width:14px;height:14px"><use href="#icon-phone"/></svg>Teléfono WhatsApp</label>
-                        <input type="tel" id="reg-phone" required placeholder="Ej. 595981XXXXXX">
+                        <label><svg class="icon" style="width:13px;height:13px"><use href="#icon-phone"/></svg> WhatsApp</label>
+                        <input type="tel" id="reg-phone" required placeholder="Ej. 595981XXXXXX" inputmode="tel">
                     </div>
                     <div class="form-group">
                         <label>Nombre de Usuario</label>
-                        <input type="text" id="reg-username" required placeholder="Ej. jperez">
+                        <input type="text" id="reg-username" required placeholder="Ej. jperez" autocapitalize="off">
                     </div>
                     <div class="form-group">
-                        <label><svg class="icon" style="width:14px;height:14px"><use href="#icon-lock"/></svg>Contraseña de Acceso</label>
+                        <label><svg class="icon" style="width:13px;height:13px"><use href="#icon-lock"/></svg> Contraseña</label>
                         <input type="password" id="reg-password" required placeholder="Crear contraseña">
                     </div>
-                    <button type="submit" class="btn-primary">Crear Usuario Operador</button>
+                    <button type="submit" class="btn-primary">Crear Operador</button>
                 </form>
             </div>
         </div>
@@ -468,28 +783,28 @@
             </div>
         </div>
 
-        <!-- ═══ BITÁCORA DE ACTIVIDAD ═══ -->
+        <!-- BITÁCORA -->
         <div class="bitacora-card">
             <div class="bitacora-header">
                 <div class="bitacora-title">
                     <span class="bit-live-dot"></span>
-                    <svg width="16" height="16" style="color:var(--color-primary)"><use href="#icon-activity"/></svg>
+                    <svg width="15" height="15" style="color:var(--color-primary)"><use href="#icon-activity"/></svg>
                     Bitácora de Actividad
                 </div>
-                <span class="bitacora-subtitle">Últimas 150 acciones · Tiempo real · Hora Paraguay (−04:00)</span>
+                <span class="bitacora-subtitle">Últimas 150 · Tiempo real · PY</span>
             </div>
             <div class="bitacora-table-wrap">
                 <table class="bitacora-table">
                     <thead>
                         <tr>
-                            <th>Hora (PY)</th>
+                            <th>Hora</th>
                             <th>Operador</th>
                             <th>Acción</th>
                             <th>Detalle</th>
                         </tr>
                     </thead>
                     <tbody id="bitacora-tbody">
-                        <tr><td colspan="4" style="text-align:center;padding:30px;color:var(--color-gray);">
+                        <tr><td colspan="4" style="text-align:center;padding:24px;color:var(--color-gray);">
                             <div class="spinner" style="margin:0 auto 8px"></div>
                             Cargando bitácora...
                         </td></tr>
@@ -500,45 +815,50 @@
 
     </div><!-- /view-admin -->
 
-    <!-- PADRÓN ANR -->
+    <!-- ═══ PADRÓN ANR ═══ -->
     <div id="view-padron-anr" style="display:none;">
-        <div style="background:var(--color-card-bg);border:1px solid var(--color-border);border-radius:8px;padding:20px;max-width:560px;margin:0 auto;">
+        <div style="background:var(--color-card-bg);border:1px solid var(--color-border);border-radius:10px;padding:18px;max-width:560px;margin:0 auto;">
 
             <!-- Cabecera -->
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
-                <svg width="26" height="26" viewBox="0 0 640 640" fill="var(--color-primary)"><path d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 64 386.9 64 272C64 157.1 157.1 64 272 64C386.9 64 480 157.1 480 272zM272 416C351.5 416 416 351.5 416 272C416 192.5 351.5 128 272 128C192.5 128 128 192.5 128 272C128 351.5 192.5 416 272 416z"/></svg>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                <svg width="24" height="24" viewBox="0 0 640 640" fill="var(--color-primary)" style="flex-shrink:0"><path d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 64 386.9 64 272C64 157.1 157.1 64 272 64C386.9 64 480 157.1 480 272zM272 416C351.5 416 416 351.5 416 272C416 192.5 351.5 128 272 128C192.5 128 128 192.5 128 272C128 351.5 192.5 416 272 416z"/></svg>
                 <div>
-                    <h2 style="font-size:1.05rem;color:var(--color-light);margin:0;">Consulta Padrón ANR</h2>
-                    <p style="font-size:0.75rem;color:var(--color-gray);margin:2px 0 0;">Internas Municipales · Junio 2026</p>
+                    <h2 style="font-size:1rem;color:var(--color-light);margin:0;font-weight:700;">Consulta Padrón ANR</h2>
+                    <p style="font-size:.73rem;color:var(--color-gray);margin:2px 0 0;">Internas Municipales · Junio 2026</p>
                 </div>
             </div>
-            <div style="border-top:2px solid var(--color-primary);margin-bottom:18px;"></div>
+            <div style="border-top:2px solid var(--color-primary);margin-bottom:16px;"></div>
 
             <!-- Buscador -->
-            <div style="display:flex;gap:8px;margin-bottom:16px;">
-                <div class="search-box" style="flex:1;">
+            <div style="display:flex;gap:8px;margin-bottom:14px;">
+                <div class="search-box-full" style="flex:1;">
                     <svg class="icon"><use href="#icon-search"/></svg>
-                    <input type="text" id="padron-anr-input" placeholder="Número de cédula..." style="font-size:1rem;" inputmode="numeric">
+                    <input type="text" id="padron-anr-input"
+                        placeholder="Número de cédula..."
+                        style="font-size:1rem;"
+                        inputmode="numeric"
+                        pattern="[0-9]*">
                 </div>
-                <button onclick="buscarPadronANR()" class="btn-primary" style="width:auto;padding:0 20px;white-space:nowrap;">
+                <button onclick="buscarPadronANR()" class="btn-primary"
+                    style="width:auto;padding:0 18px;white-space:nowrap;font-size:.9rem;">
                     Consultar
                 </button>
             </div>
 
             <!-- Loader -->
-            <div id="padron-anr-loading" style="display:none;text-align:center;padding:24px;color:var(--color-gray);font-size:.88rem;">
+            <div id="padron-anr-loading" style="display:none;text-align:center;padding:22px;color:var(--color-gray);font-size:.88rem;">
                 <div class="spinner" style="margin:0 auto 10px;"></div>
-                Consultando padrón oficial ANR...
+                Consultando padrón ANR...
             </div>
 
-            <!-- Error / fallback -->
+            <!-- Error -->
             <div id="padron-anr-error" style="display:none;background:#1a0000;border:1px solid #5a0000;border-radius:8px;padding:16px;font-size:.88rem;text-align:center;"></div>
 
             <!-- Resultado -->
             <div id="padron-anr-resultado" style="display:none;">
                 <div style="background:#0d0d0d;border:1px solid var(--color-border);border-radius:8px;overflow:hidden;">
-                    <div style="background:var(--color-primary);padding:10px 16px;">
-                        <span style="font-weight:700;font-size:.82rem;letter-spacing:.5px;text-transform:uppercase;">✓ Resultado de la Consulta</span>
+                    <div style="background:var(--color-primary);padding:9px 14px;">
+                        <span style="font-weight:700;font-size:.8rem;letter-spacing:.4px;text-transform:uppercase;">✓ Resultado de la Consulta</span>
                     </div>
                     <div>
                         <div class="padron-field"><span class="padron-label">Cédula</span><span id="pr-cedula" class="padron-value" style="font-family:monospace;"></span></div>
@@ -552,17 +872,17 @@
                         <div class="padron-field" style="border:none;"><span class="padron-label">Orden</span><span id="pr-orden" class="padron-value"></span></div>
                     </div>
                 </div>
-                <!-- Botón añadir votante -->
                 <div id="pr-btn-agregar-wrap" style="margin-top:12px;">
-                    <button id="pr-btn-agregar" onclick="agregarDesdePardon()" class="btn-primary" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 0;font-size:.88rem;font-weight:700;">
+                    <button id="pr-btn-agregar" onclick="agregarDesdePardon()" class="btn-primary"
+                        style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px 0;font-size:.9rem;font-weight:700;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><line x1="18" y1="13" x2="18" y2="19"/><line x1="15" y1="16" x2="21" y2="16"/></svg>
-                        Añadir como votante a la planilla
+                        Añadir a la planilla
                     </button>
                 </div>
             </div>
 
-            <p style="margin-top:16px;font-size:0.72rem;color:#444;text-align:center;">
-                Fuente oficial: <a href="https://www.anr.org.py/padron-2026/" target="_blank" style="color:var(--color-primary);">anr.org.py/padron-2026</a>
+            <p style="margin-top:14px;font-size:.7rem;color:#444;text-align:center;">
+                Fuente: <a href="https://www.anr.org.py/padron-2026/" target="_blank" style="color:var(--color-primary);">anr.org.py/padron-2026</a>
             </p>
         </div>
     </div><!-- /view-padron-anr -->

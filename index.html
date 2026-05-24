@@ -210,6 +210,33 @@
     </div>
 </div>
 
+<!-- MODAL: Cambiar Contraseña -->
+<div class="modal-overlay" id="modal-chpass">
+    <div class="modal-box">
+        <h3>
+            <svg width="18" height="18" style="color:var(--color-primary)"><use href="#icon-lock"/></svg>
+            Cambiar Contraseña
+        </h3>
+        <input type="hidden" id="chpass-username">
+        <p class="modal-hint">Ingresá la nueva contraseña para el operador <strong id="chpass-user-label"></strong>.</p>
+        <div class="form-group" style="margin-bottom:12px">
+            <label style="font-size:.8rem;color:var(--color-gray);text-transform:uppercase;letter-spacing:.5px">Nueva contraseña</label>
+            <input type="password" id="chpass-nueva" placeholder="Mínimo 4 caracteres"
+                style="width:100%;padding:10px 12px;background:#111;border:1px solid var(--color-border);color:#fff;border-radius:6px;font-size:.95rem;">
+        </div>
+        <div class="form-group" style="margin-bottom:14px">
+            <label style="font-size:.8rem;color:var(--color-gray);text-transform:uppercase;letter-spacing:.5px">Confirmar contraseña</label>
+            <input type="password" id="chpass-confirmar" placeholder="Repetí la contraseña"
+                style="width:100%;padding:10px 12px;background:#111;border:1px solid var(--color-border);color:#fff;border-radius:6px;font-size:.95rem;">
+        </div>
+        <div id="chpass-error" style="color:#ff4444;font-size:.82rem;margin-bottom:10px;min-height:18px;"></div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('modal-chpass')">Cancelar</button>
+            <button class="btn-primary" onclick="confirmarCambiarPassword()">Guardar Contraseña</button>
+        </div>
+    </div>
+</div>
+
 <!-- ══════════════ LOGIN ══════════════ -->
 <section id="login-section" class="auth-container">
     <div class="login-card">
@@ -300,7 +327,16 @@
                 <input type="text" id="search-input" placeholder="Nombre o cédula...">
             </div>
         </div>
+        <!-- Botón Exportar CSV — solo Admin -->
+        <button id="btn-exportar" onclick="exportarCSV()" class="btn-secondary hidden"
+            style="display:none;align-items:center;gap:6px;padding:9px 14px;font-size:.8rem;font-weight:700;white-space:nowrap;">
+            <svg class="icon" style="color:var(--color-primary);width:14px;height:14px"><use href="#icon-clipboard"/></svg>
+            Exportar CSV
+        </button>
     </nav>
+
+    <!-- BARRA DE BÚSQUEDA GLOBAL -->
+    <div id="search-hint" style="display:none;align-items:center;gap:8px;background:#1a1a1a;border:1px solid #333;border-left:3px solid var(--color-primary);border-radius:6px;padding:9px 14px;margin-bottom:12px;font-size:.82rem;color:var(--color-gray);flex-wrap:wrap;"></div>
 
     <!-- MÉTRICAS -->
     <div class="metrics-grid">

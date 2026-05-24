@@ -1,10 +1,12 @@
 // ═══════════════════════════════════════════════════════════════
-//  CONTROL ELECTORAL — app.js  v3
+//  CONTROL ELECTORAL — app.js  v4  (SEGURO)
 //  Firebase Firestore (tiempo real) + CSV padrón base
 //  — Usuarios online en tiempo real (onSnapshot presencia)
 //  — Bitácora completa de actividad en Firestore
 //  — Cualquier operador puede quitar Voto y No Votó
 //  — Hora en zona Paraguay (America/Asuncion) formato 24 h
+//  — Contraseñas hasheadas SHA-256 (nunca en texto plano)
+//  — Sesión persistente en localStorage con expiración 7 días
 // ═══════════════════════════════════════════════════════════════
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -29,10 +31,17 @@ const firebaseApp = initializeApp(firebaseConfig);
 const db          = getFirestore(firebaseApp);
 
 // ── Constantes ──────────────────────────────────────────────────
-const ADMIN_USER  = "Admin";
-const ADMIN_PASS  = "CAROL2T3";
-const CSV_PATH    = "data/votantes.csv";
-const TZ_PY       = "America/Asuncion";
+// SEGURIDAD: Las credenciales del Admin se verifican con SHA-256.
+// El hash de abajo corresponde a tu contraseña actual "CAROL2T3".
+// Para cambiarlo: abrí la consola del navegador y ejecutá:
+//   sha256("NUEVA_CONTRASEÑA")  →  copiá el resultado aquí.
+const ADMIN_USER_ID   = "admin";   // ID interno (minúsculas, no visible al usuario)
+const ADMIN_HASH      = "3125998a39f131e03ee8a3cad1ea1fb31327e6a610e1c21cc0ff50ee00495a03"; // SHA-256 de "CAROL2T3"
+const ADMIN_FULLNAME  = "Administrador/a";
+const SESSION_KEY     = "ce_session_v4";
+const SESSION_TTL_MS  = 7 * 24 * 60 * 60 * 1000; // 7 días en milisegundos
+const CSV_PATH        = "data/votantes.csv";
+const TZ_PY           = "America/Asuncion";
 
 // ── Estado global ───────────────────────────────────────────────
 const state = {
@@ -51,8 +60,21 @@ const state = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  UTILIDADES DE FECHA — zona Paraguay, formato 24 h
+//  SEGURIDAD — SHA-256 con Web Crypto API (nativo del navegador)
 // ═══════════════════════════════════════════════════════════════
+async function sha256(texto) {
+    const encoder = new TextEncoder();
+    const data    = encoder.encode(texto);
+    const hash    = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(hash))
+        .map(b => b.toString(16).padStart(2, "0"))
+        .join("");
+}
+
+// Expone sha256 en consola para que el admin pueda generar hashes
+window.sha256 = sha256;
+
+
 function ahoraParaguay() {
     return new Date().toLocaleString("es-PY", {
         timeZone:  TZ_PY,
@@ -155,34 +177,51 @@ document.addEventListener("DOMContentLoaded", () => {
 //  SESIÓN
 // ═══════════════════════════════════════════════════════════════
 function checkSession() {
-    const saved = sessionStorage.getItem("active_user");
-    if (saved) {
-        try {
-            const user = JSON.parse(saved);
-            loginSuccess(user, false);
-            return;
-        } catch { /**/ }
-    }
+    try {
+        const raw = localStorage.getItem(SESSION_KEY);
+        if (raw) {
+            const session = JSON.parse(raw);
+            const age     = Date.now() - (session.loginAt || 0);
+            if (age < SESSION_TTL_MS && session.user) {
+                loginSuccess(session.user, false);
+                return;
+            } else {
+                localStorage.removeItem(SESSION_KEY); // sesión expirada
+            }
+        }
+    } catch { /**/ }
     showLogin();
 }
 
 async function handleLogin(e) {
     e.preventDefault();
-    const userIn = document.getElementById("username").value.trim();
-    const passIn = document.getElementById("password").value;
-    const errEl  = document.getElementById("login-error");
+    const userIn  = document.getElementById("username").value.trim();
+    const passIn  = document.getElementById("password").value;
+    const errEl   = document.getElementById("login-error");
+    const btnLogin = e.target.querySelector("button[type=submit]");
     errEl.textContent = "";
 
-    if (userIn === ADMIN_USER && passIn === ADMIN_PASS) {
-        loginSuccess({ username: ADMIN_USER, fullname: "Administrador/a", isAdmin: true }, true);
-        return;
-    }
+    // Deshabilitar botón mientras se procesa (evita doble clic)
+    if (btnLogin) { btnLogin.disabled = true; btnLogin.textContent = "Verificando..."; }
 
     try {
+        const passHash = await sha256(passIn);
+
+        // ── Verificar Admin (hash local, sin Firestore) ───────────
+        if (userIn.toLowerCase() === ADMIN_USER_ID && passHash === ADMIN_HASH) {
+            loginSuccess({ username: ADMIN_USER_ID, fullname: ADMIN_FULLNAME, isAdmin: true }, true);
+            return;
+        }
+
+        // ── Verificar Operadores (hash en Firestore) ──────────────
         const snap = await getDoc(doc(db, "usuarios", userIn.toLowerCase()));
         if (snap.exists()) {
             const u = snap.data();
-            if (u.password === passIn) {
+            // Soporte para cuentas antiguas (pass en texto) y nuevas (hash)
+            const match = u.passwordHash
+                ? u.passwordHash === passHash
+                : u.password === passIn; // compatibilidad con cuentas viejas
+            if (match) {
                 loginSuccess({ username: u.username, fullname: u.fullname, isAdmin: false }, true);
                 return;
             }
@@ -191,12 +230,19 @@ async function handleLogin(e) {
     } catch (err) {
         console.error(err);
         errEl.textContent = "Error de conexión con el servidor.";
+    } finally {
+        if (btnLogin) { btnLogin.disabled = false; btnLogin.textContent = "Ingresar"; }
     }
 }
 
 function loginSuccess(user, persist) {
     state.currentUser = user;
-    if (persist) sessionStorage.setItem("active_user", JSON.stringify(user));
+    if (persist) {
+        localStorage.setItem(SESSION_KEY, JSON.stringify({
+            user,
+            loginAt: Date.now()
+        }));
+    }
 
     document.getElementById("user-prefix").textContent          = user.isAdmin ? "" : "Operador: ";
     document.getElementById("current-user-display").textContent = user.fullname;
@@ -210,14 +256,13 @@ function loginSuccess(user, persist) {
     loadPadronYEscuchar();
     iniciarPresencia();
 
-    // Registrar login en bitácora
     registrarBitacora("Login", `${user.fullname} ingresó al sistema`);
 }
 
 function handleLogout() {
     registrarBitacora("Logout", `${state.currentUser?.fullname} cerró sesión`);
     quitarPresencia();
-    sessionStorage.removeItem("active_user");
+    localStorage.removeItem(SESSION_KEY);
     if (state.unsubVotos)     { state.unsubVotos();     state.unsubVotos     = null; }
     if (state.unsubPresencia) { state.unsubPresencia(); state.unsubPresencia = null; }
     if (state.unsubBitacora)  { state.unsubBitacora();  state.unsubBitacora  = null; }
@@ -575,7 +620,7 @@ async function handleRegistrarUsuario(e) {
     const username = document.getElementById("reg-username").value.trim().toLowerCase();
     const password = document.getElementById("reg-password").value;
 
-    if (username === ADMIN_USER.toLowerCase()) {
+    if (username === ADMIN_USER_ID) {
         toast("Ese nombre de usuario está reservado.", "error");
         return;
     }
@@ -583,8 +628,13 @@ async function handleRegistrarUsuario(e) {
     try {
         const existe = await getDoc(doc(db, "usuarios", username));
         if (existe.exists()) { toast("El nombre de usuario ya existe.", "error"); return; }
+
+        // Guardar solo el hash, NUNCA la contraseña en texto plano
+        const passwordHash = await sha256(password);
+
         await setDoc(doc(db, "usuarios", username), {
-            username, fullname, phone, password, isAdmin: false
+            username, fullname, phone, passwordHash, isAdmin: false
+            // "password" ya no se guarda
         });
         toast(`✔ Operador "${fullname}" creado correctamente.`);
         await registrarBitacora("Nuevo Operador",

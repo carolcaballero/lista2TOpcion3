@@ -405,8 +405,9 @@ async function loadPadronYEscuchar() {
         const snap = await getDocs(collection(db, "padron_extra"));
         snap.forEach(d => {
             const v = d.data();
-            if (!state.padron.some(p => p.cedula === v.cedula))
-                state.padron.push({ id: v.id, nombre: v.nombre, cedula: v.cedula, domicilio: v.domicilio });
+            const ced = String(v.cedula || "").replace(/[\s\-]/g, "").replace(/^0+/, "");
+            if (!state.padron.some(p => p.cedula === ced))
+                state.padron.push({ id: v.id, nombre: v.nombre, cedula: ced, domicilio: v.domicilio });
         });
     } catch { /**/ }
 
@@ -433,10 +434,11 @@ function parsearCSV(texto) {
     const result = [];
     for (let i = 1; i < lineas.length; i++) {
         const c = lineas[i].split(",");
+        const ced = String(c[2]?.trim() || "").replace(/[\s\-]/g, "").replace(/^0+/, "");
         result.push({
             id:        c[0]?.trim() || String(i),
             nombre:    c[1]?.trim() || "Sin nombre",
-            cedula:    c[2]?.trim() || "",
+            cedula:    ced,
             domicilio: c[4]?.trim() || "---",
         });
     }
@@ -1129,6 +1131,15 @@ window.buscarPadronANR = async function() {
     result.style.display  = "none";
     loading.style.display = "block";
 
+    // Resetear botón añadir
+    const btnAgregar = document.getElementById("pr-btn-agregar");
+    if (btnAgregar) {
+        btnAgregar.disabled = false;
+        btnAgregar.style.background = "";
+        btnAgregar.style.borderColor = "";
+        btnAgregar.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><line x1="18" y1="13" x2="18" y2="19"/><line x1="15" y1="16" x2="21" y2="16"/></svg> Añadir como votante a la planilla`;
+    }
+
     try {
         const padron = await cargarPadronCSV();
         const persona = padron.find(r => String(r.CEDULA).trim() === cedula);
@@ -1172,3 +1183,96 @@ document.addEventListener("DOMContentLoaded", () => {
     const inp = document.getElementById("padron-anr-input");
     if (inp) inp.addEventListener("keydown", e => { if (e.key === "Enter") buscarPadronANR(); });
 });
+
+// ═══════════════════════════════════════════════════════════════
+//  AÑADIR DESDE PADRÓN → PLANILLA VOTANTES
+// ═══════════════════════════════════════════════════════════════
+// Normaliza cédula: elimina espacios, guiones y ceros a la izquierda
+function normalizarCedula(c) {
+    return String(c).replace(/[\s\-]/g, "").replace(/^0+/, "");
+}
+
+window.agregarDesdePardon = async function() {
+    const cedula   = document.getElementById("pr-cedula")?.textContent?.trim();
+    const nombres  = document.getElementById("pr-nombres")?.textContent?.trim()  || "";
+    const apellidos= document.getElementById("pr-apellidos")?.textContent?.trim()|| "";
+    const nombre   = `${nombres} ${apellidos}`.trim();
+
+    if (!cedula || !nombre) {
+        toast("No hay datos de consulta para agregar.", "error");
+        return;
+    }
+
+    const cedulaNorm = normalizarCedula(cedula);
+
+    // ── 1. Verificar contra state.padron (votantes.csv + padron_extra ya cargados) ──
+    const enMemoria = state.padron.find(p => normalizarCedula(p.cedula) === cedulaNorm);
+    if (enMemoria) {
+        toast(`⚠ ${enMemoria.nombre} (CI: ${cedula}) ya está en la planilla.`, "warn");
+        const btn = document.getElementById("pr-btn-agregar");
+        if (btn) {
+            btn.disabled = true;
+            btn.style.background  = "#78350f";
+            btn.style.borderColor = "#78350f";
+            btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Ya existe en la planilla`;
+        }
+        return;
+    }
+
+    // ── 2. Verificar contra Firebase (por si fue agregado desde otra sesión) ──
+    try {
+        const snap = await getDoc(doc(db, "padron_extra", cedulaNorm));
+        if (!snap.exists()) {
+            // También probar con la cédula tal como viene (por si fue guardada sin normalizar)
+            const snap2 = await getDoc(doc(db, "padron_extra", cedula));
+            if (snap2.exists()) {
+                const d = snap2.data();
+                toast(`⚠ ${d.nombre || nombre} (CI: ${cedula}) ya fue agregado previamente.`, "warn");
+                return;
+            }
+        } else {
+            const d = snap.data();
+            toast(`⚠ ${d.nombre || nombre} (CI: ${cedula}) ya fue agregado previamente.`, "warn");
+            return;
+        }
+    } catch (err) {
+        console.warn("Verificación Firebase:", err);
+        // Si falla la verificación online, continuar con la verificación en memoria ya hecha
+    }
+
+    const btn = document.getElementById("pr-btn-agregar");
+    if (btn) { btn.disabled = true; btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin .7s linear infinite"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg> Guardando...`; }
+
+    const nuevo = { id: "padron_" + Date.now(), nombre, cedula, domicilio: "---" };
+    state.padron.push(nuevo);
+
+    try {
+        await setDoc(doc(db, "padron_extra", cedula), {
+            ...nuevo,
+            creado_por: state.currentUser?.isAdmin ? "Administrador/a" : (state.currentUser?.username || "---"),
+            origen:     "Padrón ANR",
+            timestamp:  serverTimestamp()
+        });
+        toast(`✔ ${nombre} agregado a la planilla de votantes.`, "ok");
+        await registrarBitacora("Nuevo Votante",
+            `Agregó desde padrón ANR: ${nombre} (CI: ${cedula})`);
+
+        // Cambiar el botón a estado "ya agregado"
+        if (btn) {
+            btn.disabled = true;
+            btn.style.background = "#166534";
+            btn.style.borderColor = "#166534";
+            btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Ya está en la planilla`;
+        }
+        actualizarDashboard();
+    } catch (err) {
+        console.error(err);
+        // Revertir del array si falló Firestore
+        state.padron = state.padron.filter(p => p.cedula !== cedula);
+        toast("Error al guardar. Verificá la conexión.", "error");
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><line x1="18" y1="13" x2="18" y2="19"/><line x1="15" y1="16" x2="21" y2="16"/></svg> Añadir como votante a la planilla`;
+        }
+    }
+};

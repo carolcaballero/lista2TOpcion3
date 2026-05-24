@@ -1,14 +1,15 @@
 // ═══════════════════════════════════════════════════════════════
-//  CONTROL ELECTORAL — app.js  v5  (MÓVIL + MODAL OBS)
+//  CONTROL ELECTORAL — app.js  v7  (TEMA INTENSO + BOTÓN TODOS)
 //  Firebase Firestore (tiempo real) + CSV padrón base
-//  — Observaciones siempre via modal emergente (botón)
-//  — Sin panel "Operadores en línea" visible
-//  — Tarjetas mobile-first en planilla
-//  — Bitácora completa en Firestore
-//  — Cualquier operador puede quitar Voto y No Votó
-//  — Hora Paraguay (America/Asuncion) formato 24 h
-//  — Contraseñas hasheadas SHA-256
-//  — Sesión persistente localStorage (7 días)
+//  ✨ Novedades v7:
+//   · Botón "Todos" en filtros (con orden Votó → No Votó → Pendientes)
+//   · Métricas clicables (cambia el filtro al tocarlas)
+//   · Separadores visuales por sección de estado
+//   · Contadores en cada filtro (live)
+//   · Animación numérica al cambiar métricas
+//   · Mejor escape HTML (incluye comillas dobles y simples)
+//   · Corrección: spinner inicial usa div (no tr) en cards-mobile
+//   · Corrección: ordenamiento estable por nombre dentro de cada grupo
 // ═══════════════════════════════════════════════════════════════
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -56,10 +57,11 @@ const state = {
     unsubBitacora:    null,
     onlineUsers:      {},
     presenceInterval: null,
+    prevMetrics:      { total: 0, voted: 0, novoted: 0, pending: 0 },
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  SHA-256 (Web Crypto API)
+//  SHA-256
 // ═══════════════════════════════════════════════════════════════
 async function sha256(texto) {
     const encoder = new TextEncoder();
@@ -120,21 +122,22 @@ function renderBitacora(eventos) {
         return;
     }
     const colorMap = {
-        "Votó":"#22c55e","No Votó":"#f59e0b","Quitar Voto":"#ef4444",
-        "Quitar No Votó":"#a78bfa","Nuevo Votante":"#38bdf8","Nuevo Operador":"#f472b6",
-        "Eliminar Operador":"#ef4444","Observación":"#facc15","Login":"#6ee7b7",
-        "Logout":"#9ca3af","Consulta Padrón":"#facc15",
+        "Votó":"#15803D","No Votó":"#B45309","Quitar Voto":"#B91C1C",
+        "Quitar No Votó":"#7C3AED","Nuevo Votante":"#2563EB","Nuevo Operador":"#DB2777",
+        "Eliminar Operador":"#B91C1C","Observación":"#CA8A04","Login":"#059669",
+        "Logout":"#6B7280","Consulta Padrón":"#CA8A04","Cambio Contraseña":"#7C3AED",
+        "Exportar CSV":"#0891B2"
     };
     tbody.innerHTML = eventos.map(e => {
         const hora  = e.hora_py || timestampAParaguay(e.timestamp) || "---";
-        const color = colorMap[e.accion] || "#aaa";
+        const color = colorMap[e.accion] || "#6B7280";
         return `
             <tr>
                 <td style="white-space:nowrap;font-size:.76rem;color:var(--color-gray);font-family:monospace">${hora}</td>
-                <td><strong style="color:var(--color-light);font-size:.85rem">${escHtml(e.operador)}</strong><br>
+                <td><strong style="color:var(--color-dark);font-size:.85rem">${escHtml(e.operador)}</strong><br>
                     <span style="font-size:.7rem;color:var(--color-gray)">${escHtml(e.username)}</span></td>
-                <td><span class="bit-badge" style="background:${color}22;color:${color};border:1px solid ${color}55">${escHtml(e.accion)}</span></td>
-                <td style="font-size:.8rem;color:var(--color-light)">${escHtml(e.detalle)}</td>
+                <td><span class="bit-badge" style="background:${color}1f;color:${color};border:1px solid ${color}55">${escHtml(e.accion)}</span></td>
+                <td style="font-size:.8rem;color:var(--color-dark)">${escHtml(e.detalle)}</td>
             </tr>`;
     }).join("");
 }
@@ -266,7 +269,7 @@ function handleLogout() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  PRESENCIA — onSnapshot (solo para admin, no visible para operadores)
+//  PRESENCIA
 // ═══════════════════════════════════════════════════════════════
 async function iniciarPresencia() {
     if (!state.currentUser) return;
@@ -284,7 +287,6 @@ async function iniciarPresencia() {
                 state.onlineUsers[d.id] = data;
             }
         });
-        // Panel online eliminado de la UI — solo se mantiene en estado interno
     }, err => console.warn("Presencia listener:", err));
 
     window.addEventListener("beforeunload", quitarPresencia);
@@ -372,18 +374,50 @@ const getObs  = c => state.votos[c]?.observaciones || "";
 const getLog  = c => state.votos[c]?.modificado_por || "---";
 
 // ═══════════════════════════════════════════════════════════════
-//  DASHBOARD
+//  DASHBOARD + ANIMACIÓN NUMÉRICA
 // ═══════════════════════════════════════════════════════════════
+function animateMetric(el, valor, prevValor) {
+    if (!el) return;
+    el.textContent = valor;
+    if (prevValor !== undefined && prevValor !== valor) {
+        el.classList.remove("bumping");
+        // forzar reflow para reiniciar animación
+        void el.offsetWidth;
+        el.classList.add("bumping");
+        setTimeout(() => el.classList.remove("bumping"), 500);
+    }
+}
+
 function actualizarDashboard() {
     const total   = state.padron.length;
     const voted   = state.padron.filter(v => getVoto(v.cedula) === "Votó").length;
     const noVoted = state.padron.filter(v => getVoto(v.cedula) === "No Votó").length;
     const pending = total - voted - noVoted;
-    document.getElementById("metric-total").textContent   = total;
-    document.getElementById("metric-voted").textContent   = voted;
-    document.getElementById("metric-novoted").textContent = noVoted;
-    document.getElementById("metric-pending").textContent = pending;
+
+    const elTot = document.getElementById("metric-total");
+    const elVot = document.getElementById("metric-voted");
+    const elNov = document.getElementById("metric-novoted");
+    const elPen = document.getElementById("metric-pending");
+
+    animateMetric(elTot, total,   state.prevMetrics.total);
+    animateMetric(elVot, voted,   state.prevMetrics.voted);
+    animateMetric(elNov, noVoted, state.prevMetrics.novoted);
+    animateMetric(elPen, pending, state.prevMetrics.pending);
+
+    state.prevMetrics = { total, voted, novoted: noVoted, pending };
+
+    // contadores en filtros
+    setText("count-todos",   total);
+    setText("count-voted",   voted);
+    setText("count-novoted", noVoted);
+    setText("count-pending", pending);
+
     renderTablaVotantes();
+}
+
+function setText(id, v) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = v;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -393,43 +427,54 @@ function renderTablaVotantes() {
     const searchHint = document.getElementById("search-hint");
     const q = state.searchQuery;
 
+    // Orden: 0 = Votó, 1 = No Votó, 2 = Pendiente
     const ordenEstado = v => {
         const voto = getVoto(v.cedula);
         if (voto === "Votó")    return 0;
         if (voto === "No Votó") return 1;
         return 2;
     };
+    const compararLista = (a, b) => {
+        const d = ordenEstado(a) - ordenEstado(b);
+        if (d !== 0) return d;
+        return (a.nombre || "").localeCompare(b.nombre || "", "es");
+    };
 
     let lista;
     if (q && state.searchAllStates) {
         lista = state.padron.filter(v =>
             v.nombre.toLowerCase().includes(q) || v.cedula.includes(q));
-        lista.sort((a, b) => ordenEstado(a) - ordenEstado(b));
+        lista.sort(compararLista);
     } else if (state.currentFilter === "todos") {
         lista = [...state.padron];
         if (q) lista = lista.filter(v =>
             v.nombre.toLowerCase().includes(q) || v.cedula.includes(q));
-        lista.sort((a, b) => ordenEstado(a) - ordenEstado(b));
+        lista.sort(compararLista);
     } else {
         lista = state.padron.filter(v => getVoto(v.cedula) === state.currentFilter);
         if (q) lista = lista.filter(v =>
             v.nombre.toLowerCase().includes(q) || v.cedula.includes(q));
+        lista.sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"));
     }
 
-    // Botones filtro
+    // ── Sincronizar estado activo de botones de filtro ─────────
+    const btnT = document.getElementById("btn-filter-todos");
     const btnP = document.getElementById("btn-filter-pending");
     const btnV = document.getElementById("btn-filter-voted");
     const btnN = document.getElementById("btn-filter-novoted");
-    if (btnP && btnV && btnN) {
-        [btnP, btnV, btnN].forEach(b => b.className = "filter-btn");
+
+    if (btnT && btnP && btnV && btnN) {
+        // Reset
+        [btnT, btnP, btnV, btnN].forEach(b => b.className = "filter-btn");
+        if (state.currentFilter === "todos")     btnT.classList.add("f-todos");
         if (state.currentFilter === "Pendiente") btnP.classList.add("f-pending");
         if (state.currentFilter === "Votó")      btnV.classList.add("f-voted");
         if (state.currentFilter === "No Votó")   btnN.classList.add("f-novoted");
     }
 
-    // Search hint
+    // ── Search hint ───────────────────────────────────────────
     if (searchHint) {
-        if (q && !state.searchAllStates) {
+        if (q && !state.searchAllStates && state.currentFilter !== "todos") {
             const totalMatch = state.padron.filter(v =>
                 v.nombre.toLowerCase().includes(q) || v.cedula.includes(q)).length;
             const otros = totalMatch - lista.length;
@@ -457,55 +502,15 @@ function renderTablaVotantes() {
     const cardsContainer = document.getElementById("cards-container");
     if (cardsContainer) {
         if (!lista.length) {
-            cardsContainer.innerHTML = `<div style="text-align:center;color:var(--color-gray);padding:40px 20px;font-size:.9rem;">No se encontraron registros.</div>`;
-        } else {
-            cardsContainer.innerHTML = lista.map((v, idx) => {
-                const voto = getVoto(v.cedula);
-                const obs  = getObs(v.cedula);
-                const log  = getLog(v.cedula);
-
-                let badgeClass = "badge badge-pending", badgeLabel = "Pendiente";
-                if (voto === "Votó")    { badgeClass = "badge badge-voted";   badgeLabel = "Votó"; }
-                if (voto === "No Votó") { badgeClass = "badge badge-novoted"; badgeLabel = "No Votó"; }
-
-                const clsVoto   = voto === "Votó"    ? "btn-accion sel-voto"   : "btn-accion";
-                const clsNoVoto = voto === "No Votó" ? "btn-accion sel-novoto" : "btn-accion";
-
-                const estadoClass = voto === "Votó" ? "estado-voto" : voto === "No Votó" ? "estado-novoto" : "";
-                const obsLabel    = obs ? escHtml(obs) : "Agregar observación...";
-                const obsClass    = obs ? "btn-obs has-obs" : "btn-obs";
-
-                return `
-                <div class="card-votante ${estadoClass}">
-                    <div class="card-top">
-                        <div class="card-info">
-                            <div class="card-num">${idx+1}.</div>
-                            <div class="card-nombre" title="${escHtml(v.nombre)}">${escHtml(v.nombre)}</div>
-                            <div class="card-cedula">CI: ${v.cedula}</div>
-                            ${v.domicilio && v.domicilio !== "---" ? `<div class="card-domicilio">${escHtml(v.domicilio)}</div>` : ""}
-                        </div>
-                        <span class="${badgeClass}">${badgeLabel}</span>
-                    </div>
-                    <div class="action-btns">
-                        <button class="${clsVoto}" onclick="accionVoto('${v.cedula}','Votó')"
-                            style="padding:11px 8px;font-size:.8rem;">
-                            <svg width="13" height="13"><use href="#icon-check"/></svg>
-                            ${voto === "Votó" ? "Votó ✕" : "Votó"}
-                        </button>
-                        <button class="${clsNoVoto}" onclick="accionVoto('${v.cedula}','No Votó')"
-                            style="padding:11px 8px;font-size:.8rem;">
-                            <svg width="13" height="13"><use href="#icon-x"/></svg>
-                            ${voto === "No Votó" ? "No Votó ✕" : "No Votó"}
-                        </button>
-                    </div>
-                    <button class="${obsClass}"
-                        onclick="abrirModalObservacion('${v.cedula}', '${escHtml(v.nombre).replace(/'/g,"\\'")}')">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        <span class="obs-preview">${obsLabel}</span>
-                    </button>
-                    ${log !== "---" ? `<div class="card-log">↳ ${escHtml(log)}</div>` : ""}
+            cardsContainer.innerHTML = `
+                <div class="empty-state">
+                    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-inbox"/></svg>
+                    <strong>Sin resultados</strong>
+                    No se encontraron registros para este criterio.
                 </div>`;
-            }).join("");
+        } else {
+            const debeMostrarSecciones = (state.currentFilter === "todos");
+            cardsContainer.innerHTML = construirCardsConSecciones(lista, debeMostrarSecciones);
         }
     }
 
@@ -550,7 +555,7 @@ function renderTablaVotantes() {
                     <td>
                         <button class="btn-obs ${obs ? 'has-obs' : ''}"
                             style="min-width:130px;"
-                            onclick="abrirModalObservacion('${v.cedula}', '${escHtml(v.nombre).replace(/'/g,"\\'")}')">
+                            onclick="abrirModalObservacion('${v.cedula}', ${jsEscape(v.nombre)})">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             <span class="obs-preview">${obs ? escHtml(obs) : "Agregar obs..."}</span>
                         </button>
@@ -560,6 +565,90 @@ function renderTablaVotantes() {
             });
         }
     }
+}
+
+// ── Helper: construir cards con separadores de sección ──────────
+function construirCardsConSecciones(lista, mostrarSecciones) {
+    if (!mostrarSecciones) {
+        // Sin separadores - solo tarjetas continuas
+        return lista.map((v, idx) => construirTarjeta(v, idx)).join("");
+    }
+
+    // Con separadores: primero Votó, luego No Votó, finalmente Pendientes
+    const grupos = { "Votó": [], "No Votó": [], "Pendiente": [] };
+    lista.forEach(v => {
+        const estado = getVoto(v.cedula);
+        if (grupos[estado]) grupos[estado].push(v);
+    });
+
+    let html = "";
+    let contadorGlobal = 0;
+
+    const renderGrupo = (titulo, items, claseSection, iconId) => {
+        if (!items.length) return "";
+        let h = `
+            <div class="section-divider ${claseSection}">
+                <svg><use href="#${iconId}"/></svg>
+                ${titulo}
+                <span class="sd-count">${items.length}</span>
+            </div>`;
+        items.forEach(v => {
+            contadorGlobal++;
+            h += construirTarjeta(v, contadorGlobal - 1);
+        });
+        return h;
+    };
+
+    html += renderGrupo("Votaron",    grupos["Votó"],     "sd-voted",   "icon-check");
+    html += renderGrupo("No Votaron", grupos["No Votó"],  "sd-novoted", "icon-x");
+    html += renderGrupo("Pendientes", grupos["Pendiente"], "sd-pending", "icon-clock");
+    return html;
+}
+
+function construirTarjeta(v, idx) {
+    const voto = getVoto(v.cedula);
+    const obs  = getObs(v.cedula);
+    const log  = getLog(v.cedula);
+
+    let badgeClass = "badge badge-pending", badgeLabel = "Pendiente";
+    if (voto === "Votó")    { badgeClass = "badge badge-voted";   badgeLabel = "Votó"; }
+    if (voto === "No Votó") { badgeClass = "badge badge-novoted"; badgeLabel = "No Votó"; }
+
+    const clsVoto   = voto === "Votó"    ? "btn-accion sel-voto"   : "btn-accion";
+    const clsNoVoto = voto === "No Votó" ? "btn-accion sel-novoto" : "btn-accion";
+
+    const estadoClass = voto === "Votó" ? "estado-voto" : voto === "No Votó" ? "estado-novoto" : "";
+    const obsLabel    = obs ? escHtml(obs) : "Agregar observación...";
+    const obsClass    = obs ? "btn-obs has-obs" : "btn-obs";
+
+    return `
+        <div class="card-votante ${estadoClass}">
+            <div class="card-top">
+                <div class="card-info">
+                    <div class="card-num">${idx+1}.</div>
+                    <div class="card-nombre" title="${escHtml(v.nombre)}">${escHtml(v.nombre)}</div>
+                    <div class="card-cedula">CI: ${escHtml(v.cedula)}</div>
+                    ${v.domicilio && v.domicilio !== "---" ? `<div class="card-domicilio">${escHtml(v.domicilio)}</div>` : ""}
+                </div>
+                <span class="${badgeClass}">${badgeLabel}</span>
+            </div>
+            <div class="action-btns">
+                <button class="${clsVoto}" onclick="accionVoto('${v.cedula}','Votó')">
+                    <svg width="13" height="13"><use href="#icon-check"/></svg>
+                    ${voto === "Votó" ? "Votó ✕" : "Votó"}
+                </button>
+                <button class="${clsNoVoto}" onclick="accionVoto('${v.cedula}','No Votó')">
+                    <svg width="13" height="13"><use href="#icon-x"/></svg>
+                    ${voto === "No Votó" ? "No Votó ✕" : "No Votó"}
+                </button>
+            </div>
+            <button class="${obsClass}"
+                onclick="abrirModalObservacion('${v.cedula}', ${jsEscape(v.nombre)})">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                <span class="obs-preview">${obsLabel}</span>
+            </button>
+            ${log !== "---" ? `<div class="card-log">↳ ${escHtml(log)}</div>` : ""}
+        </div>`;
 }
 
 window.activarBusquedaGlobal = function() {
@@ -628,7 +717,7 @@ async function guardarVoto(cedula, voto, observaciones, accionBit, detalleBit) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  OBSERVACIONES — siempre via modal con botón
+//  OBSERVACIONES — modal
 // ═══════════════════════════════════════════════════════════════
 let _obsPendiente = null;
 
@@ -642,7 +731,6 @@ window.abrirModalObservacion = function(cedula, nombre) {
     if (nombreEl) nombreEl.textContent = `Votante: ${nombre}`;
     if (textoEl)  {
         textoEl.value = obsActual;
-        // Foco con pequeño delay para que el modal esté visible
         setTimeout(() => {
             textoEl.focus();
             textoEl.setSelectionRange(textoEl.value.length, textoEl.value.length);
@@ -801,12 +889,12 @@ function renderTablaUsuarios() {
             <td style="white-space:nowrap">
                 <div style="display:flex;gap:6px;">
                     <button class="btn-secondary" onclick="abrirCambiarPassword('${escHtml(u.username)}')"
-                        style="padding:8px 11px;font-size:.75rem;font-weight:700;display:flex;align-items:center;gap:4px;">
+                        style="padding:8px 11px;font-size:.75rem;font-weight:800;display:flex;align-items:center;gap:4px;">
                         <svg class="icon" style="width:12px;height:12px;color:var(--color-primary)"><use href="#icon-lock"/></svg>
                         Clave
                     </button>
                     <button class="btn-danger" onclick="deleteUser('${escHtml(u.username)}')"
-                        style="padding:8px 11px;font-size:.75rem;font-weight:700;display:flex;align-items:center;gap:4px;">
+                        style="padding:8px 11px;font-size:.75rem;font-weight:800;display:flex;align-items:center;gap:4px;">
                         <svg class="icon" style="color:#fff;width:12px;height:12px"><use href="#icon-trash"/></svg>
                         Eliminar
                     </button>
@@ -821,8 +909,15 @@ function renderTablaUsuarios() {
 // ═══════════════════════════════════════════════════════════════
 function cambiarFiltro(destino) {
     state.currentFilter = destino;
+    state.searchAllStates = false;
     renderTablaVotantes();
+    // scroll al inicio de la lista en móvil para mostrar resultado
+    const cards = document.getElementById("cards-container");
+    if (cards && window.innerWidth < 768) {
+        cards.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
 }
+window.cambiarFiltro = cambiarFiltro;
 
 // ═══════════════════════════════════════════════════════════════
 //  NAVEGACIÓN
@@ -910,7 +1005,12 @@ function toast(msg, tipo = "ok") {
     el.className  = tipo === "error" ? "toast error" : tipo === "warn" ? "toast warn" : "toast";
     el.textContent = msg;
     document.getElementById("toast-container").appendChild(el);
-    setTimeout(() => el.remove(), 3500);
+    setTimeout(() => {
+        el.style.opacity = "0";
+        el.style.transform = "translateY(20px)";
+        el.style.transition = "all .3s ease";
+        setTimeout(() => el.remove(), 320);
+    }, 3200);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -927,9 +1027,17 @@ function setStatus(online) {
 //  UTILIDADES
 // ═══════════════════════════════════════════════════════════════
 function escHtml(str) {
-    return String(str)
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+// Para pasar strings como argumentos JS dentro de onclick="..."
+function jsEscape(str) {
+    return JSON.stringify(String(str ?? "")).replace(/"/g, "&quot;");
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1004,9 +1112,28 @@ function bindEvents() {
     document.getElementById("login-form").addEventListener("submit", handleLogin);
     document.getElementById("logout-btn").addEventListener("click",  handleLogout);
 
+    // ✨ FILTROS (incluyendo el nuevo botón "Todos")
+    document.getElementById("btn-filter-todos").addEventListener("click",   () => cambiarFiltro("todos"));
     document.getElementById("btn-filter-pending").addEventListener("click", () => cambiarFiltro("Pendiente"));
     document.getElementById("btn-filter-voted").addEventListener("click",   () => cambiarFiltro("Votó"));
     document.getElementById("btn-filter-novoted").addEventListener("click", () => cambiarFiltro("No Votó"));
+
+    // ✨ MÉTRICAS CLICABLES — actúan como filtros rápidos
+    document.querySelectorAll(".metric-card[data-filter]").forEach(card => {
+        card.addEventListener("click", () => {
+            const f = card.getAttribute("data-filter");
+            if (f) {
+                // sólo dentro de planilla
+                const tabPlanilla = document.getElementById("tab-planilla");
+                if (tabPlanilla && !tabPlanilla.classList.contains("active")) {
+                    switchTab("planilla");
+                    setTimeout(() => cambiarFiltro(f), 50);
+                } else {
+                    cambiarFiltro(f);
+                }
+            }
+        });
+    });
 
     document.getElementById("tab-planilla").addEventListener("click",   () => switchTab("planilla"));
     document.getElementById("tab-admin").addEventListener("click",      () => switchTab("admin"));
@@ -1024,6 +1151,19 @@ function bindEvents() {
                 else cerrarModal(id);
             }
         });
+    });
+
+    // Cerrar modales con Escape
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            ["modal-novoto", "modal-chpass", "modal-obs-confirm"].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.classList.contains("active")) {
+                    if (id === "modal-obs-confirm") cancelarObservacion();
+                    else cerrarModal(id);
+                }
+            });
+        }
     });
 
     // Búsqueda
@@ -1117,18 +1257,18 @@ window.buscarPadronANR = async function() {
                 `Consultó CI ${cedula} → ${persona.NOMBRES} ${persona.APELLIDOS} · Mesa ${persona.MESA}`);
         } else {
             error.innerHTML = `
-                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 10px;display:block;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                <div style="font-size:.92rem;font-weight:700;color:#ef4444;margin-bottom:5px;">No está en el padrón</div>
-                <div style="font-size:.8rem;color:#999;">La cédula <strong style="color:#ccc;">${cedula}</strong> no figura en el padrón ANR de San Estanislao 2026.</div>`;
+                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#B91C1C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 10px;display:block;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div style="font-size:.92rem;font-weight:800;color:#B91C1C;margin-bottom:5px;">No está en el padrón</div>
+                <div style="font-size:.8rem;color:#6B7280;">La cédula <strong style="color:#374151;">${cedula}</strong> no figura en el padrón ANR de San Estanislao 2026.</div>`;
             error.style.display = "block";
             registrarBitacora("Consulta Padrón", `CI ${cedula} — no encontrado`);
         }
     } catch (err) {
         loading.style.display = "none";
         error.innerHTML = `
-            <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 10px;display:block;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            <div style="font-size:.88rem;font-weight:700;color:#f59e0b;margin-bottom:5px;">No se pudo cargar el padrón</div>
-            <div style="font-size:.78rem;color:#999;">${err.message}</div>`;
+            <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 10px;display:block;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <div style="font-size:.88rem;font-weight:800;color:#B45309;margin-bottom:5px;">No se pudo cargar el padrón</div>
+            <div style="font-size:.78rem;color:#6B7280;">${escHtml(err.message)}</div>`;
         error.style.display = "block";
         console.error("Error padrón CSV:", err);
     }
@@ -1205,12 +1345,12 @@ function _marcarBtnAgregado(exito) {
     if (!btn) return;
     btn.disabled = true;
     if (exito) {
-        btn.style.background = "#166534";
+        btn.style.background = "linear-gradient(135deg, #15803D, #166534)";
         btn.style.borderColor = "#166534";
         btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Ya está en la planilla`;
     } else {
-        btn.style.background = "#78350f";
-        btn.style.borderColor = "#78350f";
+        btn.style.background = "linear-gradient(135deg, #B45309, #92400E)";
+        btn.style.borderColor = "#78350F";
         btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Ya existe en la planilla`;
     }
 }

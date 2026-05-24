@@ -1042,8 +1042,45 @@ function bindEvents() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  PADRÓN ANR — Consulta replicando el widget oficial
+//  PADRÓN LOCAL — Consulta desde CSV local (San Estanislao 2026)
+//  Archivo: data/padron_san_estanislao_2026_completo.csv
+//  Columnas: CEDULA, NOMBRES, APELLIDOS, DEPARTAMENTO, DISTRITO,
+//            SECCIONAL, LOCAL_VOTACION, MESA, ORDEN, DIRECCION,
+//            FECHA_NACIMIENTO, SEXO
 // ═══════════════════════════════════════════════════════════════
+
+// Cache del padrón en memoria para no releer el CSV en cada búsqueda
+let _padronCache = null;
+
+async function cargarPadronCSV() {
+    if (_padronCache) return _padronCache;
+
+    const resp = await fetch("data/padron_san_estanislao_2026_completo.csv");
+    if (!resp.ok) throw new Error("No se pudo cargar el padrón CSV.");
+    const texto = await resp.text();
+
+    const lineas = texto.split("\n").filter(l => l.trim() !== "");
+    const headers = lineas[0].split(",").map(h => h.trim().replace(/^\uFEFF/, "")); // quitar BOM
+
+    _padronCache = lineas.slice(1).map(linea => {
+        // Parseo simple respetando comas dentro de comillas
+        const cols = [];
+        let actual = "", enComilla = false;
+        for (const ch of linea) {
+            if (ch === '"') { enComilla = !enComilla; }
+            else if (ch === "," && !enComilla) { cols.push(actual.trim()); actual = ""; }
+            else { actual += ch; }
+        }
+        cols.push(actual.trim());
+
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = cols[i] ?? ""; });
+        return obj;
+    });
+
+    return _padronCache;
+}
+
 window.buscarPadronANR = async function() {
     const input   = document.getElementById("padron-anr-input");
     const loading = document.getElementById("padron-anr-loading");
@@ -1058,97 +1095,37 @@ window.buscarPadronANR = async function() {
         return;
     }
 
-    error.style.display  = "none";
-    result.style.display = "none";
+    error.style.display   = "none";
+    result.style.display  = "none";
     loading.style.display = "block";
 
-    // Intentar múltiples endpoints que el padron.js de la ANR podría usar
-    const endpoints = [
-        `https://www.anr.org.py/assets/padron.php?cedula=${cedula}`,
-        `https://www.anr.org.py/padron/?cedula=${cedula}`,
-        `https://www.anr.org.py/?action=padron_query&cedula=${cedula}`,
-        `https://www.anr.org.py/wp-admin/admin-ajax.php`,
-    ];
+    try {
+        const padron = await cargarPadronCSV();
+        const persona = padron.find(r => String(r.CEDULA).trim() === cedula);
 
-    const commonHeaders = {
-        "Accept": "application/json, text/plain, */*",
-        "Referer": "https://www.anr.org.py/padron-2026/",
-        "Origin": "https://www.anr.org.py",
-    };
+        loading.style.display = "none";
 
-    let data = null;
-    let lastErr = "";
-
-    for (const url of endpoints) {
-        try {
-            const isAjax = url.includes("admin-ajax");
-            const opts = isAjax
-                ? { method: "POST", headers: { ...commonHeaders, "Content-Type": "application/x-www-form-urlencoded" }, body: `action=padron_query&cedula=${cedula}` }
-                : { headers: commonHeaders, mode: "cors" };
-
-            const resp = await fetch(url, opts);
-            if (!resp.ok) continue;
-            const text = await resp.text();
-            if (!text || text.trim().startsWith("<")) continue; // HTML = error page
-            data = JSON.parse(text);
-            if (data && (data.nombres || data.NOMBRES || data.nombre || data.NOMBRE)) break;
-            data = null;
-        } catch (e) {
-            lastErr = e.message;
+        if (persona) {
+            document.getElementById("pr-cedula").textContent       = persona.CEDULA        || cedula;
+            document.getElementById("pr-nombres").textContent      = persona.NOMBRES        || "—";
+            document.getElementById("pr-apellidos").textContent    = persona.APELLIDOS      || "—";
+            document.getElementById("pr-departamento").textContent = persona.DEPARTAMENTO   || "—";
+            document.getElementById("pr-distrito").textContent     = persona.DISTRITO       || "—";
+            document.getElementById("pr-seccional").textContent    = persona.SECCIONAL      || "—";
+            document.getElementById("pr-local").textContent        = persona.LOCAL_VOTACION || "—";
+            document.getElementById("pr-mesa").textContent         = persona.MESA           || "—";
+            document.getElementById("pr-orden").textContent        = persona.ORDEN          || "—";
+            result.style.display = "block";
+        } else {
+            error.innerHTML     = `⚠️ Cédula <strong>${cedula}</strong> no encontrada en el padrón de San Estanislao 2026.`;
+            error.style.display = "block";
         }
-    }
 
-    loading.style.display = "none";
-
-    if (data) {
-        const get = (...keys) => { for (const k of keys) if (data[k]) return data[k]; return "—"; };
-        document.getElementById("pr-cedula").textContent       = get("cedula","CEDULA","ci","CI") || cedula;
-        document.getElementById("pr-nombres").textContent      = get("nombres","NOMBRES","nombre","NOMBRE");
-        document.getElementById("pr-apellidos").textContent    = get("apellidos","APELLIDOS","apellido","APELLIDO");
-        document.getElementById("pr-departamento").textContent = get("departamento","DEPARTAMENTO");
-        document.getElementById("pr-distrito").textContent     = get("distrito","DISTRITO");
-        document.getElementById("pr-seccional").textContent    = get("seccional","SECCIONAL");
-        document.getElementById("pr-local").textContent        = get("local","LOCAL");
-        document.getElementById("pr-mesa").textContent         = get("mesa","MESA");
-        document.getElementById("pr-orden").textContent        = get("orden","ORDEN");
-        result.style.display = "block";
-    } else {
-        // El sitio ANR bloquea CORS — mostrar botón que abre popup nativo
-        error.innerHTML = `
-            <div style="margin-bottom:10px;">⚠️ El servidor de la ANR bloquea consultas externas (CORS).</div>
-            <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
-                <button onclick="abrirPadronPopup('${cedula}')" class="btn-primary" style="width:auto;padding:10px 18px;">
-                    🔍 Consultar en ventana ANR
-                </button>
-                <a href="https://www.anr.org.py/padron-2026/" target="_blank" class="btn-secondary" style="padding:10px 14px;text-decoration:none;">
-                    Abrir sitio oficial ↗
-                </a>
-            </div>`;
-        error.style.display = "block";
-    }
-};
-
-window.abrirPadronPopup = function(cedula) {
-    const w = 520, h = 680;
-    const left = Math.round((screen.width - w) / 2);
-    const top  = Math.round((screen.height - h) / 2);
-    const popup = window.open(
-        "https://www.anr.org.py/padron-2026/",
-        "padronANR",
-        `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`
-    );
-    if (popup) {
-        // Cuando cargue intentar autocompletar
-        popup.addEventListener("load", () => {
-            try {
-                const inp = popup.document.querySelector(".padron2026search input");
-                const btn = popup.document.querySelector(".fsend");
-                if (inp) { inp.value = cedula; }
-                if (btn) { setTimeout(() => btn.click(), 300); }
-            } catch(e) {}
-        });
-    } else {
-        alert("El navegador bloqueó el popup. Permitilo en la barra de direcciones.");
+    } catch (err) {
+        loading.style.display = "none";
+        error.innerHTML       = `❌ Error al cargar el padrón: ${err.message}`;
+        error.style.display   = "block";
+        console.error("Error padrón CSV:", err);
     }
 };
 

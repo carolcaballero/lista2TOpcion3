@@ -895,15 +895,15 @@ function renderTablaUsuarios() {
             </td>
             <td><code>${escHtml(u.username)}</code></td>
             <td style="white-space:nowrap">
-                <div style="display:flex;gap:6px;">
+                <div style="display:flex;gap:6px;align-items:center;">
                     <button class="btn-secondary" onclick="abrirCambiarPassword('${escHtml(u.username)}')"
-                        style="padding:8px 11px;font-size:.75rem;font-weight:800;display:flex;align-items:center;gap:4px;">
-                        <svg class="icon" style="width:12px;height:12px;color:var(--color-primary)"><use href="#icon-lock"/></svg>
+                        style="padding:7px 11px;font-size:.75rem;font-weight:800;display:flex;align-items:center;gap:4px;">
+                        <svg class="icon" style="width:12px;height:12px;color:var(--color-primary);margin:0"><use href="#icon-lock"/></svg>
                         Clave
                     </button>
-                    <button class="btn-danger" onclick="deleteUser('${escHtml(u.username)}')"
-                        style="padding:8px 11px;font-size:.75rem;font-weight:800;display:flex;align-items:center;gap:4px;">
-                        <svg class="icon" style="color:#fff;width:12px;height:12px"><use href="#icon-trash"/></svg>
+                    <button class="btn-icon-danger" onclick="deleteUser('${escHtml(u.username)}')" title="Eliminar operador"
+                        style="padding:7px 10px;font-size:.75rem;font-weight:800;display:flex;align-items:center;gap:4px;width:auto;height:auto;border-radius:var(--r-md);">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                         Eliminar
                     </button>
                 </div>

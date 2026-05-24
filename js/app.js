@@ -587,7 +587,7 @@ function renderTablaVotantes() {
                         </div>
                         <input class="obs-input obs-mobile" value="${escHtml(obs)}"
                             placeholder="Observación..."
-                            onchange="actualizarObservacion('${v.cedula}', this.value)">
+                            onblur="pedirConfirmarObservacion('${v.cedula}', this, '${escHtml(v.nombre)}')">
                         <div class="log-span" style="margin-top:4px;font-size:.7rem">${escHtml(log)}</div>
                     </div>
                 </td>`;
@@ -607,7 +607,7 @@ function renderTablaVotantes() {
                 <td>
                     <input class="obs-input" value="${escHtml(obs)}"
                         placeholder="Sin observación..."
-                        onchange="actualizarObservacion('${v.cedula}', this.value)">
+                        onblur="pedirConfirmarObservacion('${v.cedula}', this, '${escHtml(v.nombre)}')">
                 </td>
                 <td><span class="log-span">${escHtml(log)}</span></td>`;
         }
@@ -689,6 +689,42 @@ async function guardarVoto(cedula, voto, observaciones, accionBit, detalleBit) {
     }
 }
 
+// Estado temporal para obs pendiente de confirmar
+let _obsPendiente = null;
+
+window.pedirConfirmarObservacion = function(cedula, inputEl, nombre) {
+    const texto = inputEl.value.trim();
+    const anterior = getObs(cedula);
+    // Solo abrir modal si el texto cambió y no está vacío o si se borró
+    if (texto === anterior) return;
+
+    _obsPendiente = { cedula, texto, inputEl, anterior };
+
+    document.getElementById("modal-obs-nombre").textContent =
+        `Votante: ${nombre || cedula}`;
+    document.getElementById("modal-obs-preview").textContent =
+        texto || "(sin observación)";
+
+    abrirModal("modal-obs-confirm");
+};
+
+window.confirmarObservacion = async function() {
+    if (!_obsPendiente) return;
+    const { cedula, texto, inputEl } = _obsPendiente;
+    cerrarModal("modal-obs-confirm");
+    await actualizarObservacion(cedula, texto);
+    _obsPendiente = null;
+};
+
+window.cancelarObservacion = function() {
+    if (_obsPendiente) {
+        // Revertir el input al valor anterior
+        if (_obsPendiente.inputEl) _obsPendiente.inputEl.value = _obsPendiente.anterior;
+        _obsPendiente = null;
+    }
+    cerrarModal("modal-obs-confirm");
+};
+
 window.actualizarObservacion = async function(cedula, texto) {
     const actual   = state.votos[cedula] || {};
     const operador = state.currentUser.isAdmin ? "Administrador/a" : state.currentUser.username;
@@ -701,6 +737,7 @@ window.actualizarObservacion = async function(cedula, texto) {
             modificado_por: `${operador} — ${hora}`,
             timestamp:      serverTimestamp()
         });
+        toast("✔ Observación guardada correctamente.", "ok");
         await registrarBitacora("Observación",
             `Actualizó obs. de ${v?.nombre || cedula}: "${texto.trim().substring(0,60)}"`);
     } catch {
@@ -813,7 +850,9 @@ function renderTablaUsuarios() {
     }
 
     state.usuarios.forEach(u => {
-        const phoneClean = (u.phone || "").replace(/[\s\-\+]/g, "");
+        const phoneRaw   = (u.phone || "").replace(/[\s\-\+]/g, "");
+        // Si empieza con 0 (formato local paraguayo 09xx), reemplazar por 595
+        const phoneClean = phoneRaw.startsWith("0") ? "595" + phoneRaw.slice(1) : phoneRaw;
         const waLink     = phoneClean ? `https://wa.me/${phoneClean}` : null;
         const isOnline   = !!state.onlineUsers[u.username?.toLowerCase()];
 
@@ -835,11 +874,11 @@ function renderTablaUsuarios() {
             <td><code>${escHtml(u.username)}</code></td>
             <td style="white-space:nowrap">
                 <div style="display:flex;gap:6px;">
-                    <button class="btn-secondary" onclick="abrirCambiarPassword('${escHtml(u.username)}')" style="padding:7px 10px;font-size:.75rem;display:flex;align-items:center;gap:4px;">
+                    <button class="btn-secondary" onclick="abrirCambiarPassword('${escHtml(u.username)}')" style="padding:7px 12px;font-size:.75rem;font-weight:700;display:flex;align-items:center;gap:4px;min-width:82px;justify-content:center;">
                         <svg class="icon" style="width:13px;height:13px;color:var(--color-primary)"><use href="#icon-lock"/></svg>
                         Clave
                     </button>
-                    <button class="btn-danger" onclick="deleteUser('${escHtml(u.username)}')" style="padding:7px 10px;display:flex;align-items:center;gap:4px;justify-content:center;font-size:.75rem;">
+                    <button class="btn-danger" onclick="deleteUser('${escHtml(u.username)}')" style="padding:7px 12px;font-size:.75rem;font-weight:700;display:flex;align-items:center;gap:4px;min-width:82px;justify-content:center;">
                         <svg class="icon" style="color:#fff;width:13px;height:13px"><use href="#icon-trash"/></svg>
                         Eliminar
                     </button>
@@ -899,18 +938,24 @@ function switchTab(tab) {
         if (fw) fw.style.display = "flex";
         if (tabPlanilla) tabPlanilla.classList.add("active");
         if (onlinePanel) onlinePanel.style.display = "";
+        const mg = document.querySelector(".metrics-grid");
+        if (mg) mg.style.display = "grid";
         state.currentFilter = "todos";
         renderTablaVotantes();
     } else if (tab === "admin") {
         admin.classList.add("visible");
         if (tabAdmin) tabAdmin.classList.add("active");
         if (onlinePanel) onlinePanel.style.display = "none";
+        const mg = document.querySelector(".metrics-grid");
+        if (mg) mg.style.display = "none";
         cargarUsuarios();
         escucharBitacora();
     } else if (tab === "padron-anr") {
         if (padronAnr) padronAnr.style.display = "";
         if (tabPadronAnr) tabPadronAnr.classList.add("active");
         if (onlinePanel) onlinePanel.style.display = "";
+        const mg = document.querySelector(".metrics-grid");
+        if (mg) mg.style.display = "none";
         // Limpiar búsqueda anterior al entrar
         const inp = document.getElementById("padron-anr-input");
         const err = document.getElementById("padron-anr-error");
@@ -1058,6 +1103,11 @@ function bindEvents() {
     // Modal cambiar contraseña
     document.getElementById("modal-chpass").addEventListener("click", function(e) {
         if (e.target === this) cerrarModal("modal-chpass");
+    });
+
+    // Modal confirmar observación — click fuera cancela
+    document.getElementById("modal-obs-confirm").addEventListener("click", function(e) {
+        if (e.target === this) cancelarObservacion();
     });
 
     // Re-render tabla al cambiar tamaño de pantalla (móvil ↔ escritorio)

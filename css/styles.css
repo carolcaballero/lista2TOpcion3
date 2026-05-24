@@ -348,3 +348,103 @@ code { background: #222; padding: 2px 6px; border-radius: 4px; color: var(--colo
     
     th, td { font-size: 0.95rem; padding: 14px 16px; }
 }
+
+/* ═══════════════════════════════════════════════════
+   VISTA MÓVIL — tarjetas de votantes (< 640px)
+   ═══════════════════════════════════════════════════ */
+@media (max-width: 639px) {
+    /* Ocultar encabezados de columna en móvil */
+    #view-planilla table thead { display: none; }
+
+    .celda-mobile { padding: 6px 8px !important; border: none !important; }
+
+    .card-mobile {
+        background: #1a1a1a;
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin-bottom: 2px;
+    }
+
+    .card-mobile-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 8px;
+    }
+
+    .card-mobile-num {
+        font-size: .75rem;
+        color: var(--color-gray);
+        margin-right: 4px;
+    }
+
+    .card-mobile-nombre {
+        font-size: .95rem;
+        color: var(--color-light);
+        line-height: 1.3;
+    }
+
+    .card-mobile-cedula {
+        font-size: .78rem;
+        color: var(--color-gray);
+        margin-top: 2px;
+        font-family: monospace;
+    }
+
+    .card-mobile-btns {
+        margin-top: 4px;
+    }
+
+    .card-mobile-btns .btn-accion {
+        padding: 11px 8px;
+        font-size: .8rem;
+    }
+
+    .obs-mobile {
+        width: 100%;
+        margin-top: 8px;
+        font-size: .85rem;
+    }
+
+    /* Hint de búsqueda global */
+    #search-hint { font-size: .78rem; }
+
+    /* Tabla de la bitácora en admin: scroll horizontal */
+    .bitacora-table-wrap { overflow-x: auto; }
+}
+
+/* ═══════════════════════════════════════════════════
+   BOTONES DEL HINT DE BÚSQUEDA GLOBAL
+   ═══════════════════════════════════════════════════ */
+.btn-hint-global {
+    background: var(--color-primary);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-size: .75rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.btn-hint-volver {
+    background: #333;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-size: .75rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════
+   TABLA USUARIOS — columna acciones con dos botones
+   ═══════════════════════════════════════════════════ */
+#users-table-body td:last-child { min-width: 160px; }

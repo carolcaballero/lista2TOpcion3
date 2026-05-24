@@ -924,10 +924,34 @@
 
     <!-- MÉTRICAS -->
     <div class="metrics-grid" id="metrics-wrapper" style="margin-bottom:14px;">
-        <div class="metric-card total" data-filter="todos"><h3>Total</h3><p id="metric-total">0</p></div>
-        <div class="metric-card voted" data-filter="Votó"><h3>Votaron</h3><p id="metric-voted">0</p></div>
-        <div class="metric-card novoted" data-filter="No Votó"><h3>No Vot.</h3><p id="metric-novoted">0</p></div>
-        <div class="metric-card pending" data-filter="Pendiente"><h3>Pendien.</h3><p id="metric-pending">0</p></div>
+        <div class="metric-card total" data-filter="todos">
+            <div class="metric-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            </div>
+            <p id="metric-total">0</p>
+            <h3>Todos</h3>
+        </div>
+        <div class="metric-card voted" data-filter="Votó">
+            <div class="metric-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <p id="metric-voted">0</p>
+            <h3>Votaron</h3>
+        </div>
+        <div class="metric-card novoted" data-filter="No Votó">
+            <div class="metric-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            </div>
+            <p id="metric-novoted">0</p>
+            <h3>No Votaron</h3>
+        </div>
+        <div class="metric-card pending" data-filter="Pendiente">
+            <div class="metric-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <p id="metric-pending">0</p>
+            <h3>Pendientes</h3>
+        </div>
     </div>
 
     <!-- TOOLBAR (Tabs principales) -->
@@ -959,19 +983,19 @@
             <div class="filter-group">
                 <!-- ✨ NUEVO BOTÓN TODOS -->
                 <button id="btn-filter-todos" class="filter-btn f-todos">
-                    <svg><use href="#icon-list"/></svg>Todos
+                    <svg><use href="#icon-list"/></svg><span class="filter-label">Todos</span>
                     <span class="filter-count" id="count-todos">0</span>
                 </button>
                 <button id="btn-filter-pending" class="filter-btn">
-                    <svg><use href="#icon-clock"/></svg>Pendientes
+                    <svg><use href="#icon-clock"/></svg><span class="filter-label">Pendientes</span>
                     <span class="filter-count" id="count-pending">0</span>
                 </button>
                 <button id="btn-filter-voted" class="filter-btn">
-                    <svg><use href="#icon-check"/></svg>Votaron
+                    <svg><use href="#icon-check"/></svg><span class="filter-label">Votaron</span>
                     <span class="filter-count" id="count-voted">0</span>
                 </button>
                 <button id="btn-filter-novoted" class="filter-btn">
-                    <svg><use href="#icon-x"/></svg>No Votaron
+                    <svg><use href="#icon-x"/></svg><span class="filter-label">No Votaron</span>
                     <span class="filter-count" id="count-novoted">0</span>
                 </button>
             </div>

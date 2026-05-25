@@ -11,6 +11,7 @@
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         /* ═══════════════════════════════════════
            RESET BASE
@@ -428,7 +429,8 @@
             text-transform: uppercase;
             letter-spacing: .5px;
         }
-        .admin-card .form-group input {
+        .admin-card .form-group input,
+        .admin-card .form-group select {
             width: 100%;
             padding: 12px 14px;
             background: var(--color-bg-soft);
@@ -437,9 +439,17 @@
             border-radius: var(--r-md);
             font-size: 1rem;
             -webkit-appearance: none;
+            appearance: none;
             transition: all var(--t-base);
         }
-        .admin-card .form-group input:focus {
+        .admin-card .form-group select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 38px;
+        }
+        .admin-card .form-group input:focus,
+        .admin-card .form-group select:focus {
             outline: none;
             border-color: var(--color-primary);
             background: #fff;
@@ -646,27 +656,6 @@
             font-style: italic;
             padding-top: 8px;
             border-top: 1px dashed var(--color-border);
-        }
-
-        /* ═══════════════════════════════════════
-           OBS INPUT
-           ═══════════════════════════════════════ */
-        .obs-input {
-            width: 100%;
-            background: var(--color-bg-soft);
-            border: 1.5px solid var(--color-border);
-            color: var(--color-dark);
-            padding: 9px 11px;
-            border-radius: var(--r-sm);
-            font-size: .87rem;
-            font-family: inherit;
-            transition: all var(--t-base);
-        }
-        .obs-input:focus {
-            outline: none;
-            border-color: var(--color-primary);
-            background: #fff;
-            box-shadow: 0 0 0 3px var(--color-primary-glow);
         }
 
         /* ═══════════════════════════════════════
@@ -1284,10 +1273,10 @@
                 Padrón ANR
             </button>
         </div>
-        <button id="btn-exportar" onclick="exportarCSV()" class="btn-secondary hidden"
+        <button id="btn-exportar" onclick="exportarXLSX()" class="btn-secondary hidden"
             style="display:none;align-items:center;gap:6px;padding:9px 14px;font-size:.78rem;font-weight:800;white-space:nowrap;">
             <svg style="color:var(--color-primary);width:14px;height:14px"><use href="#icon-download"/></svg>
-            Exportar CSV
+            Exportar XLSX
         </button>
     </div>
 
@@ -1419,12 +1408,10 @@
                         <input type="password" id="reg-password" required placeholder="Crear contraseña">
                     </div>
                     <div class="form-group">
-                        <label>Local Asignado (opcional)</label>
-                        <input type="text" id="reg-local" placeholder="Ej. Escuela N° 123">
-                    </div>
-                    <div class="form-group">
-                        <label>Mesa Asignada (opcional)</label>
-                        <input type="text" id="reg-mesa" placeholder="Ej. 15">
+                        <label>Local de Votación Asignado</label>
+                        <select id="reg-local" required>
+                            <option value="">Seleccionar local...</option>
+                        </select>
                     </div>
                     <button type="submit" class="btn-primary">Crear Operador</button>
                 </form>
@@ -1461,7 +1448,7 @@
                             <th>Nombre</th>
                             <th>WhatsApp</th>
                             <th>Usuario</th>
-                            <th>Local / Mesa</th>
+                            <th>Local Asignado</th>
                             <th>Acción</th>
                         </tr>
                     </thead>

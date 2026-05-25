@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  CONTROL ELECTORAL — app.js  v8.1  (ESTADÍSTICAS POR MESA/LOCAL)
+//  CONTROL ELECTORAL — app.js  v8.2  (LOCALES + MESAS + PALETA PURA)
 //  Firebase Firestore + Offline Queue + Charts + PWA
 // ═══════════════════════════════════════════════════════════════
 
@@ -171,10 +171,10 @@ function renderBitacora(eventos) {
     }
     const colorMap = {
         "Votó":"#15803D","No Votó":"#B45309","Quitar Voto":"#B91C1C",
-        "Quitar No Votó":"#7C3AED","Nuevo Votante":"#2563EB","Nuevo Operador":"#DB2777",
-        "Eliminar Operador":"#B91C1C","Observación":"#CA8A04","Login":"#059669",
-        "Logout":"#6B7280","Consulta Padrón":"#CA8A04","Cambio Contraseña":"#7C3AED",
-        "Exportar XLSX":"#0891B2","Exportar Estadísticas":"#0891B2"
+        "Quitar No Votó":"#7F1D1D","Nuevo Votante":"#374151","Nuevo Operador":"#B91C1C",
+        "Eliminar Operador":"#B91C1C","Observación":"#B45309","Login":"#15803D",
+        "Logout":"#6B7280","Consulta Padrón":"#B45309","Cambio Contraseña":"#7F1D1D",
+        "Exportar XLSX":"#374151","Exportar Estadísticas":"#374151"
     };
     tbody.innerHTML = eventos.map(e => {
         const hora  = e.hora_py || timestampAParaguay(e.timestamp) || "---";
@@ -771,8 +771,11 @@ function construirTarjeta(v, idx) {
     const obsLabel    = obs ? escHtml(obs) : "Agregar observación...";
     const obsClass    = obs ? "btn-obs has-obs" : "btn-obs";
 
+    const elimCheck = elimState.activo ? `<div class="elim-check"></div>` : '';
+
     return `
         <div class="card-votante ${estadoClass}" data-cedula="${escHtml(v.cedula)}">
+            ${elimCheck}
             <div class="card-top">
                 <div class="card-info">
                     <div class="card-num">${idx+1}.</div>
@@ -1288,19 +1291,14 @@ function renderStatsCharts() {
         return;
     }
 
-    const chartType = document.getElementById('chart-type-selector')?.value || 'local';
     const localFilter = document.getElementById('chart-local-selector')?.value || '';
     const titleEl = document.getElementById('bar-chart-title');
-    const localSelector = document.getElementById('chart-local-selector');
 
-    if (localSelector) {
-        localSelector.classList.toggle('hidden', chartType === 'local');
-    }
+    let labels, dataValues, datasetLabel, backgroundColors;
 
-    let labels, dataValues, datasetLabel;
-
-    if (chartType === 'local') {
-        if (titleEl) titleEl.textContent = 'Participación por Local';
+    if (!localFilter) {
+        // Vista por Locales (default)
+        if (titleEl) titleEl.textContent = 'Participación por Locales';
         const agrupado = {};
         state.padron.forEach(v => {
             if (getVoto(v.cedula) !== "Votó") return;
@@ -1310,35 +1308,27 @@ function renderStatsCharts() {
         labels = Object.keys(agrupado).sort((a, b) => agrupado[b] - agrupado[a]);
         dataValues = labels.map(l => agrupado[l]);
         datasetLabel = "Votaron";
+        backgroundColors = labels.map((_, i) => 
+            i % 3 === 0 ? '#B91C1C' : i % 3 === 1 ? '#7F1D1D' : '#DC2626'
+        );
     } else {
-        // Por Mesa
-        let baseList = state.padron;
-        if (localFilter) {
-            baseList = baseList.filter(v => v.local === localFilter);
-            if (titleEl) titleEl.textContent = `Participación por Mesa — ${localFilter}`;
-        } else {
-            if (titleEl) titleEl.textContent = 'Participación por Mesa (todos los locales)';
-        }
-
+        // Vista por Mesa dentro de un Local seleccionado
+        if (titleEl) titleEl.textContent = `Participación por Mesa — ${localFilter}`;
         const agrupado = {};
-        baseList.forEach(v => {
+        state.padron.forEach(v => {
             if (getVoto(v.cedula) !== "Votó") return;
+            if (v.local !== localFilter) return;
             const key = v.mesa ? `Mesa ${v.mesa}` : "Sin mesa";
-            if (localFilter) {
-                agrupado[key] = (agrupado[key] || 0) + 1;
-            } else {
-                const label = v.local ? `${key} — ${v.local}` : key;
-                agrupado[label] = (agrupado[label] || 0) + 1;
-            }
+            agrupado[key] = (agrupado[key] || 0) + 1;
         });
-
-        if (localFilter) {
-            labels = Object.keys(agrupado).sort((a, b) => parseInt(a.replace(/\D/g,'')) - parseInt(b.replace(/\D/g,'')));
-        } else {
-            labels = Object.keys(agrupado).sort((a, b) => agrupado[b] - agrupado[a]);
-        }
+        labels = Object.keys(agrupado).sort((a, b) => {
+            const na = parseInt(a.replace(/\D/g,'')) || 0;
+            const nb = parseInt(b.replace(/\D/g,'')) || 0;
+            return na - nb;
+        });
         dataValues = labels.map(l => agrupado[l]);
         datasetLabel = "Votaron";
+        backgroundColors = '#B91C1C';
     }
 
     const total = state.padron.length;
@@ -1372,7 +1362,7 @@ function renderStatsCharts() {
             data: {
                 labels: labels,
                 datasets: [
-                    { label: datasetLabel, data: dataValues, backgroundColor: "#16A34A", borderRadius: 6 }
+                    { label: datasetLabel, data: dataValues, backgroundColor: backgroundColors, borderRadius: 6 }
                 ]
             },
             options: {
@@ -1391,7 +1381,7 @@ function renderStatsCharts() {
             plugins: [doughnutLabelsPlugin],
             data: {
                 labels: ["Votaron", "No Votaron", "Pendientes"],
-                datasets: [{ data: [voted, noVoted, pending], backgroundColor: ["#16A34A", "#DC2626", "#9CA3AF"], borderWidth: 0 }]
+                datasets: [{ data: [voted, noVoted, pending], backgroundColor: ["#15803D", "#B91C1C", "#9CA3AF"], borderWidth: 0 }]
             },
             options: commonOptions
         });
@@ -1672,12 +1662,6 @@ function bindEvents() {
     document.getElementById("register-user-form").addEventListener("submit",    handleRegistrarUsuario);
     document.getElementById("register-votante-form")?.addEventListener("submit", handleRegistrarVotante);
 
-    document.getElementById('chart-type-selector')?.addEventListener('change', () => {
-        const type = document.getElementById('chart-type-selector').value;
-        const localSel = document.getElementById('chart-local-selector');
-        if (localSel) localSel.classList.toggle('hidden', type === 'local');
-        renderStatsCharts();
-    });
     document.getElementById('chart-local-selector')?.addEventListener('change', renderStatsCharts);
 
     ["modal-novoto","modal-chpass","modal-obs-confirm","modal-historial"].forEach(id => {
@@ -1773,7 +1757,7 @@ window.buscarPadronANR = async function() {
         btnAgregar.disabled = false;
         btnAgregar.style.background = "";
         btnAgregar.style.borderColor = "";
-        btnAgregar.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><line x1="18" y1="13" x2="18" y2="19"/><line x1="15" y1="16" x2="21" y2="16"/></svg> Añadir a la planilla`;
+        btnAgregar.innerHTML = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Añadir a la planilla`;
     }
 
     try {
@@ -1805,7 +1789,7 @@ window.buscarPadronANR = async function() {
     } catch (err) {
         loading.style.display = "none";
         error.innerHTML = `
-            <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 10px;display:block;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 10px;display:block;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             <div style="font-size:.88rem;font-weight:800;color:#B45309;margin-bottom:5px;">No se pudo cargar el padrón</div>
             <div style="font-size:.78rem;color:#6B7280;">${escHtml(err.message)}</div>`;
         error.style.display = "block";
@@ -1882,7 +1866,7 @@ window.agregarDesdePardon = async function() {
         toast("Error al guardar. Verificá la conexión.", "error");
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><line x1="18" y1="13" x2="18" y2="19"/><line x1="15" y1="16" x2="21" y2="16"/></svg> Añadir a la planilla`;
+            btn.innerHTML = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Añadir a la planilla`;
         }
     }
 };
@@ -1956,6 +1940,25 @@ window.cancelarModoEliminar = function() {
     document.getElementById("banner-eliminar")?.classList.add("hidden");
     cerrarModal("modal-eliminar-confirm");
     _unbindEliminarListeners();
+};
+
+window.seleccionarTodosEliminar = function() {
+    const cards = document.querySelectorAll('.card-votante[data-cedula]');
+    const filas = document.querySelectorAll('#votantes-table-body tr[data-cedula]');
+    const todos = [...cards, ...filas];
+    const todosSeleccionados = todos.every(el => el.classList.contains('seleccionado'));
+    todos.forEach(el => {
+        const cedula = el.dataset.cedula;
+        if (!cedula) return;
+        if (todosSeleccionados) {
+            el.classList.remove("seleccionado");
+            elimState.seleccionados.delete(cedula);
+        } else {
+            el.classList.add("seleccionado");
+            elimState.seleccionados.add(cedula);
+        }
+    });
+    actualizarBannerCount();
 };
 
 function _toggleTarjeta(cedula) {

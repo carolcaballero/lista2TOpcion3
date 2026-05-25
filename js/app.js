@@ -771,7 +771,7 @@ function construirTarjeta(v, idx) {
     const obsLabel    = obs ? escHtml(obs) : "Agregar observación...";
     const obsClass    = obs ? "btn-obs has-obs" : "btn-obs";
 
-    const elimCheck = elimState.activo ? `<div class="elim-check"></div>` : '';
+    const elimCheck = elimState.activo ? `<div class="elim-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>` : '';
 
     return `
         <div class="card-votante ${estadoClass}" data-cedula="${escHtml(v.cedula)}">
@@ -1127,17 +1127,19 @@ function renderTablaUsuarios() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  CARGAR LOCALES DESDE PADRÓN ANR
+//  CARGAR LOCALES DESDE PADRÓN ANR (usando configuración fija)
 // ═══════════════════════════════════════════════════════════════
 async function cargarLocalesDesdePadron() {
     try {
-        const padron = await cargarPadronCSV();
-        const locales = [...new Set(padron.map(r => r.LOCAL_VOTACION).filter(Boolean))].sort();
         const select = document.getElementById("reg-local");
         const statsSelect = document.getElementById("chart-local-selector");
+
+        // Usar configuración fija de locales
+        const localesFijos = Object.keys(LOCALES_CONFIG);
+
         if (select) {
             select.innerHTML = '<option value="">Seleccionar local...</option>';
-            locales.forEach(loc => {
+            localesFijos.forEach(loc => {
                 const opt = document.createElement("option");
                 opt.value = loc;
                 opt.textContent = loc;
@@ -1146,7 +1148,7 @@ async function cargarLocalesDesdePadron() {
         }
         if (statsSelect) {
             statsSelect.innerHTML = '<option value="">Todos los locales</option>';
-            locales.forEach(loc => {
+            localesFijos.forEach(loc => {
                 const opt = document.createElement("option");
                 opt.value = loc;
                 opt.textContent = loc;
@@ -1154,7 +1156,7 @@ async function cargarLocalesDesdePadron() {
             });
         }
     } catch (err) {
-        console.warn("No se pudieron cargar los locales del padrón:", err);
+        console.warn("Error al cargar locales:", err);
     }
 }
 
@@ -1254,6 +1256,24 @@ function switchTab(tab) {
 //  ESTADÍSTICAS / CHARTS  (POR LOCAL / POR MESA)
 // ═══════════════════════════════════════════════════════════════
 
+// Configuración de locales y mesas fijas
+const LOCALES_CONFIG = {
+    "GIMNASIO MUNICIPAL": { mesaMin: 1, mesaMax: 20 },
+    "MUSEO HISTÓRICO": { mesaMin: 21, mesaMax: 40 },
+    "ESC.CARLOS ANTONIO LOPEZ": { mesaMin: 41, mesaMax: 65 }
+};
+
+function getLocalFromMesa(mesa) {
+    if (!mesa) return null;
+    const numMesa = parseInt(String(mesa).replace(/\D/g, '')) || 0;
+    for (const [local, config] of Object.entries(LOCALES_CONFIG)) {
+        if (numMesa >= config.mesaMin && numMesa <= config.mesaMax) {
+            return local;
+        }
+    }
+    return null;
+}
+
 const doughnutLabelsPlugin = {
     id: 'doughnutLabels',
     afterDraw(chart) {
@@ -1297,35 +1317,77 @@ function renderStatsCharts() {
     let labels, dataValues, datasetLabel, backgroundColors;
 
     if (!localFilter) {
-        // Vista por Locales (default)
+        // Vista por Locales con distribución por mesas (fijado)
         if (titleEl) titleEl.textContent = 'Participación por Locales';
+
+        // Crear grupos por local basado en la configuración fija
         const agrupado = {};
-        state.padron.forEach(v => {
-            if (getVoto(v.cedula) !== "Votó") return;
-            const key = v.local || "Sin local";
-            agrupado[key] = (agrupado[key] || 0) + 1;
+        Object.keys(LOCALES_CONFIG).forEach(local => {
+            agrupado[local] = { voted: 0, total: 0 };
         });
-        labels = Object.keys(agrupado).sort((a, b) => agrupado[b] - agrupado[a]);
-        dataValues = labels.map(l => agrupado[l]);
+
+        state.padron.forEach(v => {
+            // Determinar local basado en la mesa
+            let localKey = v.local;
+            if (!localKey) {
+                const localFromMesa = getLocalFromMesa(v.mesa);
+                if (localFromMesa) localKey = localFromMesa;
+            }
+
+            if (!localKey || !agrupado[localKey]) {
+                localKey = "OTRO";
+                if (!agrupado[localKey]) agrupado[localKey] = { voted: 0, total: 0 };
+            }
+
+            agrupado[localKey].total++;
+            if (getVoto(v.cedula) === "Votó") {
+                agrupado[localKey].voted++;
+            }
+        });
+
+        // Ordenar locales según configuración
+        const ordenLocal = Object.keys(LOCALES_CONFIG);
+        const localesOrdenados = Object.keys(agrupado).sort((a, b) => {
+            const idxA = ordenLocal.indexOf(a);
+            const idxB = ordenLocal.indexOf(b);
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+            return 0;
+        });
+
+        labels = localesOrdenados;
+        dataValues = labels.map(l => agrupado[l].voted);
         datasetLabel = "Votaron";
-        backgroundColors = labels.map((_, i) => 
-            i % 3 === 0 ? '#B91C1C' : i % 3 === 1 ? '#7F1D1D' : '#DC2626'
-        );
+
+        // Colores según paleta existente
+        backgroundColors = labels.map((local, i) => {
+            if (local === "OTRO") return '#9CA3AF';
+            return i === 0 ? '#B91C1C' : i === 1 ? '#7F1D1D' : '#DC2626';
+        });
     } else {
         // Vista por Mesa dentro de un Local seleccionado
         if (titleEl) titleEl.textContent = `Participación por Mesa — ${localFilter}`;
+        const config = LOCALES_CONFIG[localFilter];
         const agrupado = {};
+
+        // Inicializar todas las mesas del rango
+        if (config) {
+            for (let m = config.mesaMin; m <= config.mesaMax; m++) {
+                agrupado[m] = 0;
+            }
+        }
+
         state.padron.forEach(v => {
             if (getVoto(v.cedula) !== "Votó") return;
             if (v.local !== localFilter) return;
-            const key = v.mesa ? `Mesa ${v.mesa}` : "Sin mesa";
-            agrupado[key] = (agrupado[key] || 0) + 1;
+            const numMesa = parseInt(String(v.mesa || "").replace(/\D/g, '')) || 0;
+            if (agrupado[numMesa] !== undefined) {
+                agrupado[numMesa]++;
+            }
         });
-        labels = Object.keys(agrupado).sort((a, b) => {
-            const na = parseInt(a.replace(/\D/g,'')) || 0;
-            const nb = parseInt(b.replace(/\D/g,'')) || 0;
-            return na - nb;
-        });
+
+        labels = Object.keys(agrupado).sort((a, b) => parseInt(a) - parseInt(b));
         dataValues = labels.map(l => agrupado[l]);
         datasetLabel = "Votaron";
         backgroundColors = '#B91C1C';

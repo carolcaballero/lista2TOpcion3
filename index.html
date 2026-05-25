@@ -1024,7 +1024,7 @@
             </button>
             <button id="tab-admin" class="tab-btn hidden">
                 <svg class="icon" style="color:inherit;margin-right:4px;width:14px;height:14px;"><use href="#icon-settings"/></svg>
-                Admin
+                Administración
             </button>
             <button id="tab-padron-anr" class="tab-btn">
                 <svg class="icon" style="color:inherit;margin-right:4px;width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -1123,26 +1123,7 @@
     <!-- ═══ ADMINISTRACIÓN ═══ -->
     <div id="view-admin" class="admin-grid">
 
-        <div class="admin-top-grid">
-            <div class="admin-card">
-                <h3><svg class="icon"><use href="#icon-clipboard"/></svg>Registrar Votante</h3>
-                <form id="register-votante-form">
-                    <div class="form-group">
-                        <label>Nombre y Apellido Completo</label>
-                        <input type="text" id="vot-fullname" required placeholder="Ej. Carlos Alberto Gómez">
-                    </div>
-                    <div class="form-group">
-                        <label>Cédula</label>
-                        <input type="text" id="vot-cedula" required placeholder="Ej. 1234567" inputmode="numeric">
-                    </div>
-                    <div class="form-group">
-                        <label>Domicilio / Dirección</label>
-                        <input type="text" id="vot-domicilio" placeholder="Barrio / Dirección">
-                    </div>
-                    <button type="submit" class="btn-primary">Registrar Votante</button>
-                </form>
-            </div>
-
+        <div class="admin-top-grid" style="grid-template-columns:1fr;max-width:520px;">
             <div class="admin-card">
                 <h3><svg class="icon"><use href="#icon-useradd"/></svg>Nuevo Operador</h3>
                 <form id="register-user-form">

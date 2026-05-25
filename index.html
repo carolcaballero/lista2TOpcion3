@@ -878,7 +878,7 @@
         <p class="modal-hint" id="modal-eliminar-texto">¿Estás seguro que querés eliminar los registros seleccionados? Esta acción no se puede deshacer.</p>
         <div class="modal-actions">
             <button class="btn-secondary" onclick="cancelarModoEliminar()">Cancelar</button>
-            <button id="btn-confirmar-eliminar" class="btn-primary"
+            <button class="btn-primary"
                 style="background:linear-gradient(135deg,#dc2626,#991b1b);border-color:#dc2626;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 5px 14px rgba(220,38,38,.35);"
                 onclick="confirmarEliminarSeleccionados()">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
@@ -1103,15 +1103,17 @@
                         <th>N°</th>
                         <th>Nombre y Apellido</th>
                         <th>Cédula</th>
-                        <th>Domicilio</th>
+                        <th>Local de Votación</th>
+                        <th>Mesa</th>
+                        <th>Orden</th>
                         <th>Estado</th>
                         <th>Acciones</th>
                         <th>Observaciones</th>
-                        <th>Último cambio</th>
+                        <th>Cambiado por</th>
                     </tr>
                 </thead>
                 <tbody id="votantes-table-body">
-                    <tr><td class="spinner-cell" colspan="8"><div class="spinner"></div></td></tr>
+                    <tr><td class="spinner-cell" colspan="10"><div class="spinner"></div></td></tr>
                 </tbody>
             </table>
         </div>

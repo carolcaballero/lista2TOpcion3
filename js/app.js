@@ -1147,7 +1147,7 @@ async function cargarLocalesDesdePadron() {
             });
         }
         if (statsSelect) {
-            statsSelect.innerHTML = '<option value="">Todos los locales</option>';
+            statsSelect.innerHTML = '<option value="">Seleccionar local</option>';
             localesFijos.forEach(loc => {
                 const opt = document.createElement("option");
                 opt.value = loc;
@@ -1256,10 +1256,10 @@ function switchTab(tab) {
 //  ESTADÍSTICAS / CHARTS  (POR LOCAL / POR MESA)
 // ═══════════════════════════════════════════════════════════════
 
-// Configuración de locales y mesas fijas
+// Configuración de locales y mesas fijas (sin acentos)
 const LOCALES_CONFIG = {
     "GIMNASIO MUNICIPAL": { mesaMin: 1, mesaMax: 20 },
-    "MUSEO HISTÓRICO": { mesaMin: 21, mesaMax: 40 },
+    "MUSEO HISTORICO": { mesaMin: 21, mesaMax: 40 },   // ← sin acento
     "ESC.CARLOS ANTONIO LOPEZ": { mesaMin: 41, mesaMax: 65 }
 };
 

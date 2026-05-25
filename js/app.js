@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  CONTROL ELECTORAL — app.js  v8  (FASE 2·3·4 COMPLETA)
+//  CONTROL ELECTORAL — app.js  v8.1  (ESTADÍSTICAS POR MESA/LOCAL)
 //  Firebase Firestore + Offline Queue + Charts + PWA
 // ═══════════════════════════════════════════════════════════════
 
@@ -52,6 +52,7 @@ const state = {
     pagination:       { page: 1, perPage: 50 },
     charts:           { mesa: null, global: null, hora: null },
     notifiedThresholds: new Set(),
+    statsLocalFilter: "",
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -173,7 +174,7 @@ function renderBitacora(eventos) {
         "Quitar No Votó":"#7C3AED","Nuevo Votante":"#2563EB","Nuevo Operador":"#DB2777",
         "Eliminar Operador":"#B91C1C","Observación":"#CA8A04","Login":"#059669",
         "Logout":"#6B7280","Consulta Padrón":"#CA8A04","Cambio Contraseña":"#7C3AED",
-        "Exportar XLSX":"#0891B2"
+        "Exportar XLSX":"#0891B2","Exportar Estadísticas":"#0891B2"
     };
     tbody.innerHTML = eventos.map(e => {
         const hora  = e.hora_py || timestampAParaguay(e.timestamp) || "---";
@@ -384,7 +385,6 @@ async function quitarPresencia() {
 //  CARGA DE DATOS
 // ═══════════════════════════════════════════════════════════════
 async function loadPadronYEscuchar() {
-    // La planilla arranca vacía. Los votantes se agregan uno a uno desde el padrón ANR o manualmente.
     state.padron = [];
 
     try {
@@ -587,7 +587,6 @@ function renderTablaVotantes() {
         lista.sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"));
     }
 
-    // ── Filtro por asignación de operador (no admin) ──────────
     if (state.currentUser && !state.currentUser.isAdmin) {
         const asigLocal = (state.currentUser.local || "").trim().toLowerCase();
         if (asigLocal) {
@@ -595,7 +594,6 @@ function renderTablaVotantes() {
         }
     }
 
-    // ── Paginación ─────────────────────────────────────────────
     const totalItems = lista.length;
     const totalPages = Math.ceil(totalItems / state.pagination.perPage) || 1;
     if (state.pagination.page > totalPages) state.pagination.page = totalPages || 1;
@@ -603,7 +601,6 @@ function renderTablaVotantes() {
     const end   = start + state.pagination.perPage;
     const paginatedList = lista.slice(start, end);
 
-    // ── Sincronizar estado activo de botones de filtro ─────────
     const btnT = document.getElementById("btn-filter-todos");
     const btnP = document.getElementById("btn-filter-pending");
     const btnV = document.getElementById("btn-filter-voted");
@@ -617,7 +614,6 @@ function renderTablaVotantes() {
         if (state.currentFilter === "No Votó")   btnN.classList.add("f-novoted");
     }
 
-    // ── Search hint ───────────────────────────────────────────
     if (searchHint) {
         if (q && !state.searchAllStates && state.currentFilter !== "todos") {
             const totalMatch = state.padron.filter(v =>
@@ -643,7 +639,6 @@ function renderTablaVotantes() {
         }
     }
 
-    // ── Render TARJETAS (móvil) ──────────────────────────────────
     const cardsContainer = document.getElementById("cards-container");
     if (cardsContainer) {
         if (!paginatedList.length) {
@@ -663,7 +658,6 @@ function renderTablaVotantes() {
         }
     }
 
-    // ── Render TABLA (desktop) ───────────────────────────────────
     const tbody = document.getElementById("votantes-table-body");
     if (tbody) {
         if (!paginatedList.length) {
@@ -726,7 +720,6 @@ function renderTablaVotantes() {
     renderPaginationControls(totalItems);
 }
 
-// ── Helper: construir cards con separadores de sección ──────────
 function construirCardsConSecciones(lista, mostrarSecciones) {
     if (!mostrarSecciones) {
         return lista.map((v, idx) => construirTarjeta(v, idx)).join("");
@@ -921,7 +914,6 @@ async function guardarVoto(cedula, voto, observaciones, accionBit, detalleBit, e
     if (!navigator.onLine) {
         addOfflineAction({ cedula, voto, observaciones, modificado_por: modPor, historial: histPayload });
         toast("Sin conexión. Acción guardada para sincronizar.", "warn");
-        // Optimistic UI update
         state.votos[cedula] = { ...payload, timestamp: { toDate: () => new Date() } };
         actualizarDashboard();
         await registrarBitacora(accionBit, detalleBit + " (OFFLINE)");
@@ -1139,14 +1131,25 @@ async function cargarLocalesDesdePadron() {
         const padron = await cargarPadronCSV();
         const locales = [...new Set(padron.map(r => r.LOCAL_VOTACION).filter(Boolean))].sort();
         const select = document.getElementById("reg-local");
-        if (!select) return;
-        select.innerHTML = '<option value="">Seleccionar local...</option>';
-        locales.forEach(loc => {
-            const opt = document.createElement("option");
-            opt.value = loc;
-            opt.textContent = loc;
-            select.appendChild(opt);
-        });
+        const statsSelect = document.getElementById("chart-local-selector");
+        if (select) {
+            select.innerHTML = '<option value="">Seleccionar local...</option>';
+            locales.forEach(loc => {
+                const opt = document.createElement("option");
+                opt.value = loc;
+                opt.textContent = loc;
+                select.appendChild(opt);
+            });
+        }
+        if (statsSelect) {
+            statsSelect.innerHTML = '<option value="">Todos los locales</option>';
+            locales.forEach(loc => {
+                const opt = document.createElement("option");
+                opt.value = loc;
+                opt.textContent = loc;
+                statsSelect.appendChild(opt);
+            });
+        }
     } catch (err) {
         console.warn("No se pudieron cargar los locales del padrón:", err);
     }
@@ -1245,10 +1248,9 @@ function switchTab(tab) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ESTADÍSTICAS / CHARTS
+//  ESTADÍSTICAS / CHARTS  (POR LOCAL / POR MESA)
 // ═══════════════════════════════════════════════════════════════
 
-// Plugin para mostrar porcentajes dentro de la torta
 const doughnutLabelsPlugin = {
     id: 'doughnutLabels',
     afterDraw(chart) {
@@ -1287,33 +1289,63 @@ function renderStatsCharts() {
     }
 
     const chartType = document.getElementById('chart-type-selector')?.value || 'local';
+    const localFilter = document.getElementById('chart-local-selector')?.value || '';
     const titleEl = document.getElementById('bar-chart-title');
-    if (titleEl) titleEl.textContent = chartType === 'local' ? 'Participación por Local' : 'Participación por Mesa';
+    const localSelector = document.getElementById('chart-local-selector');
 
-    // ── Datos por LOCAL o MESA: solo los que VOTARON ───────────
-    const agrupado = {};
-    state.padron.forEach(v => {
-        if (getVoto(v.cedula) !== "Votó") return; // Solo votados
-        const key = chartType === 'local' ? (v.local || "Sin local") : (v.mesa || "Sin mesa");
-        agrupado[key] = (agrupado[key] || 0) + 1;
-    });
-
-    let labels, dataValues;
-    if (chartType === 'local') {
-        labels = Object.keys(agrupado).sort((a, b) => agrupado[b] - agrupado[a]);
-        dataValues = labels.map(l => agrupado[l]);
-    } else {
-        labels = Object.keys(agrupado).sort((a, b) => parseInt(a) - parseInt(b));
-        dataValues = labels.map(m => agrupado[m]);
+    if (localSelector) {
+        localSelector.classList.toggle('hidden', chartType === 'local');
     }
 
-    // ── Global doughnut ────────────────────────────────────────
+    let labels, dataValues, datasetLabel;
+
+    if (chartType === 'local') {
+        if (titleEl) titleEl.textContent = 'Participación por Local';
+        const agrupado = {};
+        state.padron.forEach(v => {
+            if (getVoto(v.cedula) !== "Votó") return;
+            const key = v.local || "Sin local";
+            agrupado[key] = (agrupado[key] || 0) + 1;
+        });
+        labels = Object.keys(agrupado).sort((a, b) => agrupado[b] - agrupado[a]);
+        dataValues = labels.map(l => agrupado[l]);
+        datasetLabel = "Votaron";
+    } else {
+        // Por Mesa
+        let baseList = state.padron;
+        if (localFilter) {
+            baseList = baseList.filter(v => v.local === localFilter);
+            if (titleEl) titleEl.textContent = `Participación por Mesa — ${localFilter}`;
+        } else {
+            if (titleEl) titleEl.textContent = 'Participación por Mesa (todos los locales)';
+        }
+
+        const agrupado = {};
+        baseList.forEach(v => {
+            if (getVoto(v.cedula) !== "Votó") return;
+            const key = v.mesa ? `Mesa ${v.mesa}` : "Sin mesa";
+            if (localFilter) {
+                agrupado[key] = (agrupado[key] || 0) + 1;
+            } else {
+                const label = v.local ? `${key} — ${v.local}` : key;
+                agrupado[label] = (agrupado[label] || 0) + 1;
+            }
+        });
+
+        if (localFilter) {
+            labels = Object.keys(agrupado).sort((a, b) => parseInt(a.replace(/\D/g,'')) - parseInt(b.replace(/\D/g,'')));
+        } else {
+            labels = Object.keys(agrupado).sort((a, b) => agrupado[b] - agrupado[a]);
+        }
+        dataValues = labels.map(l => agrupado[l]);
+        datasetLabel = "Votaron";
+    }
+
     const total = state.padron.length;
     const voted = state.padron.filter(v => getVoto(v.cedula) === "Votó").length;
     const noVoted = state.padron.filter(v => getVoto(v.cedula) === "No Votó").length;
     const pending = total - voted - noVoted;
 
-    // ── Horaria: solo votados, por hora real de registro ───────
     const horas = {};
     for (let h = 7; h <= 18; h++) horas[`${h}:00`] = 0;
     Object.entries(state.votos).forEach(([cedula, v]) => {
@@ -1332,7 +1364,6 @@ function renderStatsCharts() {
         }
     };
 
-    // Chart Barras (Local / Mesa)
     const ctxMesa = document.getElementById("chart-mesa");
     if (ctxMesa) {
         if (state.charts.mesa) state.charts.mesa.destroy();
@@ -1341,7 +1372,7 @@ function renderStatsCharts() {
             data: {
                 labels: labels,
                 datasets: [
-                    { label: "Votaron", data: dataValues, backgroundColor: "#16A34A", borderRadius: 6 }
+                    { label: datasetLabel, data: dataValues, backgroundColor: "#16A34A", borderRadius: 6 }
                 ]
             },
             options: {
@@ -1352,7 +1383,6 @@ function renderStatsCharts() {
         });
     }
 
-    // Chart Global (Doughnut con % dentro)
     const ctxGlobal = document.getElementById("chart-global");
     if (ctxGlobal) {
         if (state.charts.global) state.charts.global.destroy();
@@ -1367,7 +1397,6 @@ function renderStatsCharts() {
         });
     }
 
-    // Chart Horaria (Line sin leyenda de dataset)
     const ctxHora = document.getElementById("chart-hora");
     if (ctxHora) {
         if (state.charts.hora) state.charts.hora.destroy();
@@ -1459,7 +1488,7 @@ function debounce(fn, ms = 300) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  EXPORTAR XLSX
+//  EXPORTAR XLSX (Planilla simple)
 // ═══════════════════════════════════════════════════════════════
 window.exportarXLSX = function() {
     const filas = [["N°","Nombre","Cédula","Domicilio","Local","Mesa","Orden","Estado","Operador","Observación"]];
@@ -1490,6 +1519,83 @@ window.exportarXLSX = function() {
     XLSX.writeFile(wb, `planilla-electoral-${fecha}.xlsx`);
     toast("✔ Planilla exportada correctamente (XLSX).", "ok");
     registrarBitacora("Exportar XLSX", `Exportó la planilla (${state.padron.length} registros)`);
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  EXPORTAR ESTADÍSTICAS XLSX (Admin — 4 hojas)
+// ═══════════════════════════════════════════════════════════════
+window.exportarEstadisticasXLSX = function() {
+    const wb = XLSX.utils.book_new();
+
+    // 1. Planilla
+    const filasPlanilla = [["N°","Nombre","Cédula","Domicilio","Local","Mesa","Orden","Estado","Operador","Observación"]];
+    state.padron.forEach((v, i) => {
+        filasPlanilla.push([
+            i+1, v.nombre, v.cedula, v.domicilio||"", v.local||"", v.mesa||"", v.orden||"",
+            getVoto(v.cedula), getLog(v.cedula), getObs(v.cedula)
+        ]);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasPlanilla), "Planilla");
+
+    // 2. Por Local
+    const locales = {};
+    state.padron.forEach(v => {
+        const loc = v.local || "Sin local";
+        if (!locales[loc]) locales[loc] = { total:0, voted:0, novoted:0, pending:0 };
+        locales[loc].total++;
+        const voto = getVoto(v.cedula);
+        if (voto === "Votó") locales[loc].voted++;
+        else if (voto === "No Votó") locales[loc].novoted++;
+        else locales[loc].pending++;
+    });
+    const filasLocal = [["Local","Total","Votaron","No Votaron","Pendientes","% Participación"]];
+    Object.entries(locales).sort((a,b) => b[1].voted - a[1].voted).forEach(([loc, d]) => {
+        const pct = d.total ? ((d.voted/d.total)*100).toFixed(1) + "%" : "0%";
+        filasLocal.push([loc, d.total, d.voted, d.novoted, d.pending, pct]);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasLocal), "Por Local");
+
+    // 3. Por Mesa
+    const mesas = {};
+    state.padron.forEach(v => {
+        if (!v.mesa) return;
+        const key = v.local ? `${v.mesa} | ${v.local}` : v.mesa;
+        if (!mesas[key]) mesas[key] = { total:0, voted:0, novoted:0, pending:0, mesa:v.mesa, local:v.local||"" };
+        mesas[key].total++;
+        const voto = getVoto(v.cedula);
+        if (voto === "Votó") mesas[key].voted++;
+        else if (voto === "No Votó") mesas[key].novoted++;
+        else mesas[key].pending++;
+    });
+    const filasMesa = [["Mesa","Local","Total","Votaron","No Votaron","Pendientes","% Participación"]];
+    Object.entries(mesas).sort((a,b) => b[1].voted - a[1].voted).forEach(([key, d]) => {
+        const pct = d.total ? ((d.voted/d.total)*100).toFixed(1) + "%" : "0%";
+        filasMesa.push([d.mesa, d.local, d.total, d.voted, d.novoted, d.pending, pct]);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasMesa), "Por Mesa");
+
+    // 4. Resumen General
+    const total = state.padron.length;
+    const voted = state.padron.filter(v => getVoto(v.cedula)==="Votó").length;
+    const noVoted = state.padron.filter(v => getVoto(v.cedula)==="No Votó").length;
+    const pending = total - voted - noVoted;
+    const filasResumen = [
+        ["Métrica","Valor","%"],
+        ["Total Votantes", total, "100%"],
+        ["Votaron", voted, total ? ((voted/total)*100).toFixed(1)+"%" : "0%"],
+        ["No Votaron", noVoted, total ? ((noVoted/total)*100).toFixed(1)+"%" : "0%"],
+        ["Pendientes", pending, total ? ((pending/total)*100).toFixed(1)+"%" : "0%"]
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasResumen), "Resumen General");
+
+    const fecha = new Date().toLocaleString("es-PY", {
+        timeZone:"America/Asuncion",
+        day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"
+    }).replace(/[\/:, ]/g,"-").replace(/--/g,"-");
+
+    XLSX.writeFile(wb, `estadisticas-electoral-${fecha}.xlsx`);
+    toast("✔ Excel de estadísticas descargado.", "ok");
+    registrarBitacora("Exportar Estadísticas", `Exportó Excel completo con ${state.padron.length} registros`);
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -1532,104 +1638,6 @@ window.confirmarCambiarPassword = async function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  IMPORTACIÓN MASIVA CSV
-// ═══════════════════════════════════════════════════════════════
-let _importPreviewData = [];
-
-function bindImportEvents() {
-    const zone = document.getElementById("file-drop-zone");
-    const input = document.getElementById("import-csv-input");
-    if (!zone || !input) return;
-
-    zone.addEventListener("click", () => input.click());
-    zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("dragover"); });
-    zone.addEventListener("dragleave", () => zone.classList.remove("dragover"));
-    zone.addEventListener("drop", e => {
-        e.preventDefault();
-        zone.classList.remove("dragover");
-        if (e.dataTransfer.files.length) handleImportFile(e.dataTransfer.files[0]);
-    });
-    input.addEventListener("change", e => {
-        if (e.target.files.length) handleImportFile(e.target.files[0]);
-    });
-
-    document.getElementById("btn-import-confirm")?.addEventListener("click", confirmarImportacion);
-}
-
-function handleImportFile(file) {
-    if (!file.name.endsWith(".csv")) { toast("El archivo debe ser CSV.", "error"); return; }
-    const reader = new FileReader();
-    reader.onload = e => {
-        const text = e.target.result;
-        const lines = text.split("\n").filter(l => l.trim());
-        if (lines.length < 2) { toast("CSV vacío o inválido.", "error"); return; }
-        const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/^\uFEFF/, ""));
-        const data = [];
-        for (let i = 1; i < lines.length; i++) {
-            const cols = lines[i].split(",").map(c => c.trim());
-            const obj = {};
-            headers.forEach((h, idx) => obj[h] = cols[idx] || "");
-            data.push(obj);
-        }
-        _importPreviewData = data.map((r, i) => ({
-            id: "import_" + Date.now() + "_" + i,
-            nombre: r.nombre || r.Nombre || "Sin nombre",
-            cedula: String(r.cedula || r.Cédula || r.Cedula || "").replace(/[\s\-]/g, "").replace(/^0+/, ""),
-            domicilio: r.domicilio || r.Domicilio || "---",
-            local: r.local || r.Local || "",
-            mesa: r.mesa || r.Mesa || "",
-            orden: r.orden || r.Orden || ""
-        })).filter(r => r.cedula && r.nombre !== "Sin nombre");
-
-        renderImportPreview(_importPreviewData);
-    };
-    reader.readAsText(file);
-}
-
-function renderImportPreview(data) {
-    const wrap = document.getElementById("import-preview-wrap");
-    const tbl  = document.getElementById("import-preview-table");
-    const cnt  = document.getElementById("import-count");
-    if (!wrap || !tbl) return;
-    wrap.style.display = "block";
-    cnt.textContent = `${data.length} registros detectados`;
-    const preview = data.slice(0, 5);
-    tbl.innerHTML = `
-        <table>
-            <thead><tr><th>Nombre</th><th>Cédula</th><th>Local</th><th>Mesa</th></tr></thead>
-            <tbody>
-                ${preview.map(r => `<tr><td>${escHtml(r.nombre)}</td><td>${escHtml(r.cedula)}</td><td>${escHtml(r.local || "—")}</td><td>${escHtml(r.mesa || "—")}</td></tr>`).join("")}
-                ${data.length > 5 ? `<tr><td colspan="4" style="text-align:center;color:var(--color-gray);font-size:.75rem;">... y ${data.length - 5} más</td></tr>` : ""}
-            </tbody>
-        </table>`;
-}
-
-async function confirmarImportacion() {
-    if (!_importPreviewData.length) return;
-    const btn = document.getElementById("btn-import-confirm");
-    if (btn) { btn.disabled = true; btn.textContent = "Importando..."; }
-    let ok = 0, dup = 0, err = 0;
-    for (const r of _importPreviewData) {
-        if (state.padron.some(p => p.cedula === r.cedula)) { dup++; continue; }
-        state.padron.push(r);
-        try {
-            await setDoc(doc(db, "padron_extra", r.cedula), {
-                ...r,
-                creado_por: state.currentUser?.fullname || "Admin",
-                timestamp: serverTimestamp()
-            });
-            ok++;
-        } catch (e) { err++; }
-    }
-    if (btn) { btn.disabled = false; btn.textContent = "Confirmar Importación"; }
-    toast(`✔ ${ok} importados · ${dup} duplicados · ${err} errores.`, err ? "warn" : "ok");
-    await registrarBitacora("Importar CSV", `Importó ${ok} votantes desde CSV.`);
-    document.getElementById("import-preview-wrap").style.display = "none";
-    _importPreviewData = [];
-    actualizarDashboard();
-}
-
-// ═══════════════════════════════════════════════════════════════
 //  BIND EVENTOS
 // ═══════════════════════════════════════════════════════════════
 function bindEvents() {
@@ -1641,9 +1649,9 @@ function bindEvents() {
     document.getElementById("btn-filter-voted").addEventListener("click",   () => cambiarFiltro("Votó"));
     document.getElementById("btn-filter-novoted").addEventListener("click", () => cambiarFiltro("No Votó"));
 
-    document.querySelectorAll(".metric-card[data-filter]").forEach(card => {
-        card.addEventListener("click", () => {
-            const f = card.getAttribute("data-filter");
+    document.querySelectorAll(".dash-row[data-filter]").forEach(row => {
+        row.addEventListener("click", () => {
+            const f = row.getAttribute("data-filter");
             if (f) {
                 const tabPlanilla = document.getElementById("tab-planilla");
                 if (tabPlanilla && !tabPlanilla.classList.contains("active")) {
@@ -1664,7 +1672,13 @@ function bindEvents() {
     document.getElementById("register-user-form").addEventListener("submit",    handleRegistrarUsuario);
     document.getElementById("register-votante-form")?.addEventListener("submit", handleRegistrarVotante);
 
-    document.getElementById('chart-type-selector')?.addEventListener('change', renderStatsCharts);
+    document.getElementById('chart-type-selector')?.addEventListener('change', () => {
+        const type = document.getElementById('chart-type-selector').value;
+        const localSel = document.getElementById('chart-local-selector');
+        if (localSel) localSel.classList.toggle('hidden', type === 'local');
+        renderStatsCharts();
+    });
+    document.getElementById('chart-local-selector')?.addEventListener('change', renderStatsCharts);
 
     ["modal-novoto","modal-chpass","modal-obs-confirm","modal-historial"].forEach(id => {
         const el = document.getElementById(id);
@@ -1703,8 +1717,6 @@ function bindEvents() {
     if (padronInp) padronInp.addEventListener("keydown", e => {
         if (e.key === "Enter") buscarPadronANR();
     });
-
-    bindImportEvents();
 }
 
 // ═══════════════════════════════════════════════════════════════

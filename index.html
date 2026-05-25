@@ -8,7 +8,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="theme-color" content="#B91C1C">
     <title>Control Electoral</title>
+    <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         /* ═══════════════════════════════════════
            RESET BASE
@@ -51,6 +53,7 @@
         }
         .toast.error { border-left-color: var(--color-danger); }
         .toast.warn  { border-left-color: var(--color-warn); }
+        .toast.offline { border-left-color: #B45309; }
         @keyframes toastIn {
             0% { opacity:0; transform: translateY(30px) scale(.9); }
             60% { opacity:1; transform: translateY(-3px) scale(1.02); }
@@ -329,8 +332,8 @@
         /* ═══════════════════════════════════════
            VIEWS
            ═══════════════════════════════════════ */
-        #view-admin { display: none; opacity: 0; }
-        #view-admin.visible { display: flex; animation: adminFadeIn .22s ease forwards; }
+        #view-admin, #view-stats { display: none; opacity: 0; }
+        #view-admin.visible, #view-stats.visible { display: flex; animation: adminFadeIn .22s ease forwards; }
         @keyframes adminFadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
 
         /* ═══════════════════════════════════════
@@ -557,7 +560,7 @@
         #view-admin { flex-direction: column; gap: 18px; }
 
         /* ═══════════════════════════════════════
-           TARJETAS DE VOTANTES (móvil) — más vivas
+           TARJETAS DE VOTANTES (móvil)
            ═══════════════════════════════════════ */
         .card-votante {
             background: #fff;
@@ -575,7 +578,6 @@
             from { opacity: 0; transform: translateY(12px) scale(.98); }
             to   { opacity: 1; transform: translateY(0) scale(1); }
         }
-        /* Stagger animation - delay variable */
         .card-votante:nth-child(1)  { animation-delay: 0ms; }
         .card-votante:nth-child(2)  { animation-delay: 30ms; }
         .card-votante:nth-child(3)  { animation-delay: 60ms; }
@@ -590,7 +592,7 @@
         .card-votante::before {
             content: "";
             position: absolute;
-            left: 0; top: 0; bottom: 0;
+            left:0; top:0; bottom:0;
             width: 5px;
             background: var(--color-border-strong);
             transition: background var(--t-base), width var(--t-base);
@@ -754,7 +756,7 @@
         }
 
         /* ═══════════════════════════════════════
-           STICKY FILTROS MÓVIL — para mejor UX
+           STICKY FILTROS MÓVIL
            ═══════════════════════════════════════ */
         @media (max-width: 767px) {
             #filter-wrapper {
@@ -772,12 +774,234 @@
                 border-bottom: 1px solid var(--color-border-soft);
             }
         }
+
+        /* ═══════════════════════════════════════
+           PAGINACIÓN
+           ═══════════════════════════════════════ */
+        .pagination-bar {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-top: 16px;
+            padding: 14px;
+            background: #fff;
+            border: 1px solid var(--color-border);
+            border-radius: var(--r-lg);
+            box-shadow: var(--shadow-sm);
+            animation: fadeIn .3s var(--t-base);
+        }
+        .pagination-info {
+            font-size: .82rem;
+            color: var(--color-text-soft);
+            font-weight: 800;
+            letter-spacing: .2px;
+        }
+        .pagination-buttons {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+        .btn-page {
+            padding: 9px 14px;
+            border: 1.5px solid var(--color-border);
+            background: var(--color-bg-soft);
+            color: var(--color-text-soft);
+            border-radius: var(--r-md);
+            font-weight: 800;
+            font-size: .8rem;
+            cursor: pointer;
+            transition: all var(--t-base);
+            min-width: 44px;
+            text-align: center;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        .btn-page:hover:not(:disabled) {
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+            background: var(--color-primary-light);
+            transform: translateY(-1px);
+        }
+        .btn-page.active {
+            background: linear-gradient(135deg, var(--color-primary-accent), var(--color-primary-hover));
+            color: #fff;
+            border-color: var(--color-primary);
+            box-shadow: var(--shadow-red);
+        }
+        .btn-page:disabled, .btn-page.disabled {
+            opacity: .35;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        @media (min-width: 768px) {
+            .pagination-bar {
+                flex-direction: row;
+                justify-content: space-between;
+                padding: 12px 18px;
+            }
+        }
+
+        /* ═══════════════════════════════════════
+           OFFLINE BADGE
+           ═══════════════════════════════════════ */
+        .offline-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: var(--color-warn-bg);
+            color: var(--color-warn);
+            border: 1.5px solid #FCD34D;
+            padding: 4px 10px;
+            border-radius: 100px;
+            font-size: .68rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            animation: fadeIn .3s ease;
+        }
+
+        /* ═══════════════════════════════════════
+           STATS / CHARTS
+           ═══════════════════════════════════════ */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+        @media (min-width: 768px) {
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+        }
+        .chart-card {
+            background: #fff;
+            border: 1px solid var(--color-border);
+            border-radius: var(--r-lg);
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+            animation: cardSlideIn .4s var(--t-base);
+        }
+        .chart-card h4 {
+            font-size: .9rem;
+            font-weight: 800;
+            color: var(--color-dark);
+            margin: 0 0 14px;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .chart-wrap {
+            position: relative;
+            height: 260px;
+        }
+        @media (min-width: 768px) {
+            .chart-wrap { height: 300px; }
+        }
+
+        /* ═══════════════════════════════════════
+           IMPORT CSV
+           ═══════════════════════════════════════ */
+        .file-drop {
+            border: 2px dashed var(--color-border-strong);
+            border-radius: var(--r-lg);
+            padding: 28px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--t-base);
+            background: var(--color-bg-soft);
+        }
+        .file-drop:hover, .file-drop.dragover {
+            border-color: var(--color-primary);
+            background: var(--color-primary-light);
+        }
+        .file-drop svg { margin: 0 auto 10px; display: block; opacity: .6; }
+        .file-drop-text { font-size: .85rem; color: var(--color-text-soft); font-weight: 700; }
+        .file-drop-hint { font-size: .75rem; color: var(--color-gray); margin-top: 6px; }
+        .import-preview {
+            margin-top: 14px;
+            max-height: 220px;
+            overflow-y: auto;
+            border: 1px solid var(--color-border);
+            border-radius: var(--r-md);
+            background: #fff;
+        }
+        .import-preview table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+        .import-preview th {
+            background: var(--color-bg-alt);
+            padding: 8px 10px;
+            text-align: left;
+            font-weight: 800;
+            color: var(--color-text-soft);
+            font-size: .7rem;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            position: sticky;
+            top: 0;
+        }
+        .import-preview td { padding: 8px 10px; border-bottom: 1px solid var(--color-border-soft); }
+
+        /* ═══════════════════════════════════════
+           MODAL HISTORIAL
+           ═══════════════════════════════════════ */
+        .historial-list {
+            max-height: 320px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+        }
+        .historial-item {
+            display: flex;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--color-border-soft);
+            align-items: flex-start;
+        }
+        .historial-time {
+            font-size: .72rem;
+            color: var(--color-gray);
+            font-weight: 700;
+            white-space: nowrap;
+            font-family: monospace;
+            min-width: 110px;
+        }
+        .historial-body { flex: 1; }
+        .historial-accion {
+            font-size: .82rem;
+            font-weight: 800;
+            color: var(--color-dark);
+        }
+        .historial-meta {
+            font-size: .75rem;
+            color: var(--color-gray);
+            margin-top: 2px;
+        }
+
+        /* ═══════════════════════════════════════
+           ASIGNACIÓN HEADER
+           ═══════════════════════════════════════ */
+        .assign-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: #E0E7FF;
+            color: #3730A3;
+            border: 1.5px solid #C7D2FE;
+            padding: 3px 10px;
+            border-radius: 100px;
+            font-size: .68rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+        }
     </style>
 </head>
 <body>
 
 <!-- ══ SVG Sprite ══ -->
-<svg xmlns="http://www.w3.org/2000/svg" style="display:none;">
+<<svg xmlns="http://www.w3.org/2000/svg" style="display:none;">
     <symbol id="icon-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
     <symbol id="icon-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
     <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
@@ -797,6 +1021,9 @@
     <symbol id="icon-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
     <symbol id="icon-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
     <symbol id="icon-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+    <symbol id="icon-bar-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></symbol>
+    <symbol id="icon-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></symbol>
+    <symbol id="icon-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
 </svg>
 
 <!-- TOASTS -->
@@ -888,6 +1115,23 @@
     </div>
 </div>
 
+<!-- ═══════════════ MODAL: Historial de Cambios ═══════════════ -->
+<div class="modal-overlay" id="modal-historial">
+    <div class="modal-box">
+        <h3>
+            <svg width="20" height="20" style="color:var(--color-primary-accent)"><use href="#icon-history"/></svg>
+            Historial de Cambios
+        </h3>
+        <p class="modal-hint" id="modal-hist-nombre" style="font-weight:800;color:var(--color-dark);"></p>
+        <div class="historial-list" id="modal-hist-list">
+            <div style="text-align:center;padding:20px;color:var(--color-gray);font-size:.9rem;">Cargando...</div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('modal-historial')" style="flex:0 0 auto;padding:12px 24px;">Cerrar</button>
+        </div>
+    </div>
+</div>
+
 <!-- ══════════════ LOGIN ══════════════ -->
 <section id="login-section" class="auth-container">
     <div class="login-card">
@@ -930,10 +1174,15 @@
                 <span class="status-dot" id="status-dot"></span>
                 <span class="status-label" id="status-label">conectando...</span>
             </span>
-            <span style="font-size:.8rem;color:var(--color-text-soft);">
+            <span id="offline-indicator" class="offline-badge hidden" style="margin-left:6px;">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                Offline
+            </span>
+            <span style="font-size:.8rem;color:var(--color-text-soft);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                 <svg class="icon" style="width:14px;height:14px"><use href="#icon-user"/></svg>
                 <span id="user-prefix" style="color:var(--color-text-soft)"></span>
                 <strong id="current-user-display" style="color:var(--color-dark);font-weight:800;">---</strong>
+                <span id="user-assignment" class="assign-chip hidden"></span>
             </span>
             <button id="logout-btn" class="btn-secondary"
                 style="padding:7px 12px;font-size:.76rem;display:flex;align-items:center;gap:5px;">
@@ -1021,6 +1270,10 @@
             <button id="tab-planilla" class="tab-btn active">
                 <svg class="icon" style="color:inherit;margin-right:4px;width:14px;height:14px;"><use href="#icon-clipboard"/></svg>
                 Planilla
+            </button>
+            <button id="tab-stats" class="tab-btn">
+                <svg class="icon" style="color:inherit;margin-right:4px;width:14px;height:14px;"><use href="#icon-bar-chart"/></svg>
+                Estadísticas
             </button>
             <button id="tab-admin" class="tab-btn hidden">
                 <svg class="icon" style="color:inherit;margin-right:4px;width:14px;height:14px;"><use href="#icon-settings"/></svg>
@@ -1110,20 +1363,42 @@
                         <th>Acciones</th>
                         <th>Observaciones</th>
                         <th>Cambiado por</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody id="votantes-table-body">
-                    <tr><td class="spinner-cell" colspan="10"><div class="spinner"></div></td></tr>
+                    <tr><td class="spinner-cell" colspan="11"><div class="spinner"></div></td></tr>
                 </tbody>
             </table>
         </div>
 
+        <!-- Controles de paginación -->
+        <div id="pagination-controls" style="margin-top:12px;"></div>
+
+    </div>
+
+    <!-- ═══ ESTADÍSTICAS ═══ -->
+    <div id="view-stats" style="display:none;">
+        <div class="stats-grid">
+            <div class="chart-card">
+                <h4><svg width="16" height="16" style="color:var(--color-primary-accent)"><use href="#icon-bar-chart"/></svg> Participación por Mesa</h4>
+                <div class="chart-wrap"><canvas id="chart-mesa"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <h4><svg width="16" height="16" style="color:var(--color-success)"><use href="#icon-check"/></svg> Distribución General</h4>
+                <div class="chart-wrap"><canvas id="chart-global"></canvas></div>
+            </div>
+        </div>
+        <div class="chart-card" style="margin-bottom:18px;">
+            <h4><svg width="16" height="16" style="color:var(--color-warn)"><use href="#icon-clock"/></svg> Participación Horaria</h4>
+            <div class="chart-wrap" style="height:220px;"><canvas id="chart-hora"></canvas></div>
+        </div>
     </div>
 
     <!-- ═══ ADMINISTRACIÓN ═══ -->
     <div id="view-admin" class="admin-grid">
 
-        <div class="admin-top-grid" style="grid-template-columns:1fr;max-width:520px;">
+        <div class="admin-top-grid">
             <div class="admin-card">
                 <h3><svg class="icon"><use href="#icon-useradd"/></svg>Nuevo Operador</h3>
                 <form id="register-user-form">
@@ -1143,8 +1418,37 @@
                         <label><svg class="icon" style="width:14px;height:14px"><use href="#icon-lock"/></svg> Contraseña</label>
                         <input type="password" id="reg-password" required placeholder="Crear contraseña">
                     </div>
+                    <div class="form-group">
+                        <label>Local Asignado (opcional)</label>
+                        <input type="text" id="reg-local" placeholder="Ej. Escuela N° 123">
+                    </div>
+                    <div class="form-group">
+                        <label>Mesa Asignada (opcional)</label>
+                        <input type="text" id="reg-mesa" placeholder="Ej. 15">
+                    </div>
                     <button type="submit" class="btn-primary">Crear Operador</button>
                 </form>
+            </div>
+
+            <div class="admin-card">
+                <h3><svg class="icon"><use href="#icon-upload"/></svg>Importar Votantes (CSV)</h3>
+                <p style="font-size:.82rem;color:var(--color-text-soft);margin-bottom:14px;line-height:1.5;">
+                    Subí un CSV con columnas: <strong>Nombre, Cédula, Domicilio, Local, Mesa, Orden</strong>. Se agregarán al padrón extra.
+                </p>
+                <div class="file-drop" id="file-drop-zone">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-gray)"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <div class="file-drop-text">Arrastrá un archivo CSV aquí</div>
+                    <div class="file-drop-hint">o hacé clic para seleccionar</div>
+                    <input type="file" id="import-csv-input" accept=".csv" style="display:none;">
+                </div>
+                <div id="import-preview-wrap" style="display:none;margin-top:14px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <span style="font-size:.82rem;font-weight:800;color:var(--color-dark);">Vista previa</span>
+                        <span id="import-count" style="font-size:.78rem;color:var(--color-gray);font-weight:700;"></span>
+                    </div>
+                    <div class="import-preview" id="import-preview-table"></div>
+                    <button id="btn-import-confirm" class="btn-primary" style="margin-top:12px;width:100%;">Confirmar Importación</button>
+                </div>
             </div>
         </div>
 
@@ -1155,11 +1459,9 @@
                     <thead>
                         <tr>
                             <th>Nombre</th>
-                            <th>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="#25D366" style="vertical-align:middle;margin-right:4px"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
-                                WhatsApp
-                            </th>
+                            <th>WhatsApp</th>
                             <th>Usuario</th>
+                            <th>Local / Mesa</th>
                             <th>Acción</th>
                         </tr>
                     </thead>
@@ -1205,7 +1507,7 @@
 
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
                 <div style="background:linear-gradient(135deg,var(--color-primary-accent),var(--color-primary-hover));padding:10px;border-radius:var(--r-md);box-shadow:0 5px 14px rgba(185,28,28,.3);">
-                    <svg width="24" height="24" viewBox="0 0 640 640" fill="#fff" style="display:block"><path d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 64 386.9 64 272C64 157.1 157.1 64 272 64C386.9 64 480 157.1 480 272zM272 416C351.5 416 416 351.5 416 272C416 192.5 351.5 128 272 128C192.5 128 128 192.5 128 272C128 351.5 192.5 416 272 416z"/></svg>
+                    <svg width="24" height="24" viewBox="0 0 640 640" fill="#fff" style="display:block"><path d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
                 </div>
                 <div>
                     <h2 style="font-size:1.05rem;color:var(--color-dark);margin:0;font-weight:900;letter-spacing:-.2px;">Consulta Padrón ANR</h2>
@@ -1274,5 +1576,15 @@
 </section>
 
 <script type="module" src="js/app.js"></script>
+<script>
+    // Registrar Service Worker para PWA
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('SW registrado:', reg.scope))
+                .catch(err => console.warn('SW error:', err));
+        });
+    }
+</script>
 </body>
 </html>

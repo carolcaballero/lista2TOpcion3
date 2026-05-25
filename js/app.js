@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  CONTROL ELECTORAL — app.js  v8.2  (LOCALES + MESAS + PALETA PURA)
+//  CONTROL ELECTORAL — app.js  v8.3  (ESTADÍSTICAS POR LOCAL/MESA CORREGIDO)
 //  Firebase Firestore + Offline Queue + Charts + PWA
 // ═══════════════════════════════════════════════════════════════
 
@@ -1134,7 +1134,7 @@ async function cargarLocalesDesdePadron() {
         const select = document.getElementById("reg-local");
         const statsSelect = document.getElementById("chart-local-selector");
 
-        // Usar configuración fija de locales
+        // Usar configuración fija de locales (normalizada)
         const localesFijos = Object.keys(LOCALES_CONFIG);
 
         if (select) {
@@ -1253,15 +1253,40 @@ function switchTab(tab) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ESTADÍSTICAS / CHARTS  (POR LOCAL / POR MESA)
+//  ESTADÍSTICAS / CHARTS  (POR LOCAL / POR MESA) - CORREGIDO
 // ═══════════════════════════════════════════════════════════════
 
-// Configuración de locales y mesas fijas (sin acentos)
+// Configuración de locales y mesas fijas (sin acentos, normalizados)
 const LOCALES_CONFIG = {
     "GIMNASIO MUNICIPAL": { mesaMin: 1, mesaMax: 20 },
     "MUSEO HISTORICO": { mesaMin: 21, mesaMax: 40 },   // ← sin acento
     "ESC.CARLOS ANTONIO LOPEZ": { mesaMin: 41, mesaMax: 65 }
 };
+
+// Función para normalizar nombres de locales (sin acentos, mayúsculas)
+function normalizarLocal(nombre) {
+    if (!nombre) return "";
+    return nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+}
+
+// Determina el local de un votante basado en su mesa o campo local
+function determinarLocal(votante) {
+    // Primero intentar con el campo 'local' normalizado
+    if (votante.local) {
+        const norm = normalizarLocal(votante.local);
+        for (const local of Object.keys(LOCALES_CONFIG)) {
+            if (normalizarLocal(local) === norm) return local;
+        }
+    }
+    // Si no, usar el rango de mesas
+    const numMesa = parseInt(String(votante.mesa || "").replace(/\D/g, '')) || 0;
+    for (const [local, config] of Object.entries(LOCALES_CONFIG)) {
+        if (numMesa >= config.mesaMin && numMesa <= config.mesaMax) {
+            return local;
+        }
+    }
+    return "OTRO";
+}
 
 function getLocalFromMesa(mesa) {
     if (!mesa) return null;
@@ -1311,41 +1336,30 @@ function renderStatsCharts() {
         return;
     }
 
-    const localFilter = document.getElementById('chart-local-selector')?.value || '';
+    const localSelector = document.getElementById('chart-local-selector');
+    const localFilter = localSelector ? localSelector.value : '';
     const titleEl = document.getElementById('bar-chart-title');
 
-    let labels, dataValues, datasetLabel, backgroundColors;
+    let labels = [], dataValues = [], datasetLabel = '', backgroundColors = [];
 
     if (!localFilter) {
-        // Vista por Locales con distribución por mesas (fijado)
+        // Vista general: Participación por Local (barras)
         if (titleEl) titleEl.textContent = 'Participación por Locales';
-
-        // Crear grupos por local basado en la configuración fija
         const agrupado = {};
         Object.keys(LOCALES_CONFIG).forEach(local => {
             agrupado[local] = { voted: 0, total: 0 };
         });
+        agrupado["OTRO"] = { voted: 0, total: 0 };
 
         state.padron.forEach(v => {
-            // Determinar local basado en la mesa
-            let localKey = v.local;
-            if (!localKey) {
-                const localFromMesa = getLocalFromMesa(v.mesa);
-                if (localFromMesa) localKey = localFromMesa;
-            }
-
-            if (!localKey || !agrupado[localKey]) {
-                localKey = "OTRO";
-                if (!agrupado[localKey]) agrupado[localKey] = { voted: 0, total: 0 };
-            }
-
-            agrupado[localKey].total++;
+            const localVotante = determinarLocal(v);
+            agrupado[localVotante].total++;
             if (getVoto(v.cedula) === "Votó") {
-                agrupado[localKey].voted++;
+                agrupado[localVotante].voted++;
             }
         });
 
-        // Ordenar locales según configuración
+        // Orden: primeros los definidos en LOCALES_CONFIG, luego OTRO
         const ordenLocal = Object.keys(LOCALES_CONFIG);
         const localesOrdenados = Object.keys(agrupado).sort((a, b) => {
             const idxA = ordenLocal.indexOf(a);
@@ -1359,28 +1373,32 @@ function renderStatsCharts() {
         labels = localesOrdenados;
         dataValues = labels.map(l => agrupado[l].voted);
         datasetLabel = "Votaron";
-
-        // Colores según paleta existente
-        backgroundColors = labels.map((local, i) => {
+        backgroundColors = labels.map(local => {
             if (local === "OTRO") return '#9CA3AF';
-            return i === 0 ? '#B91C1C' : i === 1 ? '#7F1D1D' : '#DC2626';
+            if (local === "GIMNASIO MUNICIPAL") return '#B91C1C';
+            if (local === "MUSEO HISTORICO") return '#7F1D1D';
+            return '#DC2626';
         });
     } else {
-        // Vista por Mesa dentro de un Local seleccionado
+        // Vista por Mesa dentro del local seleccionado
         if (titleEl) titleEl.textContent = `Participación por Mesa — ${localFilter}`;
         const config = LOCALES_CONFIG[localFilter];
+        if (!config) {
+            console.warn(`Local "${localFilter}" no tiene configuración de mesas.`);
+            return;
+        }
         const agrupado = {};
-
-        // Inicializar todas las mesas del rango
-        if (config) {
-            for (let m = config.mesaMin; m <= config.mesaMax; m++) {
-                agrupado[m] = 0;
-            }
+        // Inicializar todas las mesas del rango con valor 0
+        for (let m = config.mesaMin; m <= config.mesaMax; m++) {
+            agrupado[m] = 0;
         }
 
         state.padron.forEach(v => {
             if (getVoto(v.cedula) !== "Votó") return;
-            if (v.local !== localFilter) return;
+            // Determinar si este votante pertenece al local seleccionado
+            const localVotante = determinarLocal(v);
+            if (localVotante !== localFilter) return;
+
             const numMesa = parseInt(String(v.mesa || "").replace(/\D/g, '')) || 0;
             if (agrupado[numMesa] !== undefined) {
                 agrupado[numMesa]++;
@@ -1393,11 +1411,13 @@ function renderStatsCharts() {
         backgroundColors = '#B91C1C';
     }
 
+    // Datos para gráfico de torta global
     const total = state.padron.length;
     const voted = state.padron.filter(v => getVoto(v.cedula) === "Votó").length;
     const noVoted = state.padron.filter(v => getVoto(v.cedula) === "No Votó").length;
     const pending = total - voted - noVoted;
 
+    // Datos para gráfico horario
     const horas = {};
     for (let h = 7; h <= 18; h++) horas[`${h}:00`] = 0;
     Object.entries(state.votos).forEach(([cedula, v]) => {
@@ -1416,6 +1436,7 @@ function renderStatsCharts() {
         }
     };
 
+    // Gráfico de barras (por local o por mesa)
     const ctxMesa = document.getElementById("chart-mesa");
     if (ctxMesa) {
         if (state.charts.mesa) state.charts.mesa.destroy();
@@ -1435,6 +1456,7 @@ function renderStatsCharts() {
         });
     }
 
+    // Gráfico de torta global
     const ctxGlobal = document.getElementById("chart-global");
     if (ctxGlobal) {
         if (state.charts.global) state.charts.global.destroy();
@@ -1449,6 +1471,7 @@ function renderStatsCharts() {
         });
     }
 
+    // Gráfico de líneas horario
     const ctxHora = document.getElementById("chart-hora");
     if (ctxHora) {
         if (state.charts.hora) state.charts.hora.destroy();

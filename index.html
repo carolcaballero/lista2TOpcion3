@@ -1370,7 +1370,16 @@
     <div id="view-stats" style="display:none;">
         <div class="stats-grid">
             <div class="chart-card">
-                <h4><svg width="16" height="16" style="color:var(--color-primary-accent)"><use href="#icon-bar-chart"/></svg> Participación por Mesa</h4>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+                    <h4 style="margin:0;display:flex;align-items:center;gap:8px;font-size:.9rem;">
+                        <svg width="16" height="16" style="color:var(--color-primary-accent)"><use href="#icon-bar-chart"/></svg>
+                        <span id="bar-chart-title">Participación por Local</span>
+                    </h4>
+                    <select id="chart-type-selector" style="padding:6px 10px;border:1.5px solid var(--color-border);border-radius:var(--r-sm);font-size:.78rem;font-weight:800;color:var(--color-dark);background:var(--color-bg-soft);cursor:pointer;font-family:inherit;">
+                        <option value="local">Por Local</option>
+                        <option value="mesa">Por Mesa</option>
+                    </select>
+                </div>
                 <div class="chart-wrap"><canvas id="chart-mesa"></canvas></div>
             </div>
             <div class="chart-card">

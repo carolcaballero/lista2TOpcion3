@@ -1247,9 +1247,35 @@ function switchTab(tab) {
 // ═══════════════════════════════════════════════════════════════
 //  ESTADÍSTICAS / CHARTS
 // ═══════════════════════════════════════════════════════════════
+
+// Plugin para mostrar porcentajes dentro de la torta
+const doughnutLabelsPlugin = {
+    id: 'doughnutLabels',
+    afterDraw(chart) {
+        const { ctx, data } = chart;
+        const dataset = data.datasets[0];
+        const total = dataset.data.reduce((a, b) => a + b, 0);
+        if (!total) return;
+        const meta = chart.getDatasetMeta(0);
+        meta.data.forEach((arc, i) => {
+            const value = dataset.data[i];
+            if (!value) return;
+            const pct = ((value / total) * 100).toFixed(1) + '%';
+            const { x, y } = arc.tooltipPosition();
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 11px Inter, -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.shadowColor = 'rgba(0,0,0,0.45)';
+            ctx.shadowBlur = 4;
+            ctx.fillText(pct, x, y);
+            ctx.shadowBlur = 0;
+        });
+    }
+};
+
 function renderStatsCharts() {
     if (!state.padron.length) {
-        // Mostrar mensaje de vacío en los contenedores de gráficos
         ["chart-mesa", "chart-global", "chart-hora"].forEach(id => {
             const canvas = document.getElementById(id);
             if (canvas) {
@@ -1260,28 +1286,37 @@ function renderStatsCharts() {
         return;
     }
 
-    // Datos por mesa
-    const mesas = {};
-    state.padron.forEach(v => {
-        const m = v.mesa || "Sin mesa";
-        if (!mesas[m]) mesas[m] = { total: 0, voted: 0 };
-        mesas[m].total++;
-        if (getVoto(v.cedula) === "Votó") mesas[m].voted++;
-    });
-    const mesaLabels = Object.keys(mesas).sort((a,b) => parseInt(a)-parseInt(b));
-    const mesaDataVoted = mesaLabels.map(m => mesas[m].voted);
-    const mesaDataTotal = mesaLabels.map(m => mesas[m].total - mesas[m].voted);
+    const chartType = document.getElementById('chart-type-selector')?.value || 'local';
+    const titleEl = document.getElementById('bar-chart-title');
+    if (titleEl) titleEl.textContent = chartType === 'local' ? 'Participación por Local' : 'Participación por Mesa';
 
-    // Global doughnut
+    // ── Datos por LOCAL o MESA: solo los que VOTARON ───────────
+    const agrupado = {};
+    state.padron.forEach(v => {
+        if (getVoto(v.cedula) !== "Votó") return; // Solo votados
+        const key = chartType === 'local' ? (v.local || "Sin local") : (v.mesa || "Sin mesa");
+        agrupado[key] = (agrupado[key] || 0) + 1;
+    });
+
+    let labels, dataValues;
+    if (chartType === 'local') {
+        labels = Object.keys(agrupado).sort((a, b) => agrupado[b] - agrupado[a]);
+        dataValues = labels.map(l => agrupado[l]);
+    } else {
+        labels = Object.keys(agrupado).sort((a, b) => parseInt(a) - parseInt(b));
+        dataValues = labels.map(m => agrupado[m]);
+    }
+
+    // ── Global doughnut ────────────────────────────────────────
     const total = state.padron.length;
     const voted = state.padron.filter(v => getVoto(v.cedula) === "Votó").length;
     const noVoted = state.padron.filter(v => getVoto(v.cedula) === "No Votó").length;
     const pending = total - voted - noVoted;
 
-    // Horaria (simulada por bucket de hora desde timestamp)
+    // ── Horaria: solo votados, por hora real de registro ───────
     const horas = {};
     for (let h = 7; h <= 18; h++) horas[`${h}:00`] = 0;
-    Object.values(state.votos).forEach(v => {
+    Object.entries(state.votos).forEach(([cedula, v]) => {
         if (v.voto !== "Votó" || !v.timestamp) return;
         const d = v.timestamp.toDate ? v.timestamp.toDate() : new Date(v.timestamp);
         const horaPY = new Date(d.toLocaleString("en-US", { timeZone: TZ_PY }));
@@ -1297,29 +1332,33 @@ function renderStatsCharts() {
         }
     };
 
-    // Chart Mesa
+    // Chart Barras (Local / Mesa)
     const ctxMesa = document.getElementById("chart-mesa");
     if (ctxMesa) {
         if (state.charts.mesa) state.charts.mesa.destroy();
         state.charts.mesa = new Chart(ctxMesa, {
             type: "bar",
             data: {
-                labels: mesaLabels,
+                labels: labels,
                 datasets: [
-                    { label: "Votaron", data: mesaDataVoted, backgroundColor: "#16A34A", borderRadius: 6 },
-                    { label: "Pendientes / No votaron", data: mesaDataTotal, backgroundColor: "#E5E7EB", borderRadius: 6 }
+                    { label: "Votaron", data: dataValues, backgroundColor: "#16A34A", borderRadius: 6 }
                 ]
             },
-            options: { ...commonOptions, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+            options: {
+                ...commonOptions,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+            }
         });
     }
 
-    // Chart Global
+    // Chart Global (Doughnut con % dentro)
     const ctxGlobal = document.getElementById("chart-global");
     if (ctxGlobal) {
         if (state.charts.global) state.charts.global.destroy();
         state.charts.global = new Chart(ctxGlobal, {
             type: "doughnut",
+            plugins: [doughnutLabelsPlugin],
             data: {
                 labels: ["Votaron", "No Votaron", "Pendientes"],
                 datasets: [{ data: [voted, noVoted, pending], backgroundColor: ["#16A34A", "#DC2626", "#9CA3AF"], borderWidth: 0 }]
@@ -1328,7 +1367,7 @@ function renderStatsCharts() {
         });
     }
 
-    // Chart Horaria
+    // Chart Horaria (Line sin leyenda de dataset)
     const ctxHora = document.getElementById("chart-hora");
     if (ctxHora) {
         if (state.charts.hora) state.charts.hora.destroy();
@@ -1337,7 +1376,6 @@ function renderStatsCharts() {
             data: {
                 labels: Object.keys(horas),
                 datasets: [{
-                    label: "Votos por hora",
                     data: Object.values(horas),
                     borderColor: "#B91C1C",
                     backgroundColor: "rgba(185,28,28,0.1)",
@@ -1347,7 +1385,11 @@ function renderStatsCharts() {
                     pointBackgroundColor: "#B91C1C"
                 }]
             },
-            options: { ...commonOptions, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+            options: {
+                ...commonOptions,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+            }
         });
     }
 }
@@ -1621,6 +1663,8 @@ function bindEvents() {
 
     document.getElementById("register-user-form").addEventListener("submit",    handleRegistrarUsuario);
     document.getElementById("register-votante-form")?.addEventListener("submit", handleRegistrarVotante);
+
+    document.getElementById('chart-type-selector')?.addEventListener('change', renderStatsCharts);
 
     ["modal-novoto","modal-chpass","modal-obs-confirm","modal-historial"].forEach(id => {
         const el = document.getElementById(id);

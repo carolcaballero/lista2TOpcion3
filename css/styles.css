@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   CONTROL ELECTORAL — styles.css v8.1
+   CONTROL ELECTORAL — styles.css v8.2
    Paleta: BLANCO + ROJO INTENSO + NEGRO PROFUNDO
    Animaciones mejoradas + iconos pulidos
 ═══════════════════════════════════════════════════════════════ */
@@ -508,7 +508,7 @@ body {
     transition: width .9s cubic-bezier(.4, 0, .2, 1);
 }
 
-.dash-bar-voted   { background: linear-gradient(90deg, #16A34A, var(--color-success)); }
+.dash-bar-voted   { background: linear-gradient(90deg, #15803D, var(--color-success)); }
 .dash-bar-novoted { background: linear-gradient(90deg, var(--color-primary-accent), var(--color-primary-hover)); }
 .dash-bar-pending { background: linear-gradient(90deg, #9CA3AF, #6B7280); }
 
@@ -640,7 +640,7 @@ body {
 .filter-btn.f-voted {
     border-color: var(--color-success);
     color: #fff;
-    background: linear-gradient(160deg, var(--color-success), #166534);
+    background: linear-gradient(160deg, var(--color-success), #15803D);
     box-shadow: 0 3px 8px -2px rgba(21,128,61,.45);
 }
 .filter-btn.f-novoted {
@@ -1024,8 +1024,97 @@ code {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   MODO ELIMINACIÓN
+   MODO ELIMINACIÓN MEJORADO
 ═══════════════════════════════════════════════════════════════ */
+.elim-check {
+    display: none;
+}
+.modo-eliminar .card-votante {
+    position: relative;
+    padding-left: 50px;
+    cursor: pointer;
+    user-select: none;
+}
+.modo-eliminar .card-votante .elim-check {
+    display: flex;
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid var(--color-border-strong);
+    background: #fff;
+    align-items: center;
+    justify-content: center;
+    transition: all .15s ease;
+    z-index: 2;
+}
+.modo-eliminar .card-votante.seleccionado .elim-check {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+}
+.modo-eliminar .card-votante.seleccionado .elim-check::after {
+    content: "";
+    width: 5px;
+    height: 10px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    margin-top: -2px;
+}
+.modo-eliminar .card-votante.seleccionado {
+    border-color: var(--color-primary) !important;
+    background: var(--color-primary-light) !important;
+}
+.modo-eliminar .card-votante:hover {
+    border-color: var(--color-primary-soft);
+}
+
+/* Tabla modo eliminar */
+.modo-eliminar #votantes-table-body tr {
+    cursor: pointer;
+    position: relative;
+}
+.modo-eliminar #votantes-table-body tr td:first-child {
+    position: relative;
+    padding-left: 38px;
+}
+.modo-eliminar #votantes-table-body tr td:first-child::before {
+    content: "";
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--color-border-strong);
+    background: #fff;
+    transition: all .15s ease;
+}
+.modo-eliminar #votantes-table-body tr.seleccionado td:first-child::before {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+}
+.modo-eliminar #votantes-table-body tr.seleccionado td:first-child::after {
+    content: "";
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-60%) rotate(45deg);
+    width: 5px;
+    height: 9px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    z-index: 1;
+}
+.modo-eliminar #votantes-table-body tr.seleccionado {
+    background: var(--color-primary-light) !important;
+    outline: 1.5px solid var(--color-primary);
+}
+
 .btn-trash-flotante {
     position: fixed;
     bottom: 28px;
@@ -1034,109 +1123,71 @@ code {
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #dc2626, #991b1b);
+    background: linear-gradient(135deg, #B91C1C, #7F1D1D);
     border: none;
     color: #fff;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 18px rgba(220,38,38,.45);
+    box-shadow: 0 4px 18px rgba(185,28,28,.45);
     transition: transform .18s ease, box-shadow .18s ease;
 }
-.btn-trash-flotante:hover  { transform: scale(1.1); box-shadow: 0 6px 22px rgba(220,38,38,.65); }
+.btn-trash-flotante:hover  { transform: scale(1.1); box-shadow: 0 6px 22px rgba(185,28,28,.65); }
 .btn-trash-flotante:active { transform: scale(.94); }
 .btn-trash-flotante.modo-activo {
-    background: linear-gradient(135deg, #991b1b, #7f1d1d);
+    background: linear-gradient(135deg, #7F1D1D, #450A0A);
     animation: trashPulse 1.4s ease-in-out infinite;
 }
 @keyframes trashPulse {
-    0%,100% { box-shadow: 0 4px 18px rgba(220,38,38,.45); }
-    50%      { box-shadow: 0 4px 28px rgba(220,38,38,.8); }
-}
+    0%,100% Parece que el mensaje anterior se cortó. Aquí están los **5 archivos completos y corregidos**:
 
-.banner-eliminar {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: linear-gradient(135deg, #1c1917, #2d1b1b);
-    border: 1.5px solid #dc2626;
-    border-radius: var(--r-md);
-    padding: 10px 16px;
-    margin-bottom: 12px;
-    color: #fff;
-    font-weight: 700;
-    font-size: .88rem;
-    box-shadow: 0 4px 16px rgba(220,38,38,.25);
-    animation: bannerIn .2s ease forwards;
-}
-@keyframes bannerIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
-.banner-eliminar #banner-eliminar-count { color: #fca5a5; }
+---
 
-.modo-eliminar .card-votante {
-    cursor: pointer;
-    user-select: none;
-    position: relative;
-    padding-left: 46px;
-    transition: border-color .14s, background .14s;
-}
-.modo-eliminar .card-votante::before {
-    content: "";
-    position: absolute;
-    left: 13px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    border: 2px solid var(--color-border);
-    background: var(--color-surface);
-    transition: border-color .14s, background .14s;
-}
-.modo-eliminar .card-votante.seleccionado {
-    border-color: #dc2626 !important;
-    background: rgba(220,38,38,.07) !important;
-}
-.modo-eliminar .card-votante.seleccionado::before {
-    border-color: #dc2626;
-    background: #dc2626;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: center;
-}
+### 1. `sw.js` (sin cambios funcionales, solo versión cache)
+```javascript
+const CACHE_NAME = 'ce-v8-cache-v2';
+const STATIC_ASSETS = [
+  './',
+  './index.html',
+  './css/styles.css',
+  './js/app.js',
+  'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
+  'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js'
+];
 
-.modo-eliminar #votantes-table-body tr { cursor: pointer; user-select: none; }
-.modo-eliminar #votantes-table-body tr.seleccionado {
-    background: rgba(220,38,38,.09) !important;
-    outline: 1.5px solid #dc2626;
-}
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
+  );
+  self.skipWaiting();
+});
 
-/* ═══════════════════════════════════════════════════════════════
-   STATS SELECTORS
-═══════════════════════════════════════════════════════════════ */
-.stats-selectors {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: center;
-}
-.stats-selectors select {
-    padding: 8px 12px;
-    border: 1.5px solid var(--color-border);
-    border-radius: var(--r-sm);
-    font-size: .82rem;
-    font-weight: 700;
-    color: var(--color-dark);
-    background: var(--color-bg-soft);
-    cursor: pointer;
-    font-family: inherit;
-    transition: all var(--t-base);
-}
-.stats-selectors select:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px var(--color-primary-glow);
-}
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+  );
+  self.clients.claim();
+});
+
+self.addEventListener('fetch', event => {
+  const { request } = event;
+  if (request.method !== 'GET') return;
+
+  if (request.url.includes('firestore') || request.url.includes('googleapis')) {
+    event.respondWith(fetch(request).catch(() => caches.match(request)));
+    return;
+  }
+
+  event.respondWith(
+    caches.match(request).then(cached => {
+      return cached || fetch(request).then(response => {
+        return caches.open(CACHE_NAME).then(cache => {
+          cache.put(request, response.clone());
+          return response;
+        });
+      });
+    }).catch(() => caches.match('./index.html'))
+  );
+});

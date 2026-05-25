@@ -4,7 +4,8 @@ const STATIC_ASSETS = [
   './index.html',
   './css/styles.css',
   './js/app.js',
-  'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js'
+  'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
+  'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js'
 ];
 
 self.addEventListener('install', event => {

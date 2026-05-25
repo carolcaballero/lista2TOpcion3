@@ -255,8 +255,7 @@ function loginSuccess(user, persist) {
 
 function handleLogout() {
     registrarBitacora("Logout", `${state.currentUser?.fullname} cerró sesión`);
-    // Cancelar modo eliminación si estaba activo
-    if (elimState.activo) cancelarModoEliminar();
+    if (elimState?.activo) cancelarModoEliminar();
     const btnTrash = document.getElementById("btn-trash-flotante");
     if (btnTrash) btnTrash.classList.add("hidden");
     quitarPresencia();
@@ -336,7 +335,15 @@ async function loadPadronYEscuchar() {
             const v   = d.data();
             const ced = String(v.cedula || "").replace(/[\s\-]/g, "").replace(/^0+/, "");
             if (!state.padron.some(p => p.cedula === ced))
-                state.padron.push({ id: v.id, nombre: v.nombre, cedula: ced, domicilio: v.domicilio });
+                state.padron.push({
+                    id:        d.id,
+                    nombre:    v.nombre    || "Sin nombre",
+                    cedula:    ced,
+                    domicilio: v.domicilio || "---",
+                    local:     v.local     || "",
+                    mesa:      v.mesa      || "",
+                    orden:     v.orden     || "",
+                });
         });
     } catch { /**/ }
 
@@ -531,7 +538,7 @@ function renderTablaVotantes() {
     const tbody = document.getElementById("votantes-table-body");
     if (tbody) {
         if (!lista.length) {
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--color-gray);padding:30px;">No se encontraron registros.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--color-gray);padding:30px;">No se encontraron registros.</td></tr>`;
         } else {
             tbody.innerHTML = "";
             lista.forEach((v, idx) => {
@@ -552,7 +559,9 @@ function renderTablaVotantes() {
                     <td><strong>${idx + 1}</strong></td>
                     <td>${escHtml(v.nombre)}</td>
                     <td style="font-family:monospace">${v.cedula}</td>
-                    <td>${escHtml(v.domicilio)}</td>
+                    <td style="font-size:.82rem;">${escHtml(v.local || "—")}</td>
+                    <td style="font-size:.82rem;font-family:monospace;">${escHtml(v.mesa || "—")}</td>
+                    <td style="font-size:.82rem;font-family:monospace;">${escHtml(v.orden || "—")}</td>
                     <td><span class="${badgeClass}">${badgeLabel}</span></td>
                     <td>
                         <div class="action-btns">
@@ -642,7 +651,8 @@ function construirTarjeta(v, idx) {
                     <div class="card-num">${idx+1}.</div>
                     <div class="card-nombre" title="${escHtml(v.nombre)}">${escHtml(v.nombre)}</div>
                     <div class="card-cedula">CI: ${escHtml(v.cedula)}</div>
-                    ${v.domicilio && v.domicilio !== "---" ? `<div class="card-domicilio">${escHtml(v.domicilio)}</div>` : ""}
+                    ${v.local  ? `<div class="card-domicilio" style="font-size:.74rem;opacity:.85;">📍 ${escHtml(v.local)}</div>` : ""}
+                ${v.mesa   ? `<div class="card-domicilio" style="font-size:.74rem;opacity:.85;">🗳️ Mesa <strong>${escHtml(v.mesa)}</strong>${v.orden ? " · Orden " + escHtml(v.orden) : ""}</div>` : ""}
                 </div>
                 <span class="${badgeClass}">${badgeLabel}</span>
             </div>
@@ -1329,12 +1339,20 @@ window.agregarDesdePardon = async function() {
     const btn = document.getElementById("pr-btn-agregar");
     if (btn) { btn.disabled = true; btn.innerHTML = `<div class="spinner" style="margin:0 auto;width:20px;height:20px;"></div>`; }
 
-    const nuevo = { id: "padron_" + Date.now(), nombre, cedula, domicilio: "---" };
+    const local    = document.getElementById("pr-local")?.textContent?.trim()     || "";
+    const mesa     = document.getElementById("pr-mesa")?.textContent?.trim()      || "";
+    const orden    = document.getElementById("pr-orden")?.textContent?.trim()     || "";
+    const seccional= document.getElementById("pr-seccional")?.textContent?.trim() || "";
+    const nuevo = { id: "padron_" + Date.now(), nombre, cedula, domicilio: "---", local, mesa, orden, seccional };
     state.padron.push(nuevo);
 
     try {
         await setDoc(doc(db, "padron_extra", cedula), {
             ...nuevo,
+            local:      document.getElementById("pr-local")?.textContent?.trim()     || "",
+            mesa:       document.getElementById("pr-mesa")?.textContent?.trim()      || "",
+            orden:      document.getElementById("pr-orden")?.textContent?.trim()     || "",
+            seccional:  document.getElementById("pr-seccional")?.textContent?.trim() || "",
             creado_por: state.currentUser?.isAdmin ? "Administrador/a" : (state.currentUser?.username || "---"),
             origen:     "Padrón ANR",
             timestamp:  serverTimestamp()
@@ -1372,14 +1390,11 @@ function _marcarBtnAgregado(exito) {
 // ═══════════════════════════════════════════════════════════════
 //  MODO ELIMINACIÓN — Solo ADMIN
 // ═══════════════════════════════════════════════════════════════
-
-// Estado del modo eliminación
 const elimState = {
-    activo:       false,
-    seleccionados: new Set()   // cédulas seleccionadas
+    activo:        false,
+    seleccionados: new Set()
 };
 
-// Mostrar/ocultar botón basurita según si es admin
 function actualizarBotonTrash() {
     const btn = document.getElementById("btn-trash-flotante");
     if (!btn) return;
@@ -1387,185 +1402,120 @@ function actualizarBotonTrash() {
         btn.classList.remove("hidden");
     } else {
         btn.classList.add("hidden");
-        // Si un no-admin tiene el modo activo (por si acaso), cancelarlo
         if (elimState.activo) cancelarModoEliminar();
     }
 }
 
-// Activar modo selección
 window.activarModoEliminar = function() {
     if (!state.currentUser?.isAdmin) return;
     elimState.activo = true;
     elimState.seleccionados.clear();
 
-    // Estilo visual en los contenedores
-    const cards = document.getElementById("cards-container");
-    const tbody = document.getElementById("votantes-table-body");
-    if (cards) cards.classList.add("modo-eliminar");
-    if (tbody) tbody.parentElement?.parentElement?.classList.add("modo-eliminar");
+    document.getElementById("cards-container")?.classList.add("modo-eliminar");
+    document.querySelector(".tabla-desktop")?.classList.add("modo-eliminar");
 
-    // Activar el botón basurita (cambiar apariencia)
     const btnTrash = document.getElementById("btn-trash-flotante");
     if (btnTrash) btnTrash.classList.add("modo-activo");
 
-    // Mostrar banner
-    const banner = document.getElementById("banner-eliminar");
-    if (banner) banner.classList.remove("hidden");
+    document.getElementById("banner-eliminar")?.classList.remove("hidden");
     actualizarBannerCount();
-
-    // Agregar listeners de click a tarjetas y filas
     _bindEliminarListeners();
 };
 
-// Cancelar modo selección
 window.cancelarModoEliminar = function() {
     elimState.activo = false;
     elimState.seleccionados.clear();
 
     const cards = document.getElementById("cards-container");
-    const wrapper = document.querySelector(".tabla-desktop");
+    const wrap  = document.querySelector(".tabla-desktop");
     if (cards) {
         cards.classList.remove("modo-eliminar");
         cards.querySelectorAll(".card-votante.seleccionado").forEach(el => el.classList.remove("seleccionado"));
     }
-    if (wrapper) {
-        wrapper.classList.remove("modo-eliminar");
-        wrapper.querySelectorAll("tr.seleccionado").forEach(el => el.classList.remove("seleccionado"));
+    if (wrap) {
+        wrap.classList.remove("modo-eliminar");
+        wrap.querySelectorAll("tr.seleccionado").forEach(el => el.classList.remove("seleccionado"));
     }
 
-    const btnTrash = document.getElementById("btn-trash-flotante");
-    if (btnTrash) btnTrash.classList.remove("modo-activo");
-
-    const banner = document.getElementById("banner-eliminar");
-    if (banner) banner.classList.add("hidden");
-
+    document.getElementById("btn-trash-flotante")?.classList.remove("modo-activo");
+    document.getElementById("banner-eliminar")?.classList.add("hidden");
     cerrarModal("modal-eliminar-confirm");
     _unbindEliminarListeners();
 };
 
-// Toggle selección de una tarjeta (mobile)
 function _toggleTarjeta(cedula) {
-    if (!elimState.activo) return;
     const card = document.querySelector(`.card-votante[data-cedula="${cedula}"]`);
     if (elimState.seleccionados.has(cedula)) {
         elimState.seleccionados.delete(cedula);
-        if (card) card.classList.remove("seleccionado");
+        card?.classList.remove("seleccionado");
     } else {
         elimState.seleccionados.add(cedula);
-        if (card) card.classList.add("seleccionado");
+        card?.classList.add("seleccionado");
     }
     actualizarBannerCount();
 }
 
-// Toggle selección de una fila (desktop)
 function _toggleFila(cedula) {
-    if (!elimState.activo) return;
     const fila = document.querySelector(`#votantes-table-body tr[data-cedula="${cedula}"]`);
     if (elimState.seleccionados.has(cedula)) {
         elimState.seleccionados.delete(cedula);
-        if (fila) fila.classList.remove("seleccionado");
+        fila?.classList.remove("seleccionado");
     } else {
         elimState.seleccionados.add(cedula);
-        if (fila) fila.classList.add("seleccionado");
+        fila?.classList.add("seleccionado");
     }
     actualizarBannerCount();
 }
 
 function actualizarBannerCount() {
-    const count = elimState.seleccionados.size;
-    const spanCount = document.getElementById("banner-eliminar-count");
-    if (spanCount) spanCount.textContent = count === 0 ? "Ninguno seleccionado" : `${count} seleccionado${count > 1 ? "s" : ""}`;
-
-    const btnElim = document.getElementById("btn-eliminar-seleccionados");
-    if (btnElim) {
-        if (count > 0) {
-            btnElim.classList.add("tiene-seleccion");
-        } else {
-            btnElim.classList.remove("tiene-seleccion");
-        }
+    const n = elimState.seleccionados.size;
+    const span = document.getElementById("banner-eliminar-count");
+    if (span) span.textContent = n === 0 ? "Ninguno seleccionado" : `${n} seleccionado${n > 1 ? "s" : ""}`;
+    const btn = document.getElementById("btn-eliminar-seleccionados");
+    if (btn) {
+        btn.style.opacity        = n > 0 ? "1" : ".4";
+        btn.style.pointerEvents  = n > 0 ? "auto" : "none";
     }
 }
 
-// Pedir confirmación antes de eliminar
 window.pedirConfirmacionEliminar = function() {
     if (!elimState.activo || elimState.seleccionados.size === 0) return;
     const n = elimState.seleccionados.size;
-    const textoModal = document.getElementById("modal-eliminar-texto");
-    if (textoModal) {
-        textoModal.textContent = `¿Estás seguro que querés eliminar ${n} registro${n > 1 ? "s" : ""} de la planilla? Esta acción no se puede deshacer.`;
-    }
+    const txt = document.getElementById("modal-eliminar-texto");
+    if (txt) txt.textContent =
+        `¿Estás seguro que querés eliminar ${n} registro${n > 1 ? "s" : ""} de la planilla? Esta acción no se puede deshacer.`;
     abrirModal("modal-eliminar-confirm");
 };
 
-// Confirmar y ejecutar eliminación
 window.confirmarEliminarSeleccionados = async function() {
-    if (!state.currentUser?.isAdmin) return;
-    if (elimState.seleccionados.size === 0) return;
-
+    if (!state.currentUser?.isAdmin || elimState.seleccionados.size === 0) return;
     cerrarModal("modal-eliminar-confirm");
 
     const cedulas = [...elimState.seleccionados];
-    let eliminados = 0;
-    let errores    = 0;
+    let ok = 0, err = 0;
 
     for (const cedula of cedulas) {
         try {
-            // Eliminar de Firestore padron_extra (solo los manuales)
-            const v = state.padron.find(p => p.cedula === cedula);
-            if (v && v.id && String(v.id).startsWith("manual_")) {
-                await deleteDoc(doc(db, "padron_extra", cedula));
-            }
-            // Eliminar sus votos/observaciones de Firestore
+            await deleteDoc(doc(db, "padron_extra", cedula));
             await deleteDoc(doc(db, "votos", cedula));
-
-            // Eliminar del state local
             state.padron = state.padron.filter(p => p.cedula !== cedula);
             delete state.votos[cedula];
-            eliminados++;
-        } catch (err) {
-            console.error("Error eliminando", cedula, err);
-            errores++;
-        }
+            ok++;
+        } catch (e) { console.error("Error eliminando", cedula, e); err++; }
     }
 
-    // Registrar en bitácora
-    await registrarBitacora(
-        "Eliminar Votantes",
-        `Admin eliminó ${eliminados} votante${eliminados > 1 ? "s" : ""} de la planilla. Cédulas: ${cedulas.join(", ")}`
-    );
+    await registrarBitacora("Eliminar Votantes",
+        `Admin eliminó ${ok} votante${ok > 1 ? "s" : ""}. Cédulas: ${cedulas.join(", ")}`);
 
     cancelarModoEliminar();
     actualizarDashboard();
     renderTablaVotantes();
 
-    if (errores === 0) {
-        toast(`✔ ${eliminados} registro${eliminados > 1 ? "s eliminados" : " eliminado"} correctamente.`, "ok");
-    } else {
-        toast(`⚠ ${eliminados} eliminados, ${errores} con error (ver consola).`, "warn");
-    }
+    toast(err === 0
+        ? `✔ ${ok} registro${ok > 1 ? "s eliminados" : " eliminado"} correctamente.`
+        : `⚠ ${ok} eliminados, ${err} con error.`,
+        err === 0 ? "ok" : "warn");
 };
-
-// Agregar listeners de click sobre tarjetas y filas cuando se activa el modo
-function _bindEliminarListeners() {
-    // Esperar al próximo render si las tarjetas aún no están presentes
-    setTimeout(() => {
-        document.querySelectorAll(".card-votante[data-cedula]").forEach(card => {
-            card.addEventListener("click", _onCardClickEliminar);
-        });
-        document.querySelectorAll("#votantes-table-body tr[data-cedula]").forEach(fila => {
-            fila.addEventListener("click", _onFilaClickEliminar);
-        });
-    }, 80);
-}
-
-function _unbindEliminarListeners() {
-    document.querySelectorAll(".card-votante[data-cedula]").forEach(card => {
-        card.removeEventListener("click", _onCardClickEliminar);
-    });
-    document.querySelectorAll("#votantes-table-body tr[data-cedula]").forEach(fila => {
-        fila.removeEventListener("click", _onFilaClickEliminar);
-    });
-}
 
 function _onCardClickEliminar(e) {
     if (!elimState.activo) return;
@@ -1581,36 +1531,34 @@ function _onFilaClickEliminar(e) {
     if (cedula) _toggleFila(cedula);
 }
 
-// Re-bind después de cada render de la tabla
-const _origRenderTablaVotantes = renderTablaVotantes;
-// Se parchea renderTablaVotantes para que tras cada render,
-// si el modo está activo, vuelva a bindear los listeners
-const _patchRender = () => {
-    if (elimState.activo) {
-        _unbindEliminarListeners();
-        _bindEliminarListeners();
-    }
-};
-// Interceptar al final del ciclo de render
-const _origCardsContainer = document.getElementById("cards-container");
-
-// Hook: después de renderTablaVotantes se llama _patchRender
-// Para eso usamos un MutationObserver en los contenedores
-function initEliminarObserver() {
-    const cardsEl = document.getElementById("cards-container");
-    const tbodyEl = document.getElementById("votantes-table-body");
-    if (!cardsEl || !tbodyEl) return;
-    const obs = new MutationObserver(() => {
-        if (elimState.activo) {
-            _unbindEliminarListeners();
-            _bindEliminarListeners();
-        }
-    });
-    obs.observe(cardsEl, { childList: true });
-    obs.observe(tbodyEl, { childList: true });
+function _bindEliminarListeners() {
+    setTimeout(() => {
+        document.querySelectorAll(".card-votante[data-cedula]")
+            .forEach(c => c.addEventListener("click", _onCardClickEliminar));
+        document.querySelectorAll("#votantes-table-body tr[data-cedula]")
+            .forEach(r => r.addEventListener("click", _onFilaClickEliminar));
+    }, 80);
 }
 
-// Llamar al observer cuando el DOM esté listo
+function _unbindEliminarListeners() {
+    document.querySelectorAll(".card-votante[data-cedula]")
+        .forEach(c => c.removeEventListener("click", _onCardClickEliminar));
+    document.querySelectorAll("#votantes-table-body tr[data-cedula]")
+        .forEach(r => r.removeEventListener("click", _onFilaClickEliminar));
+}
+
+// Re-bind tras cada re-render de la tabla (MutationObserver)
 document.addEventListener("DOMContentLoaded", () => {
-    setTimeout(initEliminarObserver, 600);
+    setTimeout(() => {
+        const obs = new MutationObserver(() => {
+            if (elimState.activo) {
+                _unbindEliminarListeners();
+                _bindEliminarListeners();
+            }
+        });
+        const cards = document.getElementById("cards-container");
+        const tbody = document.getElementById("votantes-table-body");
+        if (cards) obs.observe(cards, { childList: true });
+        if (tbody) obs.observe(tbody, { childList: true });
+    }, 600);
 });

@@ -288,11 +288,11 @@
         .btn-obs.has-obs {
             border-style: solid;
             border-color: var(--color-warn);
-            color: #78350F;
+            color: #B45309;
             background: var(--color-warn-bg);
             font-weight: 700;
         }
-        .btn-obs.has-obs:hover { background: #FDE68A; }
+        .btn-obs.has-obs:hover { background: #FEF3C7; }
         .btn-obs .obs-preview {
             flex: 1;
             text-align: left;
@@ -461,7 +461,7 @@
            WHATSAPP LINK
            ═══════════════════════════════════════ */
         .wa-link {
-            color: #25D366;
+            color: #15803D;
             text-decoration: none;
             font-weight: 700;
             font-size: .88rem;
@@ -975,9 +975,9 @@
             display: inline-flex;
             align-items: center;
             gap: 5px;
-            background: #E0E7FF;
-            color: #3730A3;
-            border: 1.5px solid #C7D2FE;
+            background: var(--color-primary-light);
+            color: var(--color-primary-hover);
+            border: 1.5px solid var(--color-primary-soft);
             padding: 3px 10px;
             border-radius: 100px;
             font-size: .68rem;
@@ -1105,7 +1105,7 @@
         <div class="modal-actions">
             <button class="btn-secondary" onclick="cancelarObservacion()">Cancelar</button>
             <button class="btn-primary" onclick="confirmarObservacion()"
-                style="background:linear-gradient(135deg,var(--color-success),#166534);border-color:var(--color-success);display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 5px 14px rgba(21,128,61,.35);">
+                style="background:linear-gradient(135deg,var(--color-success),#15803D);border-color:var(--color-success);display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 5px 14px rgba(21,128,61,.35);">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Confirmar
             </button>
@@ -1116,7 +1116,7 @@
 <!-- ═══════════════ MODAL: Confirmar Eliminación ═══════════════ -->
 <div class="modal-overlay" id="modal-eliminar-confirm">
     <div class="modal-box">
-        <h3 style="color:#dc2626;">
+        <h3 style="color:#B91C1C;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
             Confirmar Eliminación
         </h3>
@@ -1124,7 +1124,7 @@
         <div class="modal-actions">
             <button class="btn-secondary" onclick="cancelarModoEliminar()">Cancelar</button>
             <button class="btn-primary"
-                style="background:linear-gradient(135deg,#dc2626,#991b1b);border-color:#dc2626;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 5px 14px rgba(220,38,38,.35);"
+                style="background:linear-gradient(135deg,#B91C1C,#7F1D1D);border-color:#B91C1C;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 5px 14px rgba(185,28,28,.35);"
                 onclick="confirmarEliminarSeleccionados()">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
                 Eliminar
@@ -1347,10 +1347,11 @@
         <!-- Banner de modo selección -->
         <div id="banner-eliminar" class="banner-eliminar hidden">
             <span id="banner-eliminar-count">0 seleccionados</span>
-            <div style="display:flex;gap:8px;">
+            <div style="display:flex;gap:8px;align-items:center;">
+                <button class="btn-secondary" style="padding:7px 14px;font-size:.8rem;" onclick="seleccionarTodosEliminar()">Todos</button>
                 <button class="btn-secondary" style="padding:7px 14px;font-size:.8rem;" onclick="cancelarModoEliminar()">Cancelar</button>
                 <button id="btn-eliminar-seleccionados" class="btn-primary"
-                    style="padding:7px 14px;font-size:.8rem;background:linear-gradient(135deg,#dc2626,#991b1b);border-color:#dc2626;opacity:.4;pointer-events:none;"
+                    style="padding:7px 14px;font-size:.8rem;background:linear-gradient(135deg,#B91C1C,#7F1D1D);border-color:#B91C1C;opacity:.4;pointer-events:none;"
                     onclick="pedirConfirmacionEliminar()">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
                     Eliminar
@@ -1402,14 +1403,10 @@
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
                     <h4 style="margin:0;display:flex;align-items:center;gap:8px;font-size:.9rem;">
                         <svg width="16" height="16" style="color:var(--color-primary-accent)"><use href="#icon-bar-chart"/></svg>
-                        <span id="bar-chart-title">Participación por Local</span>
+                        <span id="bar-chart-title">Participación por Locales</span>
                     </h4>
                     <div class="stats-selectors">
-                        <select id="chart-type-selector">
-                            <option value="local">Por Local</option>
-                            <option value="mesa">Por Mesa</option>
-                        </select>
-                        <select id="chart-local-selector" class="hidden">
+                        <select id="chart-local-selector">
                             <option value="">Todos los locales</option>
                         </select>
                     </div>
@@ -1581,7 +1578,10 @@
                 <div id="pr-btn-agregar-wrap" style="margin-top:14px;">
                     <button id="pr-btn-agregar" onclick="agregarDesdePardon()" class="btn-primary"
                         style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 0;font-size:.92rem;font-weight:900;">
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><line x1="18" y1="13" x2="18" y2="19"/><line x1="15" y1="16" x2="21" y2="16"/></svg>
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
                         Añadir a la planilla
                     </button>
                 </div>

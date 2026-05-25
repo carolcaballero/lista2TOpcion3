@@ -1,1164 +1,1564 @@
-/* ═══════════════════════════════════════════════════════════════
-   CONTROL ELECTORAL — styles.css v7  (TEMA INTENSO · MÓVIL FIRST)
-   Paleta: BLANCO + ROJO INTENSO + NEGRO PROFUNDO
-   · Colores más fuertes y resaltantes
-   · Mucho más movimiento y animaciones
-   · Mejor organización mobile
-═══════════════════════════════════════════════════════════════ */
+// ═══════════════════════════════════════════════════════════════
+//  CONTROL ELECTORAL — app.js  v7  (TEMA INTENSO + BOTÓN TODOS)
+//  Firebase Firestore (tiempo real) + CSV padrón base
+//  ✨ Novedades v7:
+//   · Botón "Todos" en filtros (con orden Votó → No Votó → Pendientes)
+//   · Métricas clicables (cambia el filtro al tocarlas)
+//   · Separadores visuales por sección de estado
+//   · Contadores en cada filtro (live)
+//   · Animación numérica al cambiar métricas
+//   · Mejor escape HTML (incluye comillas dobles y simples)
+//   · Corrección: spinner inicial usa div (no tr) en cards-mobile
+//   · Corrección: ordenamiento estable por nombre dentro de cada grupo
+// ═══════════════════════════════════════════════════════════════
 
-:root {
-    /* ── Paleta principal (más intensa) ───────────────────────── */
-    --color-primary:        #B91C1C;   /* Rojo intenso */
-    --color-primary-hover:  #7F1D1D;   /* Rojo oscuro profundo */
-    --color-primary-deep:   #450A0A;   /* Rojo casi negro */
-    --color-primary-light:  #FEE2E2;   /* Rojo muy suave */
-    --color-primary-soft:   #FCA5A5;   /* Rojo pastel saturado */
-    --color-primary-glow:   rgba(185, 28, 28, .35);
-    --color-primary-accent: #DC2626;   /* Rojo vibrante (acentos) */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+    getFirestore,
+    doc, getDoc, getDocs, setDoc, addDoc, deleteDoc,
+    collection, onSnapshot, serverTimestamp, query, orderBy, limit
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    --color-bg:             #FFFFFF;
-    --color-bg-soft:        #FAFAFA;
-    --color-bg-alt:         #F3F4F6;
-    --color-card:           #FFFFFF;
+// ── Firebase config ─────────────────────────────────────────────
+const firebaseConfig = {
+    apiKey:            "AIzaSyAPOUL6dxwCVgJxhGbBudKbWcyfiFFZt88",
+    authDomain:        "lista2topcion3.firebaseapp.com",
+    projectId:         "lista2topcion3",
+    storageBucket:     "lista2topcion3.firebasestorage.app",
+    messagingSenderId: "121196945937",
+    appId:             "1:121196945937:web:1d4eac42d712927f4b87b0",
+    measurementId:     "G-J6NJZ4ZNWK"
+};
 
-    --color-dark:           #0A0A0A;   /* Negro profundo */
-    --color-text:           #111827;
-    --color-text-soft:      #374151;
-    --color-gray:           #6B7280;
-    --color-light:          #0A0A0A;
+const firebaseApp = initializeApp(firebaseConfig);
+const db          = getFirestore(firebaseApp);
 
-    --color-border:         #E5E7EB;
-    --color-border-soft:    #F0F0F0;
-    --color-border-strong:  #D1D5DB;
+// ── Constantes ──────────────────────────────────────────────────
+const ADMIN_USER_ID   = "admin";
+const ADMIN_HASH      = "3125998a39f131e03ee8a3cad1ea1fb31327e6a610e1c21cc0ff50ee00495a03";
+const ADMIN_FULLNAME  = "Administrador/a";
+const SESSION_KEY     = "ce_session_v5";
+const SESSION_TTL_MS  = 7 * 24 * 60 * 60 * 1000;
+const CSV_PATH        = "data/votantes.csv";
+const TZ_PY           = "America/Asuncion";
 
-    --color-success:        #15803D;   /* Verde más profundo */
-    --color-success-bg:     #DCFCE7;
-    --color-success-soft:   #86EFAC;
-    --color-warn:           #B45309;   /* Ámbar más profundo */
-    --color-warn-bg:        #FEF3C7;
-    --color-danger:         #B91C1C;
-    --color-danger-bg:      #FEE2E2;
+// ── Estado global ───────────────────────────────────────────────
+const state = {
+    currentUser:      null,
+    padron:           [],
+    votos:            {},
+    usuarios:         [],
+    currentFilter:    "todos",
+    searchQuery:      "",
+    searchAllStates:  false,
+    pendingNoVoto:    null,
+    unsubVotos:       null,
+    unsubPresencia:   null,
+    unsubBitacora:    null,
+    onlineUsers:      {},
+    presenceInterval: null,
+    prevMetrics:      { total: 0, voted: 0, novoted: 0, pending: 0 },
+};
 
-    /* ── Sombras intensas ──────────────────────────────────── */
-    --shadow-sm:  0 1px 3px rgba(15, 23, 42, .08), 0 1px 2px rgba(15, 23, 42, .06);
-    --shadow-md:  0 6px 12px -2px rgba(15, 23, 42, .12), 0 3px 6px -3px rgba(15, 23, 42, .08);
-    --shadow-lg:  0 14px 30px -8px rgba(15, 23, 42, .18), 0 8px 14px -6px rgba(15, 23, 42, .10);
-    --shadow-red: 0 10px 28px -8px rgba(185, 28, 28, .45);
-    --shadow-red-strong: 0 14px 36px -8px rgba(185, 28, 28, .55);
+// ═══════════════════════════════════════════════════════════════
+//  SHA-256
+// ═══════════════════════════════════════════════════════════════
+async function sha256(texto) {
+    const encoder = new TextEncoder();
+    const data    = encoder.encode(texto);
+    const hash    = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(hash))
+        .map(b => b.toString(16).padStart(2, "0"))
+        .join("");
+}
+window.sha256 = sha256;
 
-    /* ── Transiciones ─────────────────────────────────────── */
-    --t-fast: .15s cubic-bezier(.4, 0, .2, 1);
-    --t-base: .25s cubic-bezier(.4, 0, .2, 1);
-    --t-slow: .4s cubic-bezier(.4, 0, .2, 1);
-    --t-bounce: .45s cubic-bezier(.34, 1.56, .64, 1);
-
-    /* ── Radios ───────────────────────────────────────────── */
-    --r-sm: 6px;
-    --r-md: 10px;
-    --r-lg: 14px;
-    --r-xl: 20px;
-
-    --color-card-bg: #FFFFFF;
+// ── Fecha/hora Paraguay ─────────────────────────────────────────
+function ahoraParaguay() {
+    return new Date().toLocaleString("es-PY", {
+        timeZone: TZ_PY, day:"2-digit", month:"2-digit", year:"numeric",
+        hour:"2-digit", minute:"2-digit", hour12:false
+    });
+}
+function timestampAParaguay(ts) {
+    if (!ts) return "---";
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleString("es-PY", {
+        timeZone: TZ_PY, day:"2-digit", month:"2-digit", year:"numeric",
+        hour:"2-digit", minute:"2-digit", hour12:false
+    });
 }
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, Helvetica, Arial, sans-serif;
-    -webkit-tap-highlight-color: transparent;
+// ═══════════════════════════════════════════════════════════════
+//  BITÁCORA
+// ═══════════════════════════════════════════════════════════════
+async function registrarBitacora(accion, detalle) {
+    try {
+        await addDoc(collection(db, "bitacora"), {
+            operador:  state.currentUser?.fullname || "---",
+            username:  state.currentUser?.username || "---",
+            accion, detalle,
+            hora_py:   ahoraParaguay(),
+            timestamp: serverTimestamp()
+        });
+    } catch (e) { console.warn("Bitácora error:", e); }
 }
 
-html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
-
-body {
-    background-color: var(--color-bg);
-    color: var(--color-text);
-    line-height: 1.55;
-    font-size: 15px;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    overscroll-behavior: none;
+function escucharBitacora() {
+    if (state.unsubBitacora) state.unsubBitacora();
+    const q = query(collection(db, "bitacora"), orderBy("timestamp", "desc"), limit(150));
+    state.unsubBitacora = onSnapshot(q, snap => {
+        const eventos = [];
+        snap.forEach(d => eventos.push({ id: d.id, ...d.data() }));
+        renderBitacora(eventos);
+    }, err => console.error("Bitácora listener:", err));
 }
 
-.hidden { display: none !important; }
-
-::selection { background: var(--color-primary-soft); color: var(--color-primary-deep); }
-
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--color-primary-soft); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: var(--color-primary); }
-
-/* ═══════════════════════════════════════════════════════════════
-   LOGIN
-═══════════════════════════════════════════════════════════════ */
-.auth-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    min-height: 100dvh;
-    padding: 20px;
-    background:
-        radial-gradient(circle at 0% 0%, rgba(185, 28, 28, .18) 0%, transparent 45%),
-        radial-gradient(circle at 100% 100%, rgba(127, 29, 29, .22) 0%, transparent 50%),
-        linear-gradient(135deg, #FFFFFF 0%, #FFF1F1 50%, #FEE2E2 100%);
-    position: relative;
-    overflow: hidden;
+function renderBitacora(eventos) {
+    const tbody = document.getElementById("bitacora-tbody");
+    if (!tbody) return;
+    if (!eventos.length) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--color-gray);padding:20px;">Sin actividad registrada aún.</td></tr>`;
+        return;
+    }
+    const colorMap = {
+        "Votó":"#15803D","No Votó":"#B45309","Quitar Voto":"#B91C1C",
+        "Quitar No Votó":"#7C3AED","Nuevo Votante":"#2563EB","Nuevo Operador":"#DB2777",
+        "Eliminar Operador":"#B91C1C","Observación":"#CA8A04","Login":"#059669",
+        "Logout":"#6B7280","Consulta Padrón":"#CA8A04","Cambio Contraseña":"#7C3AED",
+        "Exportar CSV":"#0891B2"
+    };
+    tbody.innerHTML = eventos.map(e => {
+        const hora  = e.hora_py || timestampAParaguay(e.timestamp) || "---";
+        const color = colorMap[e.accion] || "#6B7280";
+        return `
+            <tr>
+                <td style="white-space:nowrap;font-size:.76rem;color:var(--color-gray);font-family:monospace">${hora}</td>
+                <td><strong style="color:var(--color-dark);font-size:.85rem">${escHtml(e.operador)}</strong><br>
+                    <span style="font-size:.7rem;color:var(--color-gray)">${escHtml(e.username)}</span></td>
+                <td><span class="bit-badge" style="background:${color}1f;color:${color};border:1px solid ${color}55">${escHtml(e.accion)}</span></td>
+                <td style="font-size:.8rem;color:var(--color-dark)">${escHtml(e.detalle)}</td>
+            </tr>`;
+    }).join("");
 }
 
-/* Burbujas animadas de fondo */
-.auth-container::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-image:
-        radial-gradient(circle at 20% 30%, rgba(185, 28, 28, .08) 0, transparent 1px),
-        radial-gradient(circle at 80% 70%, rgba(185, 28, 28, .08) 0, transparent 1px);
-    background-size: 40px 40px;
-    opacity: .6;
-    pointer-events: none;
-    animation: bgFloat 20s linear infinite;
-}
-@keyframes bgFloat {
-    0%   { background-position: 0 0, 0 0; }
-    100% { background-position: 40px 40px, -40px -40px; }
+// ═══════════════════════════════════════════════════════════════
+//  INICIO
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener("DOMContentLoaded", () => {
+    bindEvents();
+    checkSession();
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  SESIÓN
+// ═══════════════════════════════════════════════════════════════
+function checkSession() {
+    try {
+        const raw = localStorage.getItem(SESSION_KEY);
+        if (raw) {
+            const session = JSON.parse(raw);
+            const age = Date.now() - (session.loginAt || 0);
+            if (age < SESSION_TTL_MS && session.user) {
+                loginSuccess(session.user, false);
+                return;
+            } else {
+                localStorage.removeItem(SESSION_KEY);
+            }
+        }
+    } catch { /**/ }
+    showLogin();
 }
 
-.login-card {
-    position: relative;
-    background: rgba(255, 255, 255, .96);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(185, 28, 28, .2);
-    border-radius: var(--r-xl);
-    padding: 36px 26px;
-    width: 100%;
-    max-width: 430px;
-    text-align: center;
-    box-shadow:
-        0 30px 70px -15px rgba(185, 28, 28, .35),
-        0 14px 40px -8px rgba(0, 0, 0, .12);
-    animation: cardFloat .6s cubic-bezier(.34, 1.56, .64, 1);
-}
+async function handleLogin(e) {
+    e.preventDefault();
+    const userIn   = document.getElementById("username").value.replace(/\s+/g, "").trim();
+    const passIn   = document.getElementById("password").value.replace(/\s+/g, "").trim();
+    const errEl    = document.getElementById("login-error");
+    const btnLogin = e.target.querySelector("button[type=submit]");
+    errEl.textContent = "";
+    if (!userIn || !passIn) { errEl.textContent = "Completá usuario y contraseña."; return; }
+    if (btnLogin) { btnLogin.disabled = true; btnLogin.textContent = "Verificando..."; }
+    const resetBtn = () => { if (btnLogin) { btnLogin.disabled = false; btnLogin.textContent = "Ingresar al Sistema"; } };
 
-.login-card::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 50%;
-    transform: translateX(-50%);
-    width: 70%;
-    height: 5px;
-    background: linear-gradient(90deg, transparent, var(--color-primary-accent), var(--color-primary), transparent);
-    border-radius: 0 0 var(--r-md) var(--r-md);
-    animation: shineBar 3s ease-in-out infinite;
-}
-
-@keyframes shineBar {
-    0%, 100% { opacity: 1; transform: translateX(-50%) scaleX(1); }
-    50%      { opacity: .6; transform: translateX(-50%) scaleX(1.08); }
-}
-
-@keyframes cardFloat {
-    from { opacity: 0; transform: translateY(40px) scale(.94); }
-    to   { opacity: 1; transform: translateY(0)    scale(1);   }
-}
-
-.login-card h1 {
-    color: var(--color-dark);
-    font-size: 1.6rem;
-    font-weight: 900;
-    margin-bottom: 6px;
-    letter-spacing: -.5px;
-}
-
-.login-card h2 {
-    color: var(--color-primary);
-    font-size: .92rem;
-    font-weight: 800;
-    margin-bottom: 16px;
-    letter-spacing: .3px;
-}
-
-.subtitle {
-    background: linear-gradient(135deg, var(--color-primary-accent), var(--color-primary-hover));
-    color: #fff;
-    padding: 9px 20px;
-    display: inline-block;
-    border-radius: 100px;
-    font-weight: 800;
-    margin-bottom: 28px;
-    font-size: .8rem;
-    text-transform: uppercase;
-    letter-spacing: .7px;
-    box-shadow: var(--shadow-red);
-    animation: subtitlePulse 3s ease-in-out infinite;
-}
-@keyframes subtitlePulse {
-    0%, 100% { box-shadow: var(--shadow-red); }
-    50%      { box-shadow: var(--shadow-red-strong); }
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   FORMULARIOS
-═══════════════════════════════════════════════════════════════ */
-.form-group {
-    text-align: left;
-    margin-bottom: 18px;
-}
-
-.form-group label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 8px;
-    font-weight: 700;
-    font-size: .82rem;
-    color: var(--color-text-soft);
-    text-transform: uppercase;
-    letter-spacing: .5px;
-}
-
-.form-group input,
-.form-group textarea {
-    width: 100%;
-    padding: 13px 14px;
-    background: var(--color-bg-soft);
-    border: 1.5px solid var(--color-border);
-    color: var(--color-dark);
-    border-radius: var(--r-md);
-    font-size: 1rem;
-    transition: all var(--t-base);
-    -webkit-appearance: none;
-    appearance: none;
-}
-
-.form-group input::placeholder { color: #9CA3AF; }
-
-.form-group input:focus,
-.form-group textarea:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    background: #fff;
-    box-shadow: 0 0 0 4px var(--color-primary-glow);
-    transform: translateY(-1px);
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   BOTONES
-═══════════════════════════════════════════════════════════════ */
-.btn-primary {
-    width: 100%;
-    padding: 14px 18px;
-    background: linear-gradient(135deg, var(--color-primary-accent) 0%, var(--color-primary-hover) 100%);
-    color: #fff;
-    border: none;
-    border-radius: var(--r-md);
-    font-size: .95rem;
-    font-weight: 800;
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: .7px;
-    transition: all var(--t-base);
-    box-shadow: var(--shadow-red);
-    position: relative;
-    overflow: hidden;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-}
-
-.btn-primary::before {
-    content: "";
-    position: absolute;
-    top: 0; left: -120%;
-    width: 100%; height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .35), transparent);
-    transition: left .6s ease;
-}
-.btn-primary:hover::before { left: 120%; }
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-red-strong);
-}
-.btn-primary:active { transform: translateY(0) scale(.97); }
-
-.btn-secondary {
-    background: #fff;
-    border: 1.5px solid var(--color-primary);
-    color: var(--color-primary);
-    padding: 10px 16px;
-    border-radius: var(--r-md);
-    cursor: pointer;
-    font-weight: 700;
-    font-size: .85rem;
-    transition: all var(--t-base);
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-.btn-secondary:hover {
-    background: var(--color-primary-light);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(185, 28, 28, .15);
-}
-.btn-secondary:active { transform: scale(.96); }
-
-.btn-danger {
-    background: linear-gradient(135deg, var(--color-primary-accent), var(--color-primary-hover));
-    color: #fff;
-    border: none;
-    padding: 9px 14px;
-    border-radius: var(--r-sm);
-    cursor: pointer;
-    font-weight: 700;
-    width: 100%;
-    transition: all var(--t-base);
-    box-shadow: 0 3px 8px rgba(185, 28, 28, .3);
-}
-.btn-danger:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(185, 28, 28, .4); }
-.btn-danger:active { transform: scale(.96); }
-
-/* ═══════════════════════════════════════════════════════════════
-   APP CONTAINER + HEADER
-═══════════════════════════════════════════════════════════════ */
-.app-container {
-    padding: 14px;
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
-    max-width: 1400px;
-    margin: 0 auto;
-    background: var(--color-bg);
-    min-height: 100vh;
-    min-height: 100dvh;
-    animation: appFadeIn .35s var(--t-base);
-}
-@keyframes appFadeIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-}
-
-.main-header {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    padding: 14px 16px;
-    margin-bottom: 14px;
-    background: linear-gradient(135deg, #fff 0%, #FFF5F5 100%);
-    border: 1px solid var(--color-border);
-    border-radius: var(--r-lg);
-    box-shadow: var(--shadow-sm);
-    position: relative;
-    overflow: hidden;
-}
-
-.main-header::before {
-    content: "";
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 5px;
-    background: linear-gradient(180deg, var(--color-primary-accent), var(--color-primary-hover));
-}
-
-.user-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: var(--color-bg-alt);
-    padding: 10px 12px;
-    border-radius: var(--r-md);
-    width: 100%;
-    gap: 10px;
-    flex-wrap: wrap;
-    font-size: .82rem;
-}
-.user-info span { display: flex; align-items: center; gap: 5px; }
-
-/* ═══════════════════════════════════════════════════════════════
-   DASHBOARD — filas con barras de progreso individuales
-═══════════════════════════════════════════════════════════════ */
-.dashboard-wrap {
-    background: #fff;
-    border: 1px solid var(--color-border);
-    border-radius: var(--r-lg);
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-}
-
-/* Header */
-.dash-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 11px 16px;
-    background: linear-gradient(135deg, var(--color-primary-accent), var(--color-primary-hover));
-    gap: 8px;
-}
-.dash-header-title {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: .72rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: .6px;
-    color: rgba(255,255,255,.85);
-}
-.dash-header-title svg { opacity: .8; }
-.dash-header-total {
-    font-size: .78rem;
-    font-weight: 700;
-    color: rgba(255,255,255,.8);
-}
-.dash-header-total strong {
-    color: #fff;
-    font-size: 1rem;
-    font-weight: 900;
-    margin-left: 4px;
-}
-
-/* Filas */
-.dash-rows {
-    padding: 6px 0;
-}
-
-.dash-row {
-    padding: 12px 16px 14px;
-    cursor: pointer;
-    transition: background var(--t-fast);
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-}
-.dash-row:not(:last-child) {
-    border-bottom: 1px solid var(--color-border-soft);
-}
-.dash-row:hover { background: var(--color-bg-soft); }
-.dash-row:active { background: var(--color-bg-alt); }
-
-.dash-row-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
-}
-
-.dash-row-label {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-size: .8rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: .4px;
-    color: var(--color-text-soft);
-}
-
-.dash-row-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-.dash-dot-voted   { background: var(--color-success); box-shadow: 0 0 6px rgba(21,128,61,.5); }
-.dash-dot-novoted { background: var(--color-primary-accent); box-shadow: 0 0 6px rgba(220,38,38,.5); }
-.dash-dot-pending { background: #9CA3AF; }
-
-.dash-row-voted   .dash-row-label { color: var(--color-success); }
-.dash-row-novoted .dash-row-label { color: var(--color-primary-accent); }
-.dash-row-pending .dash-row-label { color: #6B7280; }
-
-.dash-row-right {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-}
-
-.dash-row-num {
-    font-size: 1.55rem;
-    font-weight: 900;
-    letter-spacing: -.5px;
-    line-height: 1;
-    transition: transform var(--t-bounce);
-}
-.dash-row:hover .dash-row-num { transform: scale(1.06); }
-.dash-row-voted   .dash-row-num { color: var(--color-success); }
-.dash-row-novoted .dash-row-num { color: var(--color-primary-accent); }
-.dash-row-pending .dash-row-num { color: #6B7280; }
-
-.dash-row-pct {
-    font-size: .78rem;
-    font-weight: 800;
-    border-radius: 100px;
-    padding: 2px 8px;
-    letter-spacing: .2px;
-}
-.dash-row-voted   .dash-row-pct { background: #DCFCE7; color: var(--color-success); }
-.dash-row-novoted .dash-row-pct { background: #FEE2E2; color: var(--color-primary-accent); }
-.dash-row-pending .dash-row-pct { background: #F3F4F6; color: #6B7280; }
-
-/* Barra de progreso individual */
-.dash-bar-track {
-    height: 7px;
-    background: var(--color-bg-alt);
-    border-radius: 100px;
-    overflow: hidden;
-}
-
-.dash-bar-fill {
-    height: 100%;
-    border-radius: 100px;
-    min-width: 0;
-    transition: width .9s cubic-bezier(.4, 0, .2, 1);
-}
-
-.dash-bar-voted   { background: linear-gradient(90deg, #16A34A, var(--color-success)); }
-.dash-bar-novoted { background: linear-gradient(90deg, var(--color-primary-accent), var(--color-primary-hover)); }
-.dash-bar-pending { background: linear-gradient(90deg, #9CA3AF, #6B7280); }
-
-/* Animación numérica */
-.dash-row-num.bumping { animation: numberBump .5s var(--t-bounce); }
-@keyframes numberBump {
-    0%   { transform: scale(1); }
-    40%  { transform: scale(1.3); }
-    100% { transform: scale(1); }
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   TOOLBAR (TABS)
-═══════════════════════════════════════════════════════════════ */
-.toolbar-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 10px;
-    flex-wrap: wrap;
-}
-
-.toolbar-tabs {
-    display: flex;
-    gap: 4px;
-    flex-wrap: wrap;
-    background: var(--color-bg-alt);
-    padding: 4px;
-    border-radius: var(--r-md);
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, .04);
-}
-
-.tab-btn {
-    background: transparent;
-    color: var(--color-text-soft);
-    border: none;
-    padding: 10px 14px;
-    cursor: pointer;
-    font-weight: 800;
-    font-size: .8rem;
-    text-align: center;
-    border-radius: var(--r-sm);
-    transition: all var(--t-base);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-    position: relative;
-}
-
-.tab-btn:hover {
-    color: var(--color-primary);
-    background: rgba(185, 28, 28, .08);
-}
-.tab-btn.active {
-    background: #fff;
-    color: var(--color-primary);
-    box-shadow: 0 2px 8px rgba(185, 28, 28, .12), 0 1px 3px rgba(0, 0, 0, .06);
-}
-.tab-btn.active svg { color: var(--color-primary); }
-
-.toolbar-filters {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   FILTROS - segmented control
-═══════════════════════════════════════════════════════════════ */
-.filter-group {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
-    width: 100%;
-}
-
-.filter-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    padding: 9px 6px;
-    border-radius: var(--r-md);
-    font-size: .67rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: .3px;
-    cursor: pointer;
-    border: 1.5px solid var(--color-border);
-    background: var(--color-bg-soft);
-    color: var(--color-text-soft);
-    transition: all var(--t-base);
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-    position: relative;
-    overflow: hidden;
-    min-height: 54px;
-}
-
-.filter-btn svg {
-    width: 15px;
-    height: 15px;
-    flex-shrink: 0;
-}
-
-.filter-label {
-    display: block;
-    line-height: 1;
-}
-
-.filter-btn:active { transform: scale(.95); }
-.filter-btn:hover { border-color: var(--color-primary); color: var(--color-primary); background: #fff; }
-
-.filter-btn.f-todos {
-    border-color: var(--color-dark);
-    color: #fff;
-    background: linear-gradient(160deg, #1a1a1a, #333);
-    box-shadow: 0 3px 8px -2px rgba(0,0,0,.4);
-}
-.filter-btn.f-pending {
-    border-color: #6B7280;
-    color: #fff;
-    background: linear-gradient(160deg, #6B7280, #4B5563);
-    box-shadow: 0 3px 8px -2px rgba(107,114,128,.45);
-}
-.filter-btn.f-voted {
-    border-color: var(--color-success);
-    color: #fff;
-    background: linear-gradient(160deg, var(--color-success), #166534);
-    box-shadow: 0 3px 8px -2px rgba(21,128,61,.45);
-}
-.filter-btn.f-novoted {
-    border-color: var(--color-primary-accent);
-    color: #fff;
-    background: linear-gradient(160deg, var(--color-primary-accent), var(--color-primary-hover));
-    box-shadow: 0 3px 8px -2px rgba(185,28,28,.5);
-}
-
-@media (min-width: 768px) {
-    .filter-group { display: flex; flex-wrap: wrap; gap: 6px; }
-    .filter-btn {
-        flex-direction: row;
-        flex: none;
-        min-width: 120px;
-        min-height: 40px;
-        padding: 10px 16px;
-        font-size: .76rem;
-        gap: 6px;
-        border-radius: 100px;
+    try {
+        const passHash = await sha256(passIn);
+        if (userIn.toLowerCase() === ADMIN_USER_ID) {
+            if (passHash === ADMIN_HASH) {
+                resetBtn();
+                loginSuccess({ username: ADMIN_USER_ID, fullname: ADMIN_FULLNAME, isAdmin: true }, true);
+                return;
+            } else {
+                errEl.textContent = "Contraseña incorrecta para Admin.";
+                resetBtn(); return;
+            }
+        }
+        const snap = await getDoc(doc(db, "usuarios", userIn.toLowerCase()));
+        if (snap.exists()) {
+            const u = snap.data();
+            const match = u.passwordHash ? u.passwordHash === passHash : u.password === passIn;
+            if (match) {
+                resetBtn();
+                loginSuccess({ username: u.username, fullname: u.fullname, isAdmin: false }, true);
+                return;
+            }
+        }
+        errEl.textContent = "Usuario o contraseña incorrectos.";
+        resetBtn();
+    } catch (err) {
+        console.error("Login error:", err);
+        if (err.code === "unavailable" || err.message?.includes("network")) {
+            errEl.textContent = "Sin conexión. Verificá tu red e intentá de nuevo.";
+        } else if (err.code === "permission-denied") {
+            errEl.textContent = "Error de permisos. Contactá al administrador.";
+        } else {
+            errEl.textContent = "Error al conectar. Revisá tu internet.";
+        }
+        resetBtn();
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   BÚSQUEDA
-═══════════════════════════════════════════════════════════════ */
-.search-box-full {
-    position: relative;
-    flex: 1;
-    min-width: 0;
-    width: 100%;
-}
-.search-box-full .icon {
-    position: absolute;
-    left: 13px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 16px;
-    height: 16px;
-    color: var(--color-gray);
-    pointer-events: none;
-    margin: 0;
-}
-.search-box-full input {
-    width: 100%;
-    padding: 12px 14px 12px 40px;
-    background: var(--color-bg-soft);
-    border: 1.5px solid var(--color-border);
-    color: var(--color-dark);
-    border-radius: var(--r-md);
-    font-size: .95rem;
-    -webkit-appearance: none;
-    transition: all var(--t-base);
-}
-.search-box-full input::placeholder { color: #9CA3AF; }
-.search-box-full input:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    background: #fff;
-    box-shadow: 0 0 0 4px var(--color-primary-glow);
-}
+function loginSuccess(user, persist) {
+    try {
+        state.currentUser = user;
+        if (persist) {
+            try { localStorage.setItem(SESSION_KEY, JSON.stringify({ user, loginAt: Date.now() })); }
+            catch(e) { console.warn("No se pudo guardar sesión:", e); }
+        }
 
-/* ═══════════════════════════════════════════════════════════════
-   TABLAS — escritorio
-═══════════════════════════════════════════════════════════════ */
-.table-responsive {
-    overflow-x: auto;
-    background: #fff;
-    border: 1px solid var(--color-border);
-    border-radius: var(--r-lg);
-    -webkit-overflow-scrolling: touch;
-    box-shadow: var(--shadow-sm);
-}
+        const prefixEl  = document.getElementById("user-prefix");
+        const displayEl = document.getElementById("current-user-display");
+        if (prefixEl)  prefixEl.textContent  = user.isAdmin ? "" : "Operador: ";
+        if (displayEl) displayEl.textContent = user.fullname;
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-    text-align: left;
-    white-space: nowrap;
-}
+        const tabAdmin    = document.getElementById("tab-admin");
+        const btnExportar = document.getElementById("btn-exportar");
+        if (tabAdmin)    user.isAdmin ? tabAdmin.classList.remove("hidden")  : tabAdmin.classList.add("hidden");
+        if (btnExportar) btnExportar.style.display = user.isAdmin ? "flex" : "none";
 
-th, td {
-    padding: 13px 16px;
-    border-bottom: 1px solid var(--color-border-soft);
-    font-size: .9rem;
-    color: var(--color-text);
-}
+        showApp();
+        state.currentFilter = "todos";
+        switchTab("planilla");
+        actualizarBotonTrash();
 
-th {
-    background: linear-gradient(135deg, var(--color-primary-accent) 0%, var(--color-primary-hover) 100%);
-    color: #fff;
-    text-transform: uppercase;
-    letter-spacing: .5px;
-    font-size: .78rem;
-    font-weight: 800;
-    position: sticky;
-    top: 0;
-    z-index: 1;
-}
+        const loginForm = document.getElementById("login-form");
+        if (loginForm) loginForm.reset();
 
-tbody tr { transition: background var(--t-fast); }
-tbody tr:hover { background: var(--color-primary-light); }
-
-.obs-input {
-    background: var(--color-bg-soft);
-    border: 1.5px solid var(--color-border);
-    color: var(--color-dark);
-    padding: 9px 11px;
-    border-radius: var(--r-sm);
-    min-width: 180px;
-    transition: all var(--t-base);
-    font-family: inherit;
-    font-size: .88rem;
-}
-.obs-input:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    background: #fff;
-    box-shadow: 0 0 0 3px var(--color-primary-glow);
-}
-
-.log-span {
-    font-size: .75rem;
-    color: var(--color-gray);
-    display: block;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   SECCIÓN DIVISORA dentro de planilla
-═══════════════════════════════════════════════════════════════ */
-.section-divider {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin: 18px 0 10px;
-    padding: 10px 14px;
-    background: linear-gradient(90deg, var(--color-bg-alt), transparent);
-    border-left: 4px solid var(--color-primary);
-    border-radius: var(--r-sm);
-    font-size: .75rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: .8px;
-    color: var(--color-dark);
-    animation: fadeInLeft .35s var(--t-base);
-}
-.section-divider svg { width: 14px; height: 14px; }
-.section-divider .sd-count {
-    margin-left: auto;
-    background: #fff;
-    color: var(--color-primary);
-    padding: 2px 10px;
-    border-radius: 100px;
-    font-size: .72rem;
-    font-weight: 800;
-    border: 1px solid var(--color-border);
-}
-
-.section-divider.sd-voted {
-    border-left-color: var(--color-success);
-    background: linear-gradient(90deg, var(--color-success-bg), transparent);
-    color: var(--color-success);
-}
-.section-divider.sd-voted .sd-count { color: var(--color-success); border-color: var(--color-success-soft); }
-
-.section-divider.sd-novoted {
-    border-left-color: var(--color-primary-accent);
-    background: linear-gradient(90deg, var(--color-primary-light), transparent);
-    color: var(--color-primary-hover);
-}
-.section-divider.sd-novoted .sd-count { color: var(--color-primary); border-color: var(--color-primary-soft); }
-
-.section-divider.sd-pending {
-    border-left-color: var(--color-gray);
-    background: linear-gradient(90deg, var(--color-bg-alt), transparent);
-    color: var(--color-text-soft);
-}
-.section-divider.sd-pending .sd-count { color: var(--color-text-soft); }
-
-@keyframes fadeInLeft {
-    from { opacity: 0; transform: translateX(-12px); }
-    to   { opacity: 1; transform: translateX(0); }
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   ADMIN
-═══════════════════════════════════════════════════════════════ */
-.admin-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-}
-
-.admin-card {
-    background: #fff;
-    border: 1px solid var(--color-border);
-    padding: 20px 18px;
-    border-radius: var(--r-lg);
-    box-shadow: var(--shadow-sm);
-    transition: box-shadow var(--t-base), transform var(--t-base);
-    animation: cardSlideIn .4s var(--t-base);
-}
-.admin-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
-
-@keyframes cardSlideIn {
-    from { opacity: 0; transform: translateY(15px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-
-.admin-card h3 {
-    margin-bottom: 16px;
-    padding-bottom: 10px;
-    font-size: 1rem;
-    color: var(--color-dark);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 800;
-    border-bottom: 2px solid var(--color-primary-light);
-    position: relative;
-    text-transform: uppercase;
-    letter-spacing: .3px;
-}
-.admin-card h3::after {
-    content: "";
-    position: absolute;
-    bottom: -2px; left: 0;
-    width: 60px; height: 2px;
-    background: var(--color-primary-accent);
-    transition: width var(--t-slow);
-}
-.admin-card:hover h3::after { width: 100px; }
-
-/* ═══════════════════════════════════════════════════════════════
-   ICONOS
-═══════════════════════════════════════════════════════════════ */
-.icon {
-    width: 18px;
-    height: 18px;
-    vertical-align: middle;
-    margin-right: 6px;
-    fill: none;
-    color: var(--color-primary);
-    transition: transform var(--t-base);
-}
-.search-box .icon, .search-box-full .icon { color: var(--color-gray); }
-
-.error-msg {
-    color: var(--color-primary);
-    margin-top: 14px;
-    font-weight: 700;
-    font-size: .85rem;
-    padding: 8px 12px;
-    background: var(--color-primary-light);
-    border-radius: var(--r-sm);
-    min-height: 18px;
-    text-align: center;
-    transition: opacity var(--t-base);
-}
-.error-msg:empty { display: none; }
-
-code {
-    background: var(--color-primary-light);
-    padding: 3px 8px;
-    border-radius: var(--r-sm);
-    color: var(--color-primary-hover);
-    font-size: .85rem;
-    font-weight: 700;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   RESPONSIVE
-═══════════════════════════════════════════════════════════════ */
-@media (min-width: 768px) {
-    .app-container { padding: 28px; }
-
-    .main-header {
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-        text-align: left;
-    }
-
-    .user-info { width: auto; gap: 14px; background: transparent; padding: 0; }
-
-    .metrics-grid { grid-template-columns: repeat(4, 1fr); }
-
-    .toolbar-top { flex-direction: row; justify-content: space-between; }
-
-    .tab-btn { padding: 11px 22px; }
-
-    .admin-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 24px;
-    }
-
-    th, td { font-size: .95rem; padding: 14px 16px; }
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   HINT BÚSQUEDA
-═══════════════════════════════════════════════════════════════ */
-.btn-hint-global {
-    background: linear-gradient(135deg, var(--color-primary-accent), var(--color-primary-hover));
-    color: #fff;
-    border: none;
-    border-radius: var(--r-sm);
-    padding: 6px 14px;
-    font-size: .76rem;
-    font-weight: 800;
-    cursor: pointer;
-    margin-left: auto;
-    white-space: nowrap;
-    transition: all var(--t-base);
-    box-shadow: 0 3px 8px rgba(185, 28, 28, .3);
-}
-.btn-hint-global:hover { transform: translateY(-1px); box-shadow: 0 5px 12px rgba(185, 28, 28, .4); }
-.btn-hint-global:active { transform: scale(.96); }
-
-.btn-hint-volver {
-    background: var(--color-bg-alt);
-    color: var(--color-text);
-    border: 1px solid var(--color-border);
-    border-radius: var(--r-sm);
-    padding: 6px 14px;
-    font-size: .76rem;
-    font-weight: 700;
-    cursor: pointer;
-    margin-left: auto;
-    white-space: nowrap;
-    transition: all var(--t-base);
-}
-.btn-hint-volver:hover { background: var(--color-bg-soft); }
-
-/* ═══════════════════════════════════════════════════════════════
-   TABLA USUARIOS
-═══════════════════════════════════════════════════════════════ */
-#users-table-body td:last-child { min-width: 160px; }
-
-/* ═══════════════════════════════════════════════════════════════
-   ANIMACIONES UTILITARIAS
-═══════════════════════════════════════════════════════════════ */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(14px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50%      { opacity: .55; }
-}
-@keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-4px); }
-    75% { transform: translateX(4px); }
-}
-.fade-in { animation: fadeIn .3s var(--t-base); }
-
-/* ═══════════════════════════════════════════════════════════════
-   ACCESIBILIDAD: reduced motion
-═══════════════════════════════════════════════════════════════ */
-@media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-        animation-duration: .01ms !important;
-        transition-duration: .01ms !important;
+        loadPadronYEscuchar();
+        iniciarPresencia();
+        registrarBitacora("Login", `${user.fullname} ingresó al sistema`);
+    } catch(err) {
+        console.error("Error en loginSuccess:", err);
+        try { showApp(); } catch(e2) { /**/ }
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   MODO ELIMINACIÓN — Botón flotante basurita + banner + checkboxes
-═══════════════════════════════════════════════════════════════ */
-
-/* Botón flotante de basurita */
-.btn-trash-flotante {
-    position: fixed;
-    bottom: 28px;
-    right: 22px;
-    z-index: 200;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #dc2626, #991b1b);
-    border: none;
-    color: #fff;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 16px rgba(220,38,38,.45);
-    transition: transform .18s ease, box-shadow .18s ease;
-}
-.btn-trash-flotante:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 22px rgba(220,38,38,.6);
-}
-.btn-trash-flotante:active {
-    transform: scale(.95);
-}
-/* En modo selección activo, el botón se pone más oscuro */
-.btn-trash-flotante.modo-activo {
-    background: linear-gradient(135deg, #991b1b, #7f1d1d);
-    box-shadow: 0 4px 16px rgba(153,27,27,.55);
-    animation: trashPulse 1.4s ease-in-out infinite;
-}
-@keyframes trashPulse {
-    0%, 100% { box-shadow: 0 4px 16px rgba(220,38,38,.45); }
-    50%       { box-shadow: 0 4px 24px rgba(220,38,38,.75); }
+function handleLogout() {
+    registrarBitacora("Logout", `${state.currentUser?.fullname} cerró sesión`);
+    if (elimState?.activo) cancelarModoEliminar();
+    const btnTrash = document.getElementById("btn-trash-flotante");
+    if (btnTrash) btnTrash.classList.add("hidden");
+    quitarPresencia();
+    localStorage.removeItem(SESSION_KEY);
+    if (state.unsubVotos)     { state.unsubVotos();     state.unsubVotos     = null; }
+    if (state.unsubPresencia) { state.unsubPresencia(); state.unsubPresencia = null; }
+    if (state.unsubBitacora)  { state.unsubBitacora();  state.unsubBitacora  = null; }
+    if (state.presenceInterval) { clearInterval(state.presenceInterval); state.presenceInterval = null; }
+    state.currentUser = null;
+    state.padron      = [];
+    state.votos       = {};
+    state.onlineUsers = {};
+    setStatus(false);
+    showLogin();
 }
 
-/* Banner inferior de selección */
-.banner-eliminar {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: linear-gradient(135deg, #1e1e2e, #2d1b1b);
-    border: 1.5px solid #dc2626;
-    border-radius: var(--r-md);
-    padding: 10px 16px;
-    margin-bottom: 12px;
-    color: #fff;
-    font-weight: 700;
-    font-size: .88rem;
-    box-shadow: 0 4px 16px rgba(220,38,38,.25);
-    animation: bannerSlideIn .22s ease forwards;
-}
-@keyframes bannerSlideIn {
-    from { opacity: 0; transform: translateY(-8px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-.banner-eliminar #banner-eliminar-count {
-    color: #fca5a5;
-    font-size: .9rem;
+// ═══════════════════════════════════════════════════════════════
+//  PRESENCIA
+// ═══════════════════════════════════════════════════════════════
+async function iniciarPresencia() {
+    if (!state.currentUser) return;
+    await marcarOnline();
+    state.presenceInterval = setInterval(marcarOnline, 25000);
+
+    if (state.unsubPresencia) state.unsubPresencia();
+    state.unsubPresencia = onSnapshot(collection(db, "presencia"), snap => {
+        state.onlineUsers = {};
+        const ahora = Date.now();
+        snap.forEach(d => {
+            const data     = d.data();
+            const lastSeen = data.lastSeen?.toMillis?.() || 0;
+            if (ahora - lastSeen < 90000) {
+                state.onlineUsers[d.id] = data;
+            }
+        });
+    }, err => console.warn("Presencia listener:", err));
+
+    window.addEventListener("beforeunload", quitarPresencia);
 }
 
-/* Tarjeta en modo selección — muestra checkbox visual */
-.modo-eliminar .card-votante {
-    cursor: pointer;
-    user-select: none;
-    transition: border-color .15s, background .15s;
-    padding-left: 44px;
-    position: relative;
-}
-.modo-eliminar .card-votante::before {
-    content: "";
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    border: 2px solid var(--color-border);
-    background: var(--color-surface);
-    transition: border-color .15s, background .15s;
-    flex-shrink: 0;
-}
-.modo-eliminar .card-votante.seleccionado {
-    border-color: #dc2626 !important;
-    background: rgba(220,38,38,.08) !important;
-}
-.modo-eliminar .card-votante.seleccionado::before {
-    border-color: #dc2626;
-    background: #dc2626;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: center;
+async function marcarOnline() {
+    if (!state.currentUser) return;
+    try {
+        await setDoc(doc(db, "presencia", state.currentUser.username.toLowerCase()), {
+            username: state.currentUser.username,
+            fullname: state.currentUser.fullname,
+            isAdmin:  state.currentUser.isAdmin,
+            lastSeen: serverTimestamp()
+        });
+    } catch (e) { console.warn("marcarOnline:", e); }
 }
 
-/* Fila tabla en modo selección */
-.modo-eliminar #votantes-table-body tr {
-    cursor: pointer;
-    user-select: none;
-}
-.modo-eliminar #votantes-table-body tr td:first-child {
-    position: relative;
-    padding-left: 36px;
-}
-.modo-eliminar #votantes-table-body tr.seleccionado {
-    background: rgba(220,38,38,.1) !important;
-    outline: 1.5px solid #dc2626;
-}
-.modo-eliminar #votantes-table-body tr .check-circle {
-    position: absolute;
-    left: 6px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    border: 2px solid var(--color-border);
-    background: var(--color-surface);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.modo-eliminar #votantes-table-body tr.seleccionado .check-circle {
-    border-color: #dc2626;
-    background: #dc2626;
+async function quitarPresencia() {
+    if (!state.currentUser) return;
+    try {
+        await deleteDoc(doc(db, "presencia", state.currentUser.username.toLowerCase()));
+    } catch { /**/ }
 }
 
-/* Botón eliminar activo cuando hay selección */
-#btn-eliminar-seleccionados.tiene-seleccion {
-    opacity: 1 !important;
-    pointer-events: auto !important;
+// ═══════════════════════════════════════════════════════════════
+//  CARGA DE DATOS
+// ═══════════════════════════════════════════════════════════════
+async function loadPadronYEscuchar() {
+    try {
+        const res    = await fetch(CSV_PATH);
+        const texto  = await res.text();
+        state.padron = parsearCSV(texto);
+    } catch (err) {
+        console.error("CSV error:", err);
+        toast("No se pudo cargar el padrón base.", "error");
+        state.padron = [];
+    }
+
+    try {
+        const snap = await getDocs(collection(db, "padron_extra"));
+        snap.forEach(d => {
+            const v   = d.data();
+            const ced = String(v.cedula || "").replace(/[\s\-]/g, "").replace(/^0+/, "");
+            if (!state.padron.some(p => p.cedula === ced))
+                state.padron.push({
+                    id:        d.id,
+                    nombre:    v.nombre    || "Sin nombre",
+                    cedula:    ced,
+                    domicilio: v.domicilio || "---",
+                    local:     v.local     || "",
+                    mesa:      v.mesa      || "",
+                    orden:     v.orden     || "",
+                });
+        });
+    } catch { /**/ }
+
+    if (state.unsubVotos) state.unsubVotos();
+    state.unsubVotos = onSnapshot(
+        collection(db, "votos"),
+        snap => {
+            state.votos = {};
+            snap.forEach(d => { state.votos[d.id] = d.data(); });
+            setStatus(true);
+            actualizarDashboard();
+        },
+        err => { console.error(err); setStatus(false); }
+    );
+
+    if (state.currentUser?.isAdmin) {
+        cargarUsuarios();
+        escucharBitacora();
+    }
 }
+
+function parsearCSV(texto) {
+    const lineas = texto.split("\n").filter(l => l.trim());
+    const result = [];
+    for (let i = 1; i < lineas.length; i++) {
+        const c   = lineas[i].split(",");
+        const ced = String(c[2]?.trim() || "").replace(/[\s\-]/g, "").replace(/^0+/, "");
+        result.push({
+            id:        c[0]?.trim() || String(i),
+            nombre:    c[1]?.trim() || "Sin nombre",
+            cedula:    ced,
+            domicilio: c[4]?.trim() || "---",
+        });
+    }
+    return result;
+}
+
+const getVoto = c => state.votos[c]?.voto          || "Pendiente";
+const getObs  = c => state.votos[c]?.observaciones || "";
+const getLog  = c => state.votos[c]?.modificado_por || "---";
+
+// ═══════════════════════════════════════════════════════════════
+//  DASHBOARD + ANIMACIÓN NUMÉRICA
+// ═══════════════════════════════════════════════════════════════
+function animateMetric(el, valor, prevValor) {
+    if (!el) return;
+    el.textContent = valor;
+    if (prevValor !== undefined && prevValor !== valor) {
+        el.classList.remove("bumping");
+        // forzar reflow para reiniciar animación
+        void el.offsetWidth;
+        el.classList.add("bumping");
+        setTimeout(() => el.classList.remove("bumping"), 500);
+    }
+}
+
+function actualizarDashboard() {
+    const total   = state.padron.length;
+    const voted   = state.padron.filter(v => getVoto(v.cedula) === "Votó").length;
+    const noVoted = state.padron.filter(v => getVoto(v.cedula) === "No Votó").length;
+    const pending = total - voted - noVoted;
+
+    const elTot = document.getElementById("metric-total");
+    const elVot = document.getElementById("metric-voted");
+    const elNov = document.getElementById("metric-novoted");
+    const elPen = document.getElementById("metric-pending");
+
+    animateMetric(elTot, total,   state.prevMetrics.total);
+    animateMetric(elVot, voted,   state.prevMetrics.voted);
+    animateMetric(elNov, noVoted, state.prevMetrics.novoted);
+    animateMetric(elPen, pending, state.prevMetrics.pending);
+
+    state.prevMetrics = { total, voted, novoted: noVoted, pending };
+
+    // Barras de progreso individuales
+    const pctVoted   = total > 0 ? (voted   / total * 100) : 0;
+    const pctNoVoted = total > 0 ? (noVoted / total * 100) : 0;
+    const pctPending = total > 0 ? (pending / total * 100) : 0;
+    const progV = document.getElementById("prog-voted");
+    const progN = document.getElementById("prog-novoted");
+    const progP = document.getElementById("prog-pending");
+    if (progV) progV.style.width = pctVoted.toFixed(1)   + "%";
+    if (progN) progN.style.width = pctNoVoted.toFixed(1) + "%";
+    if (progP) progP.style.width = pctPending.toFixed(1) + "%";
+    setText("pct-voted",   pctVoted.toFixed(0)   + "%");
+    setText("pct-novoted", pctNoVoted.toFixed(0) + "%");
+    setText("pct-pending", pctPending.toFixed(0) + "%");
+
+    renderTablaVotantes();
+}
+
+function setText(id, v) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = v;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TABLA/TARJETAS VOTANTES
+// ═══════════════════════════════════════════════════════════════
+function renderTablaVotantes() {
+    const searchHint = document.getElementById("search-hint");
+    const q = state.searchQuery;
+
+    // Orden: 0 = Votó, 1 = No Votó, 2 = Pendiente
+    const ordenEstado = v => {
+        const voto = getVoto(v.cedula);
+        if (voto === "Votó")    return 0;
+        if (voto === "No Votó") return 1;
+        return 2;
+    };
+    const compararLista = (a, b) => {
+        const d = ordenEstado(a) - ordenEstado(b);
+        if (d !== 0) return d;
+        return (a.nombre || "").localeCompare(b.nombre || "", "es");
+    };
+
+    let lista;
+    if (q && state.searchAllStates) {
+        lista = state.padron.filter(v =>
+            v.nombre.toLowerCase().includes(q) || v.cedula.includes(q));
+        lista.sort(compararLista);
+    } else if (state.currentFilter === "todos") {
+        lista = [...state.padron];
+        if (q) lista = lista.filter(v =>
+            v.nombre.toLowerCase().includes(q) || v.cedula.includes(q));
+        lista.sort(compararLista);
+    } else {
+        lista = state.padron.filter(v => getVoto(v.cedula) === state.currentFilter);
+        if (q) lista = lista.filter(v =>
+            v.nombre.toLowerCase().includes(q) || v.cedula.includes(q));
+        lista.sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"));
+    }
+
+    // ── Sincronizar estado activo de botones de filtro ─────────
+    const btnT = document.getElementById("btn-filter-todos");
+    const btnP = document.getElementById("btn-filter-pending");
+    const btnV = document.getElementById("btn-filter-voted");
+    const btnN = document.getElementById("btn-filter-novoted");
+
+    if (btnT && btnP && btnV && btnN) {
+        // Reset
+        [btnT, btnP, btnV, btnN].forEach(b => b.className = "filter-btn");
+        if (state.currentFilter === "todos")     btnT.classList.add("f-todos");
+        if (state.currentFilter === "Pendiente") btnP.classList.add("f-pending");
+        if (state.currentFilter === "Votó")      btnV.classList.add("f-voted");
+        if (state.currentFilter === "No Votó")   btnN.classList.add("f-novoted");
+    }
+
+    // ── Search hint ───────────────────────────────────────────
+    if (searchHint) {
+        if (q && !state.searchAllStates && state.currentFilter !== "todos") {
+            const totalMatch = state.padron.filter(v =>
+                v.nombre.toLowerCase().includes(q) || v.cedula.includes(q)).length;
+            const otros = totalMatch - lista.length;
+            if (otros > 0) {
+                searchHint.style.display = "flex";
+                searchHint.innerHTML = `
+                    <svg width="13" height="13" style="flex-shrink:0"><use href="#icon-search"/></svg>
+                    <span>Se encontraron <strong>${otros}</strong> resultado${otros>1?"s":""} en otros estados.</span>
+                    <button onclick="activarBusquedaGlobal()" class="btn-hint-global">Ver todos</button>`;
+            } else {
+                searchHint.style.display = "none";
+            }
+        } else if (q && state.searchAllStates) {
+            searchHint.style.display = "flex";
+            searchHint.innerHTML = `
+                <svg width="13" height="13" style="flex-shrink:0"><use href="#icon-search"/></svg>
+                <span>Mostrando resultados de <strong>todos los estados</strong>.</span>
+                <button onclick="desactivarBusquedaGlobal()" class="btn-hint-volver">Volver al filtro</button>`;
+        } else {
+            searchHint.style.display = "none";
+        }
+    }
+
+    // ── Render TARJETAS (móvil) ──────────────────────────────────
+    const cardsContainer = document.getElementById("cards-container");
+    if (cardsContainer) {
+        if (!lista.length) {
+            cardsContainer.innerHTML = `
+                <div class="empty-state">
+                    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-inbox"/></svg>
+                    <strong>Sin resultados</strong>
+                    No se encontraron registros para este criterio.
+                </div>`;
+        } else {
+            const debeMostrarSecciones = (state.currentFilter === "todos");
+            cardsContainer.innerHTML = construirCardsConSecciones(lista, debeMostrarSecciones);
+        }
+    }
+
+    // ── Render TABLA (desktop) ───────────────────────────────────
+    const tbody = document.getElementById("votantes-table-body");
+    if (tbody) {
+        if (!lista.length) {
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--color-gray);padding:30px;">No se encontraron registros.</td></tr>`;
+        } else {
+            tbody.innerHTML = "";
+            lista.forEach((v, idx) => {
+                const voto = getVoto(v.cedula);
+                const obs  = getObs(v.cedula);
+                const log  = getLog(v.cedula);
+
+                let badgeClass = "badge badge-pending", badgeLabel = "Pendiente";
+                if (voto === "Votó")    { badgeClass = "badge badge-voted";   badgeLabel = "Votó"; }
+                if (voto === "No Votó") { badgeClass = "badge badge-novoted"; badgeLabel = "No Votó"; }
+
+                const clsVoto   = voto === "Votó"    ? "btn-accion sel-voto"   : "btn-accion";
+                const clsNoVoto = voto === "No Votó" ? "btn-accion sel-novoto" : "btn-accion";
+
+                const tr = document.createElement("tr");
+                tr.dataset.cedula = v.cedula;
+                tr.innerHTML = `
+                    <td><strong>${idx + 1}</strong></td>
+                    <td>${escHtml(v.nombre)}</td>
+                    <td style="font-family:monospace">${v.cedula}</td>
+                    <td style="font-size:.82rem;">${escHtml(v.local || "—")}</td>
+                    <td style="font-size:.82rem;font-family:monospace;">${escHtml(v.mesa || "—")}</td>
+                    <td style="font-size:.82rem;font-family:monospace;">${escHtml(v.orden || "—")}</td>
+                    <td><span class="${badgeClass}">${badgeLabel}</span></td>
+                    <td>
+                        <div class="action-btns">
+                            <button class="${clsVoto}" onclick="accionVoto('${v.cedula}','Votó')" title="${voto==='Votó'?'Quitar voto':'Marcar como Votó'}">
+                                <svg width="12" height="12"><use href="#icon-check"/></svg>
+                                ${voto === "Votó" ? "Votó ✕" : "Votó"}
+                            </button>
+                            <button class="${clsNoVoto}" onclick="accionVoto('${v.cedula}','No Votó')" title="${voto==='No Votó'?'Quitar No Votó':'Marcar como No Votó'}">
+                                <svg width="12" height="12"><use href="#icon-x"/></svg>
+                                ${voto === "No Votó" ? "No Votó ✕" : "No Votó"}
+                            </button>
+                        </div>
+                    </td>
+                    <td>
+                        <button class="btn-obs ${obs ? 'has-obs' : ''}"
+                            style="min-width:130px;"
+                            onclick="abrirModalObservacion('${v.cedula}', ${jsEscape(v.nombre)})">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            <span class="obs-preview">${obs ? escHtml(obs) : "Agregar obs..."}</span>
+                        </button>
+                    </td>
+                    <td><span class="log-span">${escHtml(log)}</span></td>`;
+                tbody.appendChild(tr);
+            });
+        }
+    }
+}
+
+// ── Helper: construir cards con separadores de sección ──────────
+function construirCardsConSecciones(lista, mostrarSecciones) {
+    if (!mostrarSecciones) {
+        // Sin separadores - solo tarjetas continuas
+        return lista.map((v, idx) => construirTarjeta(v, idx)).join("");
+    }
+
+    // Con separadores: primero Votó, luego No Votó, finalmente Pendientes
+    const grupos = { "Votó": [], "No Votó": [], "Pendiente": [] };
+    lista.forEach(v => {
+        const estado = getVoto(v.cedula);
+        if (grupos[estado]) grupos[estado].push(v);
+    });
+
+    let html = "";
+    let contadorGlobal = 0;
+
+    const renderGrupo = (titulo, items, claseSection, iconId) => {
+        if (!items.length) return "";
+        let h = `
+            <div class="section-divider ${claseSection}">
+                <svg><use href="#${iconId}"/></svg>
+                ${titulo}
+                <span class="sd-count">${items.length}</span>
+            </div>`;
+        items.forEach(v => {
+            contadorGlobal++;
+            h += construirTarjeta(v, contadorGlobal - 1);
+        });
+        return h;
+    };
+
+    html += renderGrupo("Votaron",    grupos["Votó"],     "sd-voted",   "icon-check");
+    html += renderGrupo("No Votaron", grupos["No Votó"],  "sd-novoted", "icon-x");
+    html += renderGrupo("Pendientes", grupos["Pendiente"], "sd-pending", "icon-clock");
+    return html;
+}
+
+function construirTarjeta(v, idx) {
+    const voto = getVoto(v.cedula);
+    const obs  = getObs(v.cedula);
+    const log  = getLog(v.cedula);
+
+    let badgeClass = "badge badge-pending", badgeLabel = "Pendiente";
+    if (voto === "Votó")    { badgeClass = "badge badge-voted";   badgeLabel = "Votó"; }
+    if (voto === "No Votó") { badgeClass = "badge badge-novoted"; badgeLabel = "No Votó"; }
+
+    const clsVoto   = voto === "Votó"    ? "btn-accion sel-voto"   : "btn-accion";
+    const clsNoVoto = voto === "No Votó" ? "btn-accion sel-novoto" : "btn-accion";
+
+    const estadoClass = voto === "Votó" ? "estado-voto" : voto === "No Votó" ? "estado-novoto" : "";
+    const obsLabel    = obs ? escHtml(obs) : "Agregar observación...";
+    const obsClass    = obs ? "btn-obs has-obs" : "btn-obs";
+
+    return `
+        <div class="card-votante ${estadoClass}" data-cedula="${escHtml(v.cedula)}">
+            <div class="card-top">
+                <div class="card-info">
+                    <div class="card-num">${idx+1}.</div>
+                    <div class="card-nombre" title="${escHtml(v.nombre)}">${escHtml(v.nombre)}</div>
+                    <div class="card-cedula">CI: ${escHtml(v.cedula)}</div>
+                    ${v.local  ? `<div class="card-domicilio" style="font-size:.74rem;opacity:.85;">📍 ${escHtml(v.local)}</div>` : ""}
+                ${v.mesa   ? `<div class="card-domicilio" style="font-size:.74rem;opacity:.85;">🗳️ Mesa <strong>${escHtml(v.mesa)}</strong>${v.orden ? " · Orden " + escHtml(v.orden) : ""}</div>` : ""}
+                </div>
+                <span class="${badgeClass}">${badgeLabel}</span>
+            </div>
+            <div class="action-btns">
+                <button class="${clsVoto}" onclick="accionVoto('${v.cedula}','Votó')">
+                    <svg width="13" height="13"><use href="#icon-check"/></svg>
+                    ${voto === "Votó" ? "Votó ✕" : "Votó"}
+                </button>
+                <button class="${clsNoVoto}" onclick="accionVoto('${v.cedula}','No Votó')">
+                    <svg width="13" height="13"><use href="#icon-x"/></svg>
+                    ${voto === "No Votó" ? "No Votó ✕" : "No Votó"}
+                </button>
+            </div>
+            <button class="${obsClass}"
+                onclick="abrirModalObservacion('${v.cedula}', ${jsEscape(v.nombre)})">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                <span class="obs-preview">${obsLabel}</span>
+            </button>
+            ${log !== "---" ? `<div class="card-log">${escHtml(log)}</div>` : ""}
+        </div>`;
+}
+
+window.activarBusquedaGlobal = function() {
+    state.searchAllStates = true;
+    renderTablaVotantes();
+};
+window.desactivarBusquedaGlobal = function() {
+    state.searchAllStates = false;
+    renderTablaVotantes();
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  ACCIONES DE VOTO
+// ═══════════════════════════════════════════════════════════════
+window.accionVoto = function(cedula, accion) {
+    const actual = getVoto(cedula);
+    const v      = state.padron.find(p => p.cedula === cedula);
+    const nombre = v?.nombre || cedula;
+
+    if (actual === "Votó" && accion === "Votó") {
+        guardarVoto(cedula, "Pendiente", "", "Quitar Voto", `Quitó VOTO de ${nombre}`);
+        return;
+    }
+    if (actual === "No Votó" && accion === "No Votó") {
+        guardarVoto(cedula, "Pendiente", "", "Quitar No Votó", `Quitó NO VOTÓ de ${nombre}`);
+        return;
+    }
+
+    if (accion === "No Votó") {
+        state.pendingNoVoto = { cedula, nombre };
+        document.getElementById("modal-novoto-name").textContent = nombre;
+        document.getElementById("modal-obs-input").value = getObs(cedula);
+        abrirModal("modal-novoto");
+    } else {
+        guardarVoto(cedula, "Votó", "", "Votó", `Registró a ${nombre} como VOTÓ`);
+    }
+};
+
+window.confirmNoVoto = function() {
+    if (!state.pendingNoVoto) return;
+    const { cedula, nombre } = state.pendingNoVoto;
+    const obs = document.getElementById("modal-obs-input").value.trim();
+    guardarVoto(cedula, "No Votó", obs, "No Votó",
+        `Registró a ${nombre} como NO VOTÓ${obs ? " — " + obs : ""}`);
+    cerrarModal("modal-novoto");
+    state.pendingNoVoto = null;
+};
+
+async function guardarVoto(cedula, voto, observaciones, accionBit, detalleBit) {
+    const operador = state.currentUser.isAdmin ? "Administrador/a" : state.currentUser.username;
+    const hora     = ahoraParaguay();
+    try {
+        await setDoc(doc(db, "votos", cedula), {
+            voto, observaciones,
+            modificado_por: `${operador} — ${hora}`,
+            timestamp:      serverTimestamp()
+        });
+        if      (voto === "Votó")    toast("✔ ¡Voto registrado correctamente!", "ok");
+        else if (voto === "No Votó") toast("✔ Registrado como No Votó.", "ok");
+        else                         toast("Registro vuelto a Pendiente.", "warn");
+        await registrarBitacora(accionBit, detalleBit);
+    } catch (err) {
+        console.error(err);
+        toast("Error al guardar. Verificá la conexión.", "error");
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  OBSERVACIONES — modal
+// ═══════════════════════════════════════════════════════════════
+let _obsPendiente = null;
+
+window.abrirModalObservacion = function(cedula, nombre) {
+    const obsActual = getObs(cedula);
+    _obsPendiente = { cedula, nombre, anterior: obsActual };
+
+    const textoEl  = document.getElementById("modal-obs-texto");
+    const nombreEl = document.getElementById("modal-obs-nombre");
+
+    if (nombreEl) nombreEl.textContent = `Votante: ${nombre}`;
+    if (textoEl)  {
+        textoEl.value = obsActual;
+        setTimeout(() => {
+            textoEl.focus();
+            textoEl.setSelectionRange(textoEl.value.length, textoEl.value.length);
+        }, 150);
+    }
+
+    abrirModal("modal-obs-confirm");
+};
+
+window.confirmarObservacion = async function() {
+    if (!_obsPendiente) return;
+    const { cedula, nombre } = _obsPendiente;
+    const texto = (document.getElementById("modal-obs-texto")?.value || "").trim();
+    cerrarModal("modal-obs-confirm");
+    await actualizarObservacion(cedula, texto, nombre);
+    _obsPendiente = null;
+};
+
+window.cancelarObservacion = function() {
+    _obsPendiente = null;
+    cerrarModal("modal-obs-confirm");
+};
+
+window.actualizarObservacion = async function(cedula, texto, nombre) {
+    const actual   = state.votos[cedula] || {};
+    const operador = state.currentUser.isAdmin ? "Administrador/a" : state.currentUser.username;
+    const hora     = ahoraParaguay();
+    const v        = state.padron.find(p => p.cedula === cedula);
+    try {
+        await setDoc(doc(db, "votos", cedula), {
+            voto:           actual.voto || "Pendiente",
+            observaciones:  texto,
+            modificado_por: `${operador} — ${hora}`,
+            timestamp:      serverTimestamp()
+        });
+        toast("✔ Observación guardada.", "ok");
+        await registrarBitacora("Observación",
+            `Actualizó obs. de ${v?.nombre || nombre || cedula}: "${texto.substring(0,60)}"`);
+    } catch {
+        toast("Error al guardar observación.", "error");
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  ADMIN: VOTANTES
+// ═══════════════════════════════════════════════════════════════
+async function handleRegistrarVotante(e) {
+    e.preventDefault();
+    const nombre    = document.getElementById("vot-fullname").value.trim();
+    const cedula    = document.getElementById("vot-cedula").value.trim();
+    const domicilio = document.getElementById("vot-domicilio").value.trim() || "---";
+
+    if (state.padron.some(v => v.cedula === cedula)) {
+        toast(`Ya existe un votante con la cédula ${cedula}.`, "error");
+        return;
+    }
+
+    const nuevo = { id: "manual_" + Date.now(), nombre, cedula, domicilio };
+    state.padron.push(nuevo);
+
+    try {
+        await setDoc(doc(db, "padron_extra", cedula), {
+            ...nuevo,
+            creado_por: state.currentUser.isAdmin ? "Administrador/a" : state.currentUser.username,
+            timestamp:  serverTimestamp()
+        });
+        toast(`✔ ${nombre} registrado como votante.`);
+        await registrarBitacora("Nuevo Votante", `Registró a ${nombre} (CI: ${cedula})`);
+    } catch {
+        toast("Registrado en sesión, pero error al sincronizar.", "warn");
+    }
+
+    document.getElementById("register-votante-form").reset();
+    cambiarFiltro("Pendiente");
+    actualizarDashboard();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ADMIN: OPERADORES
+// ═══════════════════════════════════════════════════════════════
+async function cargarUsuarios() {
+    try {
+        const snap = await getDocs(collection(db, "usuarios"));
+        state.usuarios = [];
+        snap.forEach(d => state.usuarios.push(d.data()));
+        renderTablaUsuarios();
+    } catch (err) { console.error(err); }
+}
+
+async function handleRegistrarUsuario(e) {
+    e.preventDefault();
+    const fullname = document.getElementById("reg-fullname").value.trim();
+    const phone    = document.getElementById("reg-phone").value.trim();
+    const username = document.getElementById("reg-username").value.trim().toLowerCase();
+    const password = document.getElementById("reg-password").value;
+
+    if (username === ADMIN_USER_ID) {
+        toast("Ese nombre de usuario está reservado.", "error");
+        return;
+    }
+
+    try {
+        const existe = await getDoc(doc(db, "usuarios", username));
+        if (existe.exists()) { toast("El nombre de usuario ya existe.", "error"); return; }
+        const passwordHash = await sha256(password);
+        await setDoc(doc(db, "usuarios", username), { username, fullname, phone, passwordHash, isAdmin: false });
+        toast(`✔ Operador "${fullname}" creado correctamente.`);
+        await registrarBitacora("Nuevo Operador", `Creó operador ${fullname} (usuario: ${username})`);
+        document.getElementById("register-user-form").reset();
+        cargarUsuarios();
+    } catch (err) {
+        console.error(err);
+        toast("Error al crear el usuario.", "error");
+    }
+}
+
+window.deleteUser = async function(username) {
+    if (!confirm(`¿Eliminar al operador "${username}"?`)) return;
+    const u = state.usuarios.find(x => x.username === username);
+    try {
+        await deleteDoc(doc(db, "usuarios", username));
+        toast(`Operador "${username}" eliminado.`, "warn");
+        await registrarBitacora("Eliminar Operador",
+            `Eliminó operador ${u?.fullname || username} (usuario: ${username})`);
+        cargarUsuarios();
+    } catch {
+        toast("Error al eliminar el operador.", "error");
+    }
+};
+
+function renderTablaUsuarios() {
+    const tbody = document.getElementById("users-table-body");
+    tbody.innerHTML = "";
+    if (!state.usuarios.length) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--color-gray);padding:20px;">No hay operadores registrados.</td></tr>`;
+        return;
+    }
+    state.usuarios.forEach(u => {
+        const phoneRaw   = (u.phone || "").replace(/[\s\-\+]/g, "");
+        const phoneClean = phoneRaw.startsWith("0") ? "595" + phoneRaw.slice(1) : phoneRaw;
+        const waLink     = phoneClean ? `https://wa.me/${phoneClean}` : null;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${escHtml(u.fullname)}</td>
+            <td>
+                ${waLink
+                    ? `<a href="${waLink}" target="_blank" rel="noopener" class="wa-link">
+                           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:4px"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+                           ${escHtml(u.phone)}
+                       </a>`
+                    : escHtml(u.phone || "---")
+                }
+            </td>
+            <td><code>${escHtml(u.username)}</code></td>
+            <td style="white-space:nowrap">
+                <div style="display:flex;gap:6px;align-items:center;">
+                    <button class="btn-secondary" onclick="abrirCambiarPassword('${escHtml(u.username)}')"
+                        style="padding:7px 11px;font-size:.75rem;font-weight:800;display:flex;align-items:center;gap:4px;">
+                        <svg class="icon" style="width:12px;height:12px;color:var(--color-primary);margin:0"><use href="#icon-lock"/></svg>
+                        Clave
+                    </button>
+                    <button class="btn-icon-danger" onclick="deleteUser('${escHtml(u.username)}')" title="Eliminar operador"
+                        style="padding:7px 10px;font-size:.75rem;font-weight:800;display:flex;align-items:center;gap:4px;width:auto;height:auto;border-radius:var(--r-md);">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        Eliminar
+                    </button>
+                </div>
+            </td>`;
+        tbody.appendChild(tr);
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FILTROS
+// ═══════════════════════════════════════════════════════════════
+function cambiarFiltro(destino) {
+    state.currentFilter = destino;
+    state.searchAllStates = false;
+    renderTablaVotantes();
+    // scroll al inicio de la lista en móvil para mostrar resultado
+    const cards = document.getElementById("cards-container");
+    if (cards && window.innerWidth < 768) {
+        cards.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+}
+window.cambiarFiltro = cambiarFiltro;
+
+// ═══════════════════════════════════════════════════════════════
+//  NAVEGACIÓN
+// ═══════════════════════════════════════════════════════════════
+function showLogin() {
+    document.getElementById("login-section").classList.remove("hidden");
+    document.getElementById("app-section").classList.add("hidden");
+}
+
+function showApp() {
+    document.getElementById("login-section").classList.add("hidden");
+    document.getElementById("app-section").classList.remove("hidden");
+}
+
+function switchTab(tab) {
+    if (tab === "admin" && !state.currentUser?.isAdmin) {
+        toast("Acceso denegado. Solo el Administrador.", "error"); return;
+    }
+    const planilla     = document.getElementById("view-planilla");
+    const admin        = document.getElementById("view-admin");
+    const padronAnr    = document.getElementById("view-padron-anr");
+    const fw           = document.getElementById("filter-wrapper");
+    const metrics      = document.getElementById("metrics-wrapper");
+    const tabPlanilla  = document.getElementById("tab-planilla");
+    const tabAdmin     = document.getElementById("tab-admin");
+    const tabPadronAnr = document.getElementById("tab-padron-anr");
+
+    if (!planilla || !admin) return;
+
+    planilla.style.display = "none";
+    admin.classList.remove("visible");
+    if (padronAnr) padronAnr.style.display = "none";
+    if (fw)        fw.style.display        = "none";
+    if (metrics)   metrics.style.display   = "none";
+    if (tabPlanilla)  tabPlanilla.classList.remove("active");
+    if (tabAdmin)     tabAdmin.classList.remove("active");
+    if (tabPadronAnr) tabPadronAnr.classList.remove("active");
+
+    if (tab === "planilla") {
+        planilla.style.display = "";
+        if (fw)        fw.style.display      = "block";
+        if (metrics)   metrics.style.display = "grid";
+        if (tabPlanilla) tabPlanilla.classList.add("active");
+        state.currentFilter = "todos";
+        renderTablaVotantes();
+    } else if (tab === "admin") {
+        admin.classList.add("visible");
+        if (tabAdmin) tabAdmin.classList.add("active");
+        cargarUsuarios();
+        escucharBitacora();
+    } else if (tab === "padron-anr") {
+        if (padronAnr) padronAnr.style.display = "";
+        if (tabPadronAnr) tabPadronAnr.classList.add("active");
+        const inp = document.getElementById("padron-anr-input");
+        const err = document.getElementById("padron-anr-error");
+        const res = document.getElementById("padron-anr-resultado");
+        const lod = document.getElementById("padron-anr-loading");
+        if (inp) inp.value = "";
+        if (err) err.style.display = "none";
+        if (res) res.style.display = "none";
+        if (lod) lod.style.display = "none";
+        setTimeout(() => { if (inp) inp.focus(); }, 100);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MODALES
+// ═══════════════════════════════════════════════════════════════
+function abrirModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.add("active");
+}
+function cerrarModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove("active");
+    state.pendingNoVoto = null;
+}
+window.closeModal = cerrarModal;
+
+// ═══════════════════════════════════════════════════════════════
+//  TOASTS
+// ═══════════════════════════════════════════════════════════════
+function toast(msg, tipo = "ok") {
+    const el = document.createElement("div");
+    el.className  = tipo === "error" ? "toast error" : tipo === "warn" ? "toast warn" : "toast";
+    el.textContent = msg;
+    document.getElementById("toast-container").appendChild(el);
+    setTimeout(() => {
+        el.style.opacity = "0";
+        el.style.transform = "translateY(20px)";
+        el.style.transition = "all .3s ease";
+        setTimeout(() => el.remove(), 320);
+    }, 3200);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STATUS DOT
+// ═══════════════════════════════════════════════════════════════
+function setStatus(online) {
+    const dot   = document.getElementById("status-dot");
+    const label = document.getElementById("status-label");
+    if (dot)   dot.className     = "status-dot" + (online ? " online" : "");
+    if (label) label.textContent = online ? "en línea" : "sin conexión";
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  UTILIDADES
+// ═══════════════════════════════════════════════════════════════
+function escHtml(str) {
+    return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+// Para pasar strings como argumentos JS dentro de onclick="..."
+function jsEscape(str) {
+    return JSON.stringify(String(str ?? "")).replace(/"/g, "&quot;");
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EXPORTAR CSV
+// ═══════════════════════════════════════════════════════════════
+window.exportarCSV = function() {
+    const filas = [["N°","Nombre","Cédula","Domicilio","Estado","Operador","Observación"]];
+    state.padron.forEach((v, i) => {
+        filas.push([i+1, v.nombre, v.cedula, v.domicilio,
+            getVoto(v.cedula), getLog(v.cedula), getObs(v.cedula)]);
+    });
+    const bom = "\uFEFF";
+    const csv = bom + filas.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    const fecha = new Date().toLocaleString("es-PY", {
+        timeZone:"America/Asuncion",
+        day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"
+    }).replace(/[\/:, ]/g,"-").replace(/--/g,"-");
+    a.href     = url;
+    a.download = `padron-electoral-${fecha}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("✔ Padrón exportado correctamente.", "ok");
+    registrarBitacora("Exportar CSV", `Exportó el padrón completo (${state.padron.length} registros)`);
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  CAMBIAR CONTRASEÑA DE OPERADOR
+// ═══════════════════════════════════════════════════════════════
+window.abrirCambiarPassword = function(username) {
+    const u = state.usuarios.find(x => x.username === username);
+    document.getElementById("chpass-username").value    = username;
+    document.getElementById("chpass-nueva").value       = "";
+    document.getElementById("chpass-confirmar").value   = "";
+    document.getElementById("chpass-error").textContent = "";
+    const lbl = document.getElementById("chpass-user-label");
+    if (lbl) lbl.textContent = u?.fullname ? `${u.fullname} (${username})` : username;
+    abrirModal("modal-chpass");
+};
+
+window.confirmarCambiarPassword = async function() {
+    const username  = document.getElementById("chpass-username").value;
+    const nueva     = document.getElementById("chpass-nueva").value;
+    const confirmar = document.getElementById("chpass-confirmar").value;
+    const errEl     = document.getElementById("chpass-error");
+    errEl.textContent = "";
+    if (nueva.length < 4) { errEl.textContent = "La contraseña debe tener al menos 4 caracteres."; return; }
+    if (nueva !== confirmar) { errEl.textContent = "Las contraseñas no coinciden."; return; }
+    try {
+        const passwordHash = await sha256(nueva);
+        const ref  = doc(db, "usuarios", username);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) { errEl.textContent = "Operador no encontrado."; return; }
+        const u = snap.data();
+        await setDoc(ref, { ...u, passwordHash, password: null }, { merge: true });
+        toast(`✔ Contraseña de "${username}" actualizada.`, "ok");
+        await registrarBitacora("Cambio Contraseña",
+            `Cambió contraseña del operador ${u.fullname} (${username})`);
+        cerrarModal("modal-chpass");
+    } catch (err) {
+        console.error(err);
+        errEl.textContent = "Error al guardar. Intentá de nuevo.";
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  BIND EVENTOS
+// ═══════════════════════════════════════════════════════════════
+function bindEvents() {
+    document.getElementById("login-form").addEventListener("submit", handleLogin);
+    document.getElementById("logout-btn").addEventListener("click",  handleLogout);
+
+    // ✨ FILTROS (incluyendo el nuevo botón "Todos")
+    document.getElementById("btn-filter-todos").addEventListener("click",   () => cambiarFiltro("todos"));
+    document.getElementById("btn-filter-pending").addEventListener("click", () => cambiarFiltro("Pendiente"));
+    document.getElementById("btn-filter-voted").addEventListener("click",   () => cambiarFiltro("Votó"));
+    document.getElementById("btn-filter-novoted").addEventListener("click", () => cambiarFiltro("No Votó"));
+
+    // ✨ MÉTRICAS CLICABLES — actúan como filtros rápidos
+    document.querySelectorAll(".metric-card[data-filter]").forEach(card => {
+        card.addEventListener("click", () => {
+            const f = card.getAttribute("data-filter");
+            if (f) {
+                // sólo dentro de planilla
+                const tabPlanilla = document.getElementById("tab-planilla");
+                if (tabPlanilla && !tabPlanilla.classList.contains("active")) {
+                    switchTab("planilla");
+                    setTimeout(() => cambiarFiltro(f), 50);
+                } else {
+                    cambiarFiltro(f);
+                }
+            }
+        });
+    });
+
+    document.getElementById("tab-planilla").addEventListener("click",   () => switchTab("planilla"));
+    document.getElementById("tab-admin").addEventListener("click",      () => switchTab("admin"));
+    document.getElementById("tab-padron-anr").addEventListener("click", () => switchTab("padron-anr"));
+
+    document.getElementById("register-user-form").addEventListener("submit",    handleRegistrarUsuario);
+    document.getElementById("register-votante-form").addEventListener("submit", handleRegistrarVotante);
+
+    // Cerrar modales al hacer click fuera
+    ["modal-novoto","modal-chpass","modal-obs-confirm"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener("click", function(e) {
+            if (e.target === this) {
+                if (id === "modal-obs-confirm") cancelarObservacion();
+                else cerrarModal(id);
+            }
+        });
+    });
+
+    // Cerrar modales con Escape
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            ["modal-novoto", "modal-chpass", "modal-obs-confirm"].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.classList.contains("active")) {
+                    if (id === "modal-obs-confirm") cancelarObservacion();
+                    else cerrarModal(id);
+                }
+            });
+        }
+    });
+
+    // Búsqueda
+    document.getElementById("search-input").addEventListener("input", e => {
+        state.searchQuery = e.target.value.toLowerCase().trim();
+        if (!state.searchQuery) state.searchAllStates = false;
+        renderTablaVotantes();
+    });
+
+    // Enter en padrón ANR
+    const padronInp = document.getElementById("padron-anr-input");
+    if (padronInp) padronInp.addEventListener("keydown", e => {
+        if (e.key === "Enter") buscarPadronANR();
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PADRÓN ANR — Consulta desde CSV local
+// ═══════════════════════════════════════════════════════════════
+let _padronCache = null;
+
+async function cargarPadronCSV() {
+    if (_padronCache) return _padronCache;
+    const resp = await fetch("data/padron_san_estanislao_2026_completo.csv");
+    if (!resp.ok) throw new Error("No se pudo cargar el padrón CSV.");
+    const texto   = await resp.text();
+    const lineas  = texto.split("\n").filter(l => l.trim() !== "");
+    const headers = lineas[0].split(",").map(h => h.trim().replace(/^\uFEFF/, ""));
+
+    _padronCache = lineas.slice(1).map(linea => {
+        const cols = [];
+        let actual = "", enComilla = false;
+        for (const ch of linea) {
+            if (ch === '"') { enComilla = !enComilla; }
+            else if (ch === "," && !enComilla) { cols.push(actual.trim()); actual = ""; }
+            else { actual += ch; }
+        }
+        cols.push(actual.trim());
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = cols[i] ?? ""; });
+        return obj;
+    });
+    return _padronCache;
+}
+
+window.buscarPadronANR = async function() {
+    const input   = document.getElementById("padron-anr-input");
+    const loading = document.getElementById("padron-anr-loading");
+    const error   = document.getElementById("padron-anr-error");
+    const result  = document.getElementById("padron-anr-resultado");
+
+    const cedula = input ? input.value.trim().replace(/\D/g, "") : "";
+    if (!cedula || cedula.length < 3) {
+        if (input) {
+            input.style.outline = "2px solid var(--color-primary)";
+            input.focus();
+            setTimeout(() => input.style.outline = "", 1500);
+        }
+        return;
+    }
+
+    error.style.display   = "none";
+    result.style.display  = "none";
+    loading.style.display = "block";
+
+    const btnAgregar = document.getElementById("pr-btn-agregar");
+    if (btnAgregar) {
+        btnAgregar.disabled = false;
+        btnAgregar.style.background = "";
+        btnAgregar.style.borderColor = "";
+        btnAgregar.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><line x1="18" y1="13" x2="18" y2="19"/><line x1="15" y1="16" x2="21" y2="16"/></svg> Añadir a la planilla`;
+    }
+
+    try {
+        const padron  = await cargarPadronCSV();
+        const persona = padron.find(r => String(r.CEDULA).trim() === cedula);
+        loading.style.display = "none";
+
+        if (persona) {
+            document.getElementById("pr-cedula").textContent       = persona.CEDULA        || cedula;
+            document.getElementById("pr-nombres").textContent      = persona.NOMBRES        || "—";
+            document.getElementById("pr-apellidos").textContent    = persona.APELLIDOS      || "—";
+            document.getElementById("pr-departamento").textContent = persona.DEPARTAMENTO   || "—";
+            document.getElementById("pr-distrito").textContent     = persona.DISTRITO       || "—";
+            document.getElementById("pr-seccional").textContent    = persona.SECCIONAL      || "—";
+            document.getElementById("pr-local").textContent        = persona.LOCAL_VOTACION || "—";
+            document.getElementById("pr-mesa").textContent         = persona.MESA           || "—";
+            document.getElementById("pr-orden").textContent        = persona.ORDEN          || "—";
+            result.style.display = "block";
+            registrarBitacora("Consulta Padrón",
+                `Consultó CI ${cedula} → ${persona.NOMBRES} ${persona.APELLIDOS} · Mesa ${persona.MESA}`);
+        } else {
+            error.innerHTML = `
+                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#B91C1C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 10px;display:block;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div style="font-size:.92rem;font-weight:800;color:#B91C1C;margin-bottom:5px;">No está en el padrón</div>
+                <div style="font-size:.8rem;color:#6B7280;">La cédula <strong style="color:#374151;">${cedula}</strong> no figura en el padrón ANR de San Estanislao 2026.</div>`;
+            error.style.display = "block";
+            registrarBitacora("Consulta Padrón", `CI ${cedula} — no encontrado`);
+        }
+    } catch (err) {
+        loading.style.display = "none";
+        error.innerHTML = `
+            <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 10px;display:block;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <div style="font-size:.88rem;font-weight:800;color:#B45309;margin-bottom:5px;">No se pudo cargar el padrón</div>
+            <div style="font-size:.78rem;color:#6B7280;">${escHtml(err.message)}</div>`;
+        error.style.display = "block";
+        console.error("Error padrón CSV:", err);
+    }
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  AÑADIR DESDE PADRÓN → PLANILLA
+// ═══════════════════════════════════════════════════════════════
+function normalizarCedula(c) {
+    return String(c).replace(/[\s\-]/g, "").replace(/^0+/, "");
+}
+
+window.agregarDesdePardon = async function() {
+    const cedula    = document.getElementById("pr-cedula")?.textContent?.trim();
+    const nombres   = document.getElementById("pr-nombres")?.textContent?.trim()   || "";
+    const apellidos = document.getElementById("pr-apellidos")?.textContent?.trim() || "";
+    const nombre    = `${nombres} ${apellidos}`.trim();
+
+    if (!cedula || !nombre) { toast("No hay datos de consulta para agregar.", "error"); return; }
+
+    const cedulaNorm = normalizarCedula(cedula);
+    const enMemoria  = state.padron.find(p => normalizarCedula(p.cedula) === cedulaNorm);
+    if (enMemoria) {
+        toast(`⚠ ${enMemoria.nombre} (CI: ${cedula}) ya está en la planilla.`, "warn");
+        _marcarBtnAgregado(false);
+        return;
+    }
+
+    try {
+        const snap = await getDoc(doc(db, "padron_extra", cedulaNorm));
+        if (snap.exists()) {
+            const d = snap.data();
+            toast(`⚠ ${d.nombre || nombre} (CI: ${cedula}) ya fue agregado.`, "warn");
+            return;
+        }
+        const snap2 = await getDoc(doc(db, "padron_extra", cedula));
+        if (snap2.exists()) {
+            const d = snap2.data();
+            toast(`⚠ ${d.nombre || nombre} (CI: ${cedula}) ya fue agregado.`, "warn");
+            return;
+        }
+    } catch (err) { console.warn("Verificación Firebase:", err); }
+
+    const btn = document.getElementById("pr-btn-agregar");
+    if (btn) { btn.disabled = true; btn.innerHTML = `<div class="spinner" style="margin:0 auto;width:20px;height:20px;"></div>`; }
+
+    const local    = document.getElementById("pr-local")?.textContent?.trim()     || "";
+    const mesa     = document.getElementById("pr-mesa")?.textContent?.trim()      || "";
+    const orden    = document.getElementById("pr-orden")?.textContent?.trim()     || "";
+    const seccional= document.getElementById("pr-seccional")?.textContent?.trim() || "";
+    const nuevo = { id: "padron_" + Date.now(), nombre, cedula, domicilio: "---", local, mesa, orden, seccional };
+    state.padron.push(nuevo);
+
+    try {
+        await setDoc(doc(db, "padron_extra", cedula), {
+            ...nuevo,
+            local:      document.getElementById("pr-local")?.textContent?.trim()     || "",
+            mesa:       document.getElementById("pr-mesa")?.textContent?.trim()      || "",
+            orden:      document.getElementById("pr-orden")?.textContent?.trim()     || "",
+            seccional:  document.getElementById("pr-seccional")?.textContent?.trim() || "",
+            creado_por: state.currentUser?.isAdmin ? "Administrador/a" : (state.currentUser?.username || "---"),
+            origen:     "Padrón ANR",
+            timestamp:  serverTimestamp()
+        });
+        toast(`✔ ${nombre} agregado a la planilla.`, "ok");
+        await registrarBitacora("Nuevo Votante", `Agregó desde padrón ANR: ${nombre} (CI: ${cedula})`);
+        _marcarBtnAgregado(true);
+        actualizarDashboard();
+    } catch (err) {
+        console.error(err);
+        state.padron = state.padron.filter(p => p.cedula !== cedula);
+        toast("Error al guardar. Verificá la conexión.", "error");
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/><line x1="18" y1="13" x2="18" y2="19"/><line x1="15" y1="16" x2="21" y2="16"/></svg> Añadir a la planilla`;
+        }
+    }
+};
+
+function _marcarBtnAgregado(exito) {
+    const btn = document.getElementById("pr-btn-agregar");
+    if (!btn) return;
+    btn.disabled = true;
+    if (exito) {
+        btn.style.background = "linear-gradient(135deg, #15803D, #166534)";
+        btn.style.borderColor = "#166534";
+        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Ya está en la planilla`;
+    } else {
+        btn.style.background = "linear-gradient(135deg, #B45309, #92400E)";
+        btn.style.borderColor = "#78350F";
+        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Ya existe en la planilla`;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MODO ELIMINACIÓN — Solo ADMIN
+// ═══════════════════════════════════════════════════════════════
+const elimState = {
+    activo:        false,
+    seleccionados: new Set()
+};
+
+function actualizarBotonTrash() {
+    const btn = document.getElementById("btn-trash-flotante");
+    if (!btn) return;
+    if (state.currentUser?.isAdmin) {
+        btn.classList.remove("hidden");
+    } else {
+        btn.classList.add("hidden");
+        if (elimState.activo) cancelarModoEliminar();
+    }
+}
+
+window.activarModoEliminar = function() {
+    if (!state.currentUser?.isAdmin) return;
+    elimState.activo = true;
+    elimState.seleccionados.clear();
+
+    document.getElementById("cards-container")?.classList.add("modo-eliminar");
+    document.querySelector(".tabla-desktop")?.classList.add("modo-eliminar");
+
+    const btnTrash = document.getElementById("btn-trash-flotante");
+    if (btnTrash) btnTrash.classList.add("modo-activo");
+
+    document.getElementById("banner-eliminar")?.classList.remove("hidden");
+    actualizarBannerCount();
+    _bindEliminarListeners();
+};
+
+window.cancelarModoEliminar = function() {
+    elimState.activo = false;
+    elimState.seleccionados.clear();
+
+    const cards = document.getElementById("cards-container");
+    const wrap  = document.querySelector(".tabla-desktop");
+    if (cards) {
+        cards.classList.remove("modo-eliminar");
+        cards.querySelectorAll(".card-votante.seleccionado").forEach(el => el.classList.remove("seleccionado"));
+    }
+    if (wrap) {
+        wrap.classList.remove("modo-eliminar");
+        wrap.querySelectorAll("tr.seleccionado").forEach(el => el.classList.remove("seleccionado"));
+    }
+
+    document.getElementById("btn-trash-flotante")?.classList.remove("modo-activo");
+    document.getElementById("banner-eliminar")?.classList.add("hidden");
+    cerrarModal("modal-eliminar-confirm");
+    _unbindEliminarListeners();
+};
+
+function _toggleTarjeta(cedula) {
+    const card = document.querySelector(`.card-votante[data-cedula="${cedula}"]`);
+    if (elimState.seleccionados.has(cedula)) {
+        elimState.seleccionados.delete(cedula);
+        card?.classList.remove("seleccionado");
+    } else {
+        elimState.seleccionados.add(cedula);
+        card?.classList.add("seleccionado");
+    }
+    actualizarBannerCount();
+}
+
+function _toggleFila(cedula) {
+    const fila = document.querySelector(`#votantes-table-body tr[data-cedula="${cedula}"]`);
+    if (elimState.seleccionados.has(cedula)) {
+        elimState.seleccionados.delete(cedula);
+        fila?.classList.remove("seleccionado");
+    } else {
+        elimState.seleccionados.add(cedula);
+        fila?.classList.add("seleccionado");
+    }
+    actualizarBannerCount();
+}
+
+function actualizarBannerCount() {
+    const n = elimState.seleccionados.size;
+    const span = document.getElementById("banner-eliminar-count");
+    if (span) span.textContent = n === 0 ? "Ninguno seleccionado" : `${n} seleccionado${n > 1 ? "s" : ""}`;
+    const btn = document.getElementById("btn-eliminar-seleccionados");
+    if (btn) {
+        btn.style.opacity        = n > 0 ? "1" : ".4";
+        btn.style.pointerEvents  = n > 0 ? "auto" : "none";
+    }
+}
+
+window.pedirConfirmacionEliminar = function() {
+    if (!elimState.activo || elimState.seleccionados.size === 0) return;
+    const n = elimState.seleccionados.size;
+    const txt = document.getElementById("modal-eliminar-texto");
+    if (txt) txt.textContent =
+        `¿Estás seguro que querés eliminar ${n} registro${n > 1 ? "s" : ""} de la planilla? Esta acción no se puede deshacer.`;
+    abrirModal("modal-eliminar-confirm");
+};
+
+window.confirmarEliminarSeleccionados = async function() {
+    if (!state.currentUser?.isAdmin || elimState.seleccionados.size === 0) return;
+    cerrarModal("modal-eliminar-confirm");
+
+    const cedulas = [...elimState.seleccionados];
+    let ok = 0, err = 0;
+
+    for (const cedula of cedulas) {
+        try {
+            await deleteDoc(doc(db, "padron_extra", cedula));
+            await deleteDoc(doc(db, "votos", cedula));
+            state.padron = state.padron.filter(p => p.cedula !== cedula);
+            delete state.votos[cedula];
+            ok++;
+        } catch (e) { console.error("Error eliminando", cedula, e); err++; }
+    }
+
+    await registrarBitacora("Eliminar Votantes",
+        `Admin eliminó ${ok} votante${ok > 1 ? "s" : ""}. Cédulas: ${cedulas.join(", ")}`);
+
+    cancelarModoEliminar();
+    actualizarDashboard();
+    renderTablaVotantes();
+
+    toast(err === 0
+        ? `✔ ${ok} registro${ok > 1 ? "s eliminados" : " eliminado"} correctamente.`
+        : `⚠ ${ok} eliminados, ${err} con error.`,
+        err === 0 ? "ok" : "warn");
+};
+
+function _onCardClickEliminar(e) {
+    if (!elimState.activo) return;
+    e.stopPropagation();
+    const cedula = this.dataset.cedula;
+    if (cedula) _toggleTarjeta(cedula);
+}
+
+function _onFilaClickEliminar(e) {
+    if (!elimState.activo) return;
+    e.stopPropagation();
+    const cedula = this.dataset.cedula;
+    if (cedula) _toggleFila(cedula);
+}
+
+function _bindEliminarListeners() {
+    setTimeout(() => {
+        document.querySelectorAll(".card-votante[data-cedula]")
+            .forEach(c => c.addEventListener("click", _onCardClickEliminar));
+        document.querySelectorAll("#votantes-table-body tr[data-cedula]")
+            .forEach(r => r.addEventListener("click", _onFilaClickEliminar));
+    }, 80);
+}
+
+function _unbindEliminarListeners() {
+    document.querySelectorAll(".card-votante[data-cedula]")
+        .forEach(c => c.removeEventListener("click", _onCardClickEliminar));
+    document.querySelectorAll("#votantes-table-body tr[data-cedula]")
+        .forEach(r => r.removeEventListener("click", _onFilaClickEliminar));
+}
+
+// Re-bind tras cada re-render de la tabla (MutationObserver)
+document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(() => {
+        const obs = new MutationObserver(() => {
+            if (elimState.activo) {
+                _unbindEliminarListeners();
+                _bindEliminarListeners();
+            }
+        });
+        const cards = document.getElementById("cards-container");
+        const tbody = document.getElementById("votantes-table-body");
+        if (cards) obs.observe(cards, { childList: true });
+        if (tbody) obs.observe(tbody, { childList: true });
+    }, 600);
+});

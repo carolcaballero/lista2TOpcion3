@@ -1,15 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
-//  CONTROL ELECTORAL — app.js  v7  (TEMA INTENSO + BOTÓN TODOS)
-//  Firebase Firestore (tiempo real) + CSV padrón base
-//  ✨ Novedades v7:
-//   · Botón "Todos" en filtros (con orden Votó → No Votó → Pendientes)
-//   · Métricas clicables (cambia el filtro al tocarlas)
-//   · Separadores visuales por sección de estado
-//   · Contadores en cada filtro (live)
-//   · Animación numérica al cambiar métricas
-//   · Mejor escape HTML (incluye comillas dobles y simples)
-//   · Corrección: spinner inicial usa div (no tr) en cards-mobile
-//   · Corrección: ordenamiento estable por nombre dentro de cada grupo
+//  CONTROL ELECTORAL — app.js  v8  (FASE 2·3·4 COMPLETA)
+//  Firebase Firestore + Offline Queue + Charts + PWA
 // ═══════════════════════════════════════════════════════════════
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -41,6 +32,7 @@ const SESSION_KEY     = "ce_session_v5";
 const SESSION_TTL_MS  = 7 * 24 * 60 * 60 * 1000;
 const CSV_PATH        = "data/votantes.csv";
 const TZ_PY           = "America/Asuncion";
+const OFFLINE_QUEUE_KEY = "ce_offline_queue_v1";
 
 // ── Estado global ───────────────────────────────────────────────
 const state = {
@@ -58,6 +50,9 @@ const state = {
     onlineUsers:      {},
     presenceInterval: null,
     prevMetrics:      { total: 0, voted: 0, novoted: 0, pending: 0 },
+    pagination:       { page: 1, perPage: 50 },
+    charts:           { mesa: null, global: null, hora: null },
+    notifiedThresholds: new Set(),
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -87,6 +82,59 @@ function timestampAParaguay(ts) {
         timeZone: TZ_PY, day:"2-digit", month:"2-digit", year:"numeric",
         hour:"2-digit", minute:"2-digit", hour12:false
     });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  OFFLINE QUEUE
+// ═══════════════════════════════════════════════════════════════
+function getOfflineQueue() {
+    try { return JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || "[]"); }
+    catch { return []; }
+}
+function saveOfflineQueue(q) {
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(q));
+}
+function addOfflineAction(action) {
+    const q = getOfflineQueue();
+    q.push({ ...action, queuedAt: Date.now() });
+    saveOfflineQueue(q);
+    updateOfflineBadge();
+}
+async function syncOfflineQueue() {
+    const q = getOfflineQueue();
+    if (!q.length) return;
+    if (!navigator.onLine) return;
+    let ok = 0, err = 0;
+    const remaining = [];
+    for (const item of q) {
+        try {
+            await setDoc(doc(db, "votos", item.cedula), {
+                voto:           item.voto,
+                observaciones:  item.observaciones || "",
+                modificado_por: item.modificado_por,
+                timestamp:      serverTimestamp()
+            });
+            if (item.historial) {
+                await addDoc(collection(db, "votos", item.cedula, "historial"), item.historial);
+            }
+            ok++;
+        } catch (e) {
+            remaining.push(item);
+            err++;
+        }
+    }
+    saveOfflineQueue(remaining);
+    updateOfflineBadge();
+    if (ok > 0) {
+        toast(`✔ ${ok} acciones offline sincronizadas.`, "ok");
+        actualizarDashboard();
+    }
+    if (err > 0) toast(`⚠ ${err} acciones quedaron pendientes.`, "warn");
+}
+function updateOfflineBadge() {
+    const q = getOfflineQueue();
+    const el = document.getElementById("offline-indicator");
+    if (el) el.classList.toggle("hidden", q.length === 0 && navigator.onLine);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -147,8 +195,14 @@ function renderBitacora(eventos) {
 // ═══════════════════════════════════════════════════════════════
 document.addEventListener("DOMContentLoaded", () => {
     bindEvents();
+    bindNetworkEvents();
     checkSession();
 });
+
+function bindNetworkEvents() {
+    window.addEventListener("online",  () => { updateOfflineBadge(); syncOfflineQueue(); toast("Conexión restablecida", "ok"); });
+    window.addEventListener("offline", () => { updateOfflineBadge(); toast("Sin conexión. Modo offline activado.", "warn"); });
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  SESIÓN
@@ -186,7 +240,7 @@ async function handleLogin(e) {
         if (userIn.toLowerCase() === ADMIN_USER_ID) {
             if (passHash === ADMIN_HASH) {
                 resetBtn();
-                loginSuccess({ username: ADMIN_USER_ID, fullname: ADMIN_FULLNAME, isAdmin: true }, true);
+                loginSuccess({ username: ADMIN_USER_ID, fullname: ADMIN_FULLNAME, isAdmin: true, local: "", mesa: "" }, true);
                 return;
             } else {
                 errEl.textContent = "Contraseña incorrecta para Admin.";
@@ -199,7 +253,7 @@ async function handleLogin(e) {
             const match = u.passwordHash ? u.passwordHash === passHash : u.password === passIn;
             if (match) {
                 resetBtn();
-                loginSuccess({ username: u.username, fullname: u.fullname, isAdmin: false }, true);
+                loginSuccess({ username: u.username, fullname: u.fullname, isAdmin: false, local: u.local || "", mesa: u.mesa || "" }, true);
                 return;
             }
         }
@@ -228,8 +282,18 @@ function loginSuccess(user, persist) {
 
         const prefixEl  = document.getElementById("user-prefix");
         const displayEl = document.getElementById("current-user-display");
+        const assignEl  = document.getElementById("user-assignment");
         if (prefixEl)  prefixEl.textContent  = user.isAdmin ? "" : "Operador: ";
         if (displayEl) displayEl.textContent = user.fullname;
+
+        if (assignEl) {
+            if (user.local || user.mesa) {
+                assignEl.classList.remove("hidden");
+                assignEl.textContent = `📍 ${user.local || "--"} · 🗳️ ${user.mesa || "--"}`;
+            } else {
+                assignEl.classList.add("hidden");
+            }
+        }
 
         const tabAdmin    = document.getElementById("tab-admin");
         const btnExportar = document.getElementById("btn-exportar");
@@ -240,6 +304,7 @@ function loginSuccess(user, persist) {
         state.currentFilter = "todos";
         switchTab("planilla");
         actualizarBotonTrash();
+        updateOfflineBadge();
 
         const loginForm = document.getElementById("login-form");
         if (loginForm) loginForm.reset();
@@ -268,6 +333,7 @@ function handleLogout() {
     state.padron      = [];
     state.votos       = {};
     state.onlineUsers = {};
+    state.notifiedThresholds.clear();
     setStatus(false);
     showLogin();
 }
@@ -355,6 +421,7 @@ async function loadPadronYEscuchar() {
             snap.forEach(d => { state.votos[d.id] = d.data(); });
             setStatus(true);
             actualizarDashboard();
+            checkNotificationThresholds();
         },
         err => { console.error(err); setStatus(false); }
     );
@@ -393,7 +460,6 @@ function animateMetric(el, valor, prevValor) {
     el.textContent = valor;
     if (prevValor !== undefined && prevValor !== valor) {
         el.classList.remove("bumping");
-        // forzar reflow para reiniciar animación
         void el.offsetWidth;
         el.classList.add("bumping");
         setTimeout(() => el.classList.remove("bumping"), 500);
@@ -418,7 +484,6 @@ function actualizarDashboard() {
 
     state.prevMetrics = { total, voted, novoted: noVoted, pending };
 
-    // Barras de progreso individuales
     const pctVoted   = total > 0 ? (voted   / total * 100) : 0;
     const pctNoVoted = total > 0 ? (noVoted / total * 100) : 0;
     const pctPending = total > 0 ? (pending / total * 100) : 0;
@@ -441,13 +506,81 @@ function setText(id, v) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  NOTIFICACIONES DE UMBRALES
+// ═══════════════════════════════════════════════════════════════
+function checkNotificationThresholds() {
+    if (!state.currentUser?.isAdmin) return;
+    const total = state.padron.length;
+    if (!total) return;
+    const voted = state.padron.filter(v => getVoto(v.cedula) === "Votó").length;
+    const pct = (voted / total) * 100;
+    [50, 75, 90].forEach(t => {
+        if (pct >= t && !state.notifiedThresholds.has(t)) {
+            state.notifiedThresholds.add(t);
+            sendNotification(`🗳️ ${t}% de participación alcanzado`, `${voted} de ${total} votantes han votado.`);
+        }
+    });
+}
+
+function sendNotification(title, body) {
+    if (!("Notification" in window)) return;
+    if (Notification.permission === "granted") {
+        new Notification(title, { body, icon: "https://cdn-icons-png.flaticon.com/512/2099/2099190.png" });
+    } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(p => {
+            if (p === "granted") new Notification(title, { body });
+        });
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PAGINACIÓN
+// ═══════════════════════════════════════════════════════════════
+function renderPaginationControls(totalItems) {
+    const totalPages = Math.ceil(totalItems / state.pagination.perPage) || 1;
+    const container = document.getElementById("pagination-controls");
+    if (!container) return;
+
+    if (totalPages <= 1) {
+        container.innerHTML = "";
+        return;
+    }
+
+    const { page } = state.pagination;
+    let html = `<div class="pagination-bar">`;
+    html += `<span class="pagination-info">Página <strong>${page}</strong> de ${totalPages} · ${totalItems} registros</span>`;
+    html += `<div class="pagination-buttons">`;
+
+    html += `<button class="btn-page ${page === 1 ? "disabled" : ""}" onclick="cambiarPagina(${page - 1})" ${page === 1 ? "disabled" : ""}>← Ant.</button>`;
+
+    let startPage = Math.max(1, page - 2);
+    let endPage   = Math.min(totalPages, startPage + 4);
+    if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
+
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<button class="btn-page ${i === page ? "active" : ""}" onclick="cambiarPagina(${i})">${i}</button>`;
+    }
+
+    html += `<button class="btn-page ${page === totalPages ? "disabled" : ""}" onclick="cambiarPagina(${page + 1})" ${page === totalPages ? "disabled" : ""}>Sig. →</button>`;
+    html += `</div></div>`;
+
+    container.innerHTML = html;
+}
+
+window.cambiarPagina = function(nuevaPagina) {
+    state.pagination.page = nuevaPagina;
+    renderTablaVotantes();
+    const target = document.getElementById("cards-container") || document.querySelector(".tabla-desktop");
+    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+};
+
+// ═══════════════════════════════════════════════════════════════
 //  TABLA/TARJETAS VOTANTES
 // ═══════════════════════════════════════════════════════════════
 function renderTablaVotantes() {
     const searchHint = document.getElementById("search-hint");
     const q = state.searchQuery;
 
-    // Orden: 0 = Votó, 1 = No Votó, 2 = Pendiente
     const ordenEstado = v => {
         const voto = getVoto(v.cedula);
         if (voto === "Votó")    return 0;
@@ -477,6 +610,27 @@ function renderTablaVotantes() {
         lista.sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"));
     }
 
+    // ── Filtro por asignación de operador (no admin) ──────────
+    if (state.currentUser && !state.currentUser.isAdmin) {
+        const asigLocal = (state.currentUser.local || "").trim().toLowerCase();
+        const asigMesa  = (state.currentUser.mesa  || "").trim().toLowerCase();
+        if (asigLocal || asigMesa) {
+            lista = lista.filter(v => {
+                const matchLocal = asigLocal && (v.local || "").toLowerCase() === asigLocal;
+                const matchMesa  = asigMesa  && (v.mesa  || "").toLowerCase() === asigMesa;
+                return matchLocal || matchMesa;
+            });
+        }
+    }
+
+    // ── Paginación ─────────────────────────────────────────────
+    const totalItems = lista.length;
+    const totalPages = Math.ceil(totalItems / state.pagination.perPage) || 1;
+    if (state.pagination.page > totalPages) state.pagination.page = totalPages || 1;
+    const start = (state.pagination.page - 1) * state.pagination.perPage;
+    const end   = start + state.pagination.perPage;
+    const paginatedList = lista.slice(start, end);
+
     // ── Sincronizar estado activo de botones de filtro ─────────
     const btnT = document.getElementById("btn-filter-todos");
     const btnP = document.getElementById("btn-filter-pending");
@@ -484,7 +638,6 @@ function renderTablaVotantes() {
     const btnN = document.getElementById("btn-filter-novoted");
 
     if (btnT && btnP && btnV && btnN) {
-        // Reset
         [btnT, btnP, btnV, btnN].forEach(b => b.className = "filter-btn");
         if (state.currentFilter === "todos")     btnT.classList.add("f-todos");
         if (state.currentFilter === "Pendiente") btnP.classList.add("f-pending");
@@ -521,7 +674,7 @@ function renderTablaVotantes() {
     // ── Render TARJETAS (móvil) ──────────────────────────────────
     const cardsContainer = document.getElementById("cards-container");
     if (cardsContainer) {
-        if (!lista.length) {
+        if (!paginatedList.length) {
             cardsContainer.innerHTML = `
                 <div class="empty-state">
                     <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-inbox"/></svg>
@@ -529,19 +682,23 @@ function renderTablaVotantes() {
                     No se encontraron registros para este criterio.
                 </div>`;
         } else {
-            const debeMostrarSecciones = (state.currentFilter === "todos");
-            cardsContainer.innerHTML = construirCardsConSecciones(lista, debeMostrarSecciones);
+            const debeMostrarSecciones = (state.currentFilter === "todos" && !q && totalPages === 1);
+            if (debeMostrarSecciones) {
+                cardsContainer.innerHTML = construirCardsConSecciones(lista, true);
+            } else {
+                cardsContainer.innerHTML = paginatedList.map((v, idx) => construirTarjeta(v, start + idx)).join("");
+            }
         }
     }
 
     // ── Render TABLA (desktop) ───────────────────────────────────
     const tbody = document.getElementById("votantes-table-body");
     if (tbody) {
-        if (!lista.length) {
-            tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--color-gray);padding:30px;">No se encontraron registros.</td></tr>`;
+        if (!paginatedList.length) {
+            tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--color-gray);padding:30px;">No se encontraron registros.</td></tr>`;
         } else {
             tbody.innerHTML = "";
-            lista.forEach((v, idx) => {
+            paginatedList.forEach((v, idx) => {
                 const voto = getVoto(v.cedula);
                 const obs  = getObs(v.cedula);
                 const log  = getLog(v.cedula);
@@ -556,7 +713,7 @@ function renderTablaVotantes() {
                 const tr = document.createElement("tr");
                 tr.dataset.cedula = v.cedula;
                 tr.innerHTML = `
-                    <td><strong>${idx + 1}</strong></td>
+                    <td><strong>${start + idx + 1}</strong></td>
                     <td>${escHtml(v.nombre)}</td>
                     <td style="font-family:monospace">${v.cedula}</td>
                     <td style="font-size:.82rem;">${escHtml(v.local || "—")}</td>
@@ -583,21 +740,26 @@ function renderTablaVotantes() {
                             <span class="obs-preview">${obs ? escHtml(obs) : "Agregar obs..."}</span>
                         </button>
                     </td>
-                    <td><span class="log-span">${escHtml(log)}</span></td>`;
+                    <td><span class="log-span">${escHtml(log)}</span></td>
+                    <td>
+                        <button class="btn-secondary" style="padding:6px 10px;font-size:.72rem;" onclick="abrirHistorial('${v.cedula}', ${jsEscape(v.nombre)})" title="Ver historial">
+                            <svg width="12" height="12"><use href="#icon-history"/></svg>
+                        </button>
+                    </td>`;
                 tbody.appendChild(tr);
             });
         }
     }
+
+    renderPaginationControls(totalItems);
 }
 
 // ── Helper: construir cards con separadores de sección ──────────
 function construirCardsConSecciones(lista, mostrarSecciones) {
     if (!mostrarSecciones) {
-        // Sin separadores - solo tarjetas continuas
         return lista.map((v, idx) => construirTarjeta(v, idx)).join("");
     }
 
-    // Con separadores: primero Votó, luego No Votó, finalmente Pendientes
     const grupos = { "Votó": [], "No Votó": [], "Pendiente": [] };
     lista.forEach(v => {
         const estado = getVoto(v.cedula);
@@ -672,16 +834,58 @@ function construirTarjeta(v, idx) {
                 <span class="obs-preview">${obsLabel}</span>
             </button>
             ${log !== "---" ? `<div class="card-log">${escHtml(log)}</div>` : ""}
+            <div style="margin-top:8px;text-align:right;">
+                <button class="btn-secondary" style="padding:5px 10px;font-size:.7rem;" onclick="abrirHistorial('${v.cedula}', ${jsEscape(v.nombre)})">
+                    <svg width="11" height="11"><use href="#icon-history"/></svg> Historial
+                </button>
+            </div>
         </div>`;
 }
 
 window.activarBusquedaGlobal = function() {
     state.searchAllStates = true;
+    state.pagination.page = 1;
     renderTablaVotantes();
 };
 window.desactivarBusquedaGlobal = function() {
     state.searchAllStates = false;
+    state.pagination.page = 1;
     renderTablaVotantes();
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  HISTORIAL DE CAMBIOS
+// ═══════════════════════════════════════════════════════════════
+window.abrirHistorial = async function(cedula, nombre) {
+    document.getElementById("modal-hist-nombre").textContent = `${nombre} (CI: ${cedula})`;
+    const list = document.getElementById("modal-hist-list");
+    list.innerHTML = `<div style="text-align:center;padding:20px;"><div class="spinner" style="margin:0 auto 10px;"></div>Cargando historial...</div>`;
+    abrirModal("modal-historial");
+
+    try {
+        const qRef = query(collection(db, "votos", cedula, "historial"), orderBy("timestamp", "desc"), limit(30));
+        const snap = await getDocs(qRef);
+        if (snap.empty) {
+            list.innerHTML = `<div style="text-align:center;padding:20px;color:var(--color-gray);font-size:.9rem;">Sin cambios registrados.</div>`;
+            return;
+        }
+        let html = "";
+        snap.forEach(d => {
+            const h = d.data();
+            const hora = h.hora_py || "---";
+            html += `
+                <div class="historial-item">
+                    <div class="historial-time">${hora}</div>
+                    <div class="historial-body">
+                        <div class="historial-accion">${escHtml(h.accion || "Cambio")}</div>
+                        <div class="historial-meta">por ${escHtml(h.operador || "---")}${h.detalle ? " · " + escHtml(h.detalle) : ""}</div>
+                    </div>
+                </div>`;
+        });
+        list.innerHTML = html;
+    } catch (e) {
+        list.innerHTML = `<div style="text-align:center;padding:20px;color:var(--color-danger);">Error al cargar historial.</div>`;
+    }
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -693,11 +897,11 @@ window.accionVoto = function(cedula, accion) {
     const nombre = v?.nombre || cedula;
 
     if (actual === "Votó" && accion === "Votó") {
-        guardarVoto(cedula, "Pendiente", "", "Quitar Voto", `Quitó VOTO de ${nombre}`);
+        guardarVoto(cedula, "Pendiente", "", "Quitar Voto", `Quitó VOTO de ${nombre}`, actual, "Pendiente");
         return;
     }
     if (actual === "No Votó" && accion === "No Votó") {
-        guardarVoto(cedula, "Pendiente", "", "Quitar No Votó", `Quitó NO VOTÓ de ${nombre}`);
+        guardarVoto(cedula, "Pendiente", "", "Quitar No Votó", `Quitó NO VOTÓ de ${nombre}`, actual, "Pendiente");
         return;
     }
 
@@ -707,7 +911,7 @@ window.accionVoto = function(cedula, accion) {
         document.getElementById("modal-obs-input").value = getObs(cedula);
         abrirModal("modal-novoto");
     } else {
-        guardarVoto(cedula, "Votó", "", "Votó", `Registró a ${nombre} como VOTÓ`);
+        guardarVoto(cedula, "Votó", "", "Votó", `Registró a ${nombre} como VOTÓ`, actual, "Votó");
     }
 };
 
@@ -716,20 +920,45 @@ window.confirmNoVoto = function() {
     const { cedula, nombre } = state.pendingNoVoto;
     const obs = document.getElementById("modal-obs-input").value.trim();
     guardarVoto(cedula, "No Votó", obs, "No Votó",
-        `Registró a ${nombre} como NO VOTÓ${obs ? " — " + obs : ""}`);
+        `Registró a ${nombre} como NO VOTÓ${obs ? " — " + obs : ""}`, "Pendiente", "No Votó");
     cerrarModal("modal-novoto");
     state.pendingNoVoto = null;
 };
 
-async function guardarVoto(cedula, voto, observaciones, accionBit, detalleBit) {
+async function guardarVoto(cedula, voto, observaciones, accionBit, detalleBit, estadoAnterior, estadoNuevo) {
     const operador = state.currentUser.isAdmin ? "Administrador/a" : state.currentUser.username;
     const hora     = ahoraParaguay();
+    const modPor   = `${operador} — ${hora}`;
+
+    const payload = {
+        voto, observaciones,
+        modificado_por: modPor,
+        timestamp:      serverTimestamp()
+    };
+
+    const histPayload = {
+        accion: accionBit,
+        detalle: detalleBit,
+        operador: state.currentUser.fullname || operador,
+        hora_py: hora,
+        estadoAnterior: estadoAnterior || "Pendiente",
+        estadoNuevo: estadoNuevo || voto,
+        timestamp: serverTimestamp()
+    };
+
+    if (!navigator.onLine) {
+        addOfflineAction({ cedula, voto, observaciones, modificado_por: modPor, historial: histPayload });
+        toast("Sin conexión. Acción guardada para sincronizar.", "warn");
+        // Optimistic UI update
+        state.votos[cedula] = { ...payload, timestamp: { toDate: () => new Date() } };
+        actualizarDashboard();
+        await registrarBitacora(accionBit, detalleBit + " (OFFLINE)");
+        return;
+    }
+
     try {
-        await setDoc(doc(db, "votos", cedula), {
-            voto, observaciones,
-            modificado_por: `${operador} — ${hora}`,
-            timestamp:      serverTimestamp()
-        });
+        await setDoc(doc(db, "votos", cedula), payload);
+        await addDoc(collection(db, "votos", cedula, "historial"), histPayload);
         if      (voto === "Votó")    toast("✔ ¡Voto registrado correctamente!", "ok");
         else if (voto === "No Votó") toast("✔ Registrado como No Votó.", "ok");
         else                         toast("Registro vuelto a Pendiente.", "warn");
@@ -850,6 +1079,8 @@ async function handleRegistrarUsuario(e) {
     const phone    = document.getElementById("reg-phone").value.trim();
     const username = document.getElementById("reg-username").value.trim().toLowerCase();
     const password = document.getElementById("reg-password").value;
+    const local    = document.getElementById("reg-local").value.trim();
+    const mesa     = document.getElementById("reg-mesa").value.trim();
 
     if (username === ADMIN_USER_ID) {
         toast("Ese nombre de usuario está reservado.", "error");
@@ -860,9 +1091,9 @@ async function handleRegistrarUsuario(e) {
         const existe = await getDoc(doc(db, "usuarios", username));
         if (existe.exists()) { toast("El nombre de usuario ya existe.", "error"); return; }
         const passwordHash = await sha256(password);
-        await setDoc(doc(db, "usuarios", username), { username, fullname, phone, passwordHash, isAdmin: false });
+        await setDoc(doc(db, "usuarios", username), { username, fullname, phone, passwordHash, isAdmin: false, local, mesa });
         toast(`✔ Operador "${fullname}" creado correctamente.`);
-        await registrarBitacora("Nuevo Operador", `Creó operador ${fullname} (usuario: ${username})`);
+        await registrarBitacora("Nuevo Operador", `Creó operador ${fullname} (usuario: ${username})${local ? " · Local: "+local : ""}${mesa ? " · Mesa: "+mesa : ""}`);
         document.getElementById("register-user-form").reset();
         cargarUsuarios();
     } catch (err) {
@@ -889,7 +1120,7 @@ function renderTablaUsuarios() {
     const tbody = document.getElementById("users-table-body");
     tbody.innerHTML = "";
     if (!state.usuarios.length) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--color-gray);padding:20px;">No hay operadores registrados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--color-gray);padding:20px;">No hay operadores registrados.</td></tr>`;
         return;
     }
     state.usuarios.forEach(u => {
@@ -910,6 +1141,7 @@ function renderTablaUsuarios() {
                 }
             </td>
             <td><code>${escHtml(u.username)}</code></td>
+            <td>${escHtml(u.local || "—")}<br><span style="font-size:.72rem;color:var(--color-gray)">Mesa: ${escHtml(u.mesa || "—")}</span></td>
             <td style="white-space:nowrap">
                 <div style="display:flex;gap:6px;align-items:center;">
                     <button class="btn-secondary" onclick="abrirCambiarPassword('${escHtml(u.username)}')"
@@ -934,8 +1166,8 @@ function renderTablaUsuarios() {
 function cambiarFiltro(destino) {
     state.currentFilter = destino;
     state.searchAllStates = false;
+    state.pagination.page = 1;
     renderTablaVotantes();
-    // scroll al inicio de la lista en móvil para mostrar resultado
     const cards = document.getElementById("cards-container");
     if (cards && window.innerWidth < 768) {
         cards.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -961,22 +1193,28 @@ function switchTab(tab) {
         toast("Acceso denegado. Solo el Administrador.", "error"); return;
     }
     const planilla     = document.getElementById("view-planilla");
+    const stats        = document.getElementById("view-stats");
     const admin        = document.getElementById("view-admin");
     const padronAnr    = document.getElementById("view-padron-anr");
     const fw           = document.getElementById("filter-wrapper");
     const metrics      = document.getElementById("metrics-wrapper");
     const tabPlanilla  = document.getElementById("tab-planilla");
+    const tabStats     = document.getElementById("tab-stats");
     const tabAdmin     = document.getElementById("tab-admin");
     const tabPadronAnr = document.getElementById("tab-padron-anr");
 
     if (!planilla || !admin) return;
 
     planilla.style.display = "none";
+    stats.classList.remove("visible");
+    stats.style.display = "none";
     admin.classList.remove("visible");
+    admin.style.display = "none";
     if (padronAnr) padronAnr.style.display = "none";
     if (fw)        fw.style.display        = "none";
     if (metrics)   metrics.style.display   = "none";
     if (tabPlanilla)  tabPlanilla.classList.remove("active");
+    if (tabStats)     tabStats.classList.remove("active");
     if (tabAdmin)     tabAdmin.classList.remove("active");
     if (tabPadronAnr) tabPadronAnr.classList.remove("active");
 
@@ -987,7 +1225,13 @@ function switchTab(tab) {
         if (tabPlanilla) tabPlanilla.classList.add("active");
         state.currentFilter = "todos";
         renderTablaVotantes();
+    } else if (tab === "stats") {
+        stats.style.display = "block";
+        stats.classList.add("visible");
+        if (tabStats) tabStats.classList.add("active");
+        renderStatsCharts();
     } else if (tab === "admin") {
+        admin.style.display = "flex";
         admin.classList.add("visible");
         if (tabAdmin) tabAdmin.classList.add("active");
         cargarUsuarios();
@@ -1004,6 +1248,104 @@ function switchTab(tab) {
         if (res) res.style.display = "none";
         if (lod) lod.style.display = "none";
         setTimeout(() => { if (inp) inp.focus(); }, 100);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ESTADÍSTICAS / CHARTS
+// ═══════════════════════════════════════════════════════════════
+function renderStatsCharts() {
+    if (!state.padron.length) return;
+
+    // Datos por mesa
+    const mesas = {};
+    state.padron.forEach(v => {
+        const m = v.mesa || "Sin mesa";
+        if (!mesas[m]) mesas[m] = { total: 0, voted: 0 };
+        mesas[m].total++;
+        if (getVoto(v.cedula) === "Votó") mesas[m].voted++;
+    });
+    const mesaLabels = Object.keys(mesas).sort((a,b) => parseInt(a)-parseInt(b));
+    const mesaDataVoted = mesaLabels.map(m => mesas[m].voted);
+    const mesaDataTotal = mesaLabels.map(m => mesas[m].total - mesas[m].voted);
+
+    // Global doughnut
+    const total = state.padron.length;
+    const voted = state.padron.filter(v => getVoto(v.cedula) === "Votó").length;
+    const noVoted = state.padron.filter(v => getVoto(v.cedula) === "No Votó").length;
+    const pending = total - voted - noVoted;
+
+    // Horaria (simulada por bucket de hora desde timestamp)
+    const horas = {};
+    for (let h = 7; h <= 18; h++) horas[`${h}:00`] = 0;
+    Object.values(state.votos).forEach(v => {
+        if (v.voto !== "Votó" || !v.timestamp) return;
+        const d = v.timestamp.toDate ? v.timestamp.toDate() : new Date(v.timestamp);
+        const horaPY = new Date(d.toLocaleString("en-US", { timeZone: TZ_PY }));
+        const bucket = `${horaPY.getHours()}:00`;
+        if (horas[bucket] !== undefined) horas[bucket]++;
+    });
+
+    const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { labels: { font: { size: 11, family: "'Inter',sans-serif" }, boxWidth: 12 } }
+        }
+    };
+
+    // Chart Mesa
+    const ctxMesa = document.getElementById("chart-mesa");
+    if (ctxMesa) {
+        if (state.charts.mesa) state.charts.mesa.destroy();
+        state.charts.mesa = new Chart(ctxMesa, {
+            type: "bar",
+            data: {
+                labels: mesaLabels,
+                datasets: [
+                    { label: "Votaron", data: mesaDataVoted, backgroundColor: "#16A34A", borderRadius: 6 },
+                    { label: "Pendientes / No votaron", data: mesaDataTotal, backgroundColor: "#E5E7EB", borderRadius: 6 }
+                ]
+            },
+            options: { ...commonOptions, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+        });
+    }
+
+    // Chart Global
+    const ctxGlobal = document.getElementById("chart-global");
+    if (ctxGlobal) {
+        if (state.charts.global) state.charts.global.destroy();
+        state.charts.global = new Chart(ctxGlobal, {
+            type: "doughnut",
+            data: {
+                labels: ["Votaron", "No Votaron", "Pendientes"],
+                datasets: [{ data: [voted, noVoted, pending], backgroundColor: ["#16A34A", "#DC2626", "#9CA3AF"], borderWidth: 0 }]
+            },
+            options: commonOptions
+        });
+    }
+
+    // Chart Horaria
+    const ctxHora = document.getElementById("chart-hora");
+    if (ctxHora) {
+        if (state.charts.hora) state.charts.hora.destroy();
+        state.charts.hora = new Chart(ctxHora, {
+            type: "line",
+            data: {
+                labels: Object.keys(horas),
+                datasets: [{
+                    label: "Votos por hora",
+                    data: Object.values(horas),
+                    borderColor: "#B91C1C",
+                    backgroundColor: "rgba(185,28,28,0.1)",
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: "#B91C1C"
+                }]
+            },
+            options: { ...commonOptions, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+        });
     }
 }
 
@@ -1026,7 +1368,7 @@ window.closeModal = cerrarModal;
 // ═══════════════════════════════════════════════════════════════
 function toast(msg, tipo = "ok") {
     const el = document.createElement("div");
-    el.className  = tipo === "error" ? "toast error" : tipo === "warn" ? "toast warn" : "toast";
+    el.className  = tipo === "error" ? "toast error" : tipo === "warn" ? "toast warn" : tipo === "offline" ? "toast offline" : "toast";
     el.textContent = msg;
     document.getElementById("toast-container").appendChild(el);
     setTimeout(() => {
@@ -1059,9 +1401,16 @@ function escHtml(str) {
         .replace(/'/g, "&#39;");
 }
 
-// Para pasar strings como argumentos JS dentro de onclick="..."
 function jsEscape(str) {
     return JSON.stringify(String(str ?? "")).replace(/"/g, "&quot;");
+}
+
+function debounce(fn, ms = 300) {
+    let t;
+    return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn.apply(this, args), ms);
+    };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1130,24 +1479,119 @@ window.confirmarCambiarPassword = async function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
+//  IMPORTACIÓN MASIVA CSV
+// ═══════════════════════════════════════════════════════════════
+let _importPreviewData = [];
+
+function bindImportEvents() {
+    const zone = document.getElementById("file-drop-zone");
+    const input = document.getElementById("import-csv-input");
+    if (!zone || !input) return;
+
+    zone.addEventListener("click", () => input.click());
+    zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("dragover"); });
+    zone.addEventListener("dragleave", () => zone.classList.remove("dragover"));
+    zone.addEventListener("drop", e => {
+        e.preventDefault();
+        zone.classList.remove("dragover");
+        if (e.dataTransfer.files.length) handleImportFile(e.dataTransfer.files[0]);
+    });
+    input.addEventListener("change", e => {
+        if (e.target.files.length) handleImportFile(e.target.files[0]);
+    });
+
+    document.getElementById("btn-import-confirm")?.addEventListener("click", confirmarImportacion);
+}
+
+function handleImportFile(file) {
+    if (!file.name.endsWith(".csv")) { toast("El archivo debe ser CSV.", "error"); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+        const text = e.target.result;
+        const lines = text.split("\n").filter(l => l.trim());
+        if (lines.length < 2) { toast("CSV vacío o inválido.", "error"); return; }
+        const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/^\uFEFF/, ""));
+        const data = [];
+        for (let i = 1; i < lines.length; i++) {
+            const cols = lines[i].split(",").map(c => c.trim());
+            const obj = {};
+            headers.forEach((h, idx) => obj[h] = cols[idx] || "");
+            data.push(obj);
+        }
+        _importPreviewData = data.map((r, i) => ({
+            id: "import_" + Date.now() + "_" + i,
+            nombre: r.nombre || r.Nombre || "Sin nombre",
+            cedula: String(r.cedula || r.Cédula || r.Cedula || "").replace(/[\s\-]/g, "").replace(/^0+/, ""),
+            domicilio: r.domicilio || r.Domicilio || "---",
+            local: r.local || r.Local || "",
+            mesa: r.mesa || r.Mesa || "",
+            orden: r.orden || r.Orden || ""
+        })).filter(r => r.cedula && r.nombre !== "Sin nombre");
+
+        renderImportPreview(_importPreviewData);
+    };
+    reader.readAsText(file);
+}
+
+function renderImportPreview(data) {
+    const wrap = document.getElementById("import-preview-wrap");
+    const tbl  = document.getElementById("import-preview-table");
+    const cnt  = document.getElementById("import-count");
+    if (!wrap || !tbl) return;
+    wrap.style.display = "block";
+    cnt.textContent = `${data.length} registros detectados`;
+    const preview = data.slice(0, 5);
+    tbl.innerHTML = `
+        <table>
+            <thead><tr><th>Nombre</th><th>Cédula</th><th>Local</th><th>Mesa</th></tr></thead>
+            <tbody>
+                ${preview.map(r => `<tr><td>${escHtml(r.nombre)}</td><td>${escHtml(r.cedula)}</td><td>${escHtml(r.local || "—")}</td><td>${escHtml(r.mesa || "—")}</td></tr>`).join("")}
+                ${data.length > 5 ? `<tr><td colspan="4" style="text-align:center;color:var(--color-gray);font-size:.75rem;">... y ${data.length - 5} más</td></tr>` : ""}
+            </tbody>
+        </table>`;
+}
+
+async function confirmarImportacion() {
+    if (!_importPreviewData.length) return;
+    const btn = document.getElementById("btn-import-confirm");
+    if (btn) { btn.disabled = true; btn.textContent = "Importando..."; }
+    let ok = 0, dup = 0, err = 0;
+    for (const r of _importPreviewData) {
+        if (state.padron.some(p => p.cedula === r.cedula)) { dup++; continue; }
+        state.padron.push(r);
+        try {
+            await setDoc(doc(db, "padron_extra", r.cedula), {
+                ...r,
+                creado_por: state.currentUser?.fullname || "Admin",
+                timestamp: serverTimestamp()
+            });
+            ok++;
+        } catch (e) { err++; }
+    }
+    if (btn) { btn.disabled = false; btn.textContent = "Confirmar Importación"; }
+    toast(`✔ ${ok} importados · ${dup} duplicados · ${err} errores.`, err ? "warn" : "ok");
+    await registrarBitacora("Importar CSV", `Importó ${ok} votantes desde CSV.`);
+    document.getElementById("import-preview-wrap").style.display = "none";
+    _importPreviewData = [];
+    actualizarDashboard();
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  BIND EVENTOS
 // ═══════════════════════════════════════════════════════════════
 function bindEvents() {
     document.getElementById("login-form").addEventListener("submit", handleLogin);
     document.getElementById("logout-btn").addEventListener("click",  handleLogout);
 
-    // ✨ FILTROS (incluyendo el nuevo botón "Todos")
     document.getElementById("btn-filter-todos").addEventListener("click",   () => cambiarFiltro("todos"));
     document.getElementById("btn-filter-pending").addEventListener("click", () => cambiarFiltro("Pendiente"));
     document.getElementById("btn-filter-voted").addEventListener("click",   () => cambiarFiltro("Votó"));
     document.getElementById("btn-filter-novoted").addEventListener("click", () => cambiarFiltro("No Votó"));
 
-    // ✨ MÉTRICAS CLICABLES — actúan como filtros rápidos
     document.querySelectorAll(".metric-card[data-filter]").forEach(card => {
         card.addEventListener("click", () => {
             const f = card.getAttribute("data-filter");
             if (f) {
-                // sólo dentro de planilla
                 const tabPlanilla = document.getElementById("tab-planilla");
                 if (tabPlanilla && !tabPlanilla.classList.contains("active")) {
                     switchTab("planilla");
@@ -1160,14 +1604,14 @@ function bindEvents() {
     });
 
     document.getElementById("tab-planilla").addEventListener("click",   () => switchTab("planilla"));
+    document.getElementById("tab-stats").addEventListener("click",      () => switchTab("stats"));
     document.getElementById("tab-admin").addEventListener("click",      () => switchTab("admin"));
     document.getElementById("tab-padron-anr").addEventListener("click", () => switchTab("padron-anr"));
 
     document.getElementById("register-user-form").addEventListener("submit",    handleRegistrarUsuario);
-    document.getElementById("register-votante-form").addEventListener("submit", handleRegistrarVotante);
+    document.getElementById("register-votante-form")?.addEventListener("submit", handleRegistrarVotante);
 
-    // Cerrar modales al hacer click fuera
-    ["modal-novoto","modal-chpass","modal-obs-confirm"].forEach(id => {
+    ["modal-novoto","modal-chpass","modal-obs-confirm","modal-historial"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener("click", function(e) {
             if (e.target === this) {
@@ -1177,10 +1621,9 @@ function bindEvents() {
         });
     });
 
-    // Cerrar modales con Escape
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
-            ["modal-novoto", "modal-chpass", "modal-obs-confirm"].forEach(id => {
+            ["modal-novoto", "modal-chpass", "modal-obs-confirm", "modal-historial"].forEach(id => {
                 const el = document.getElementById(id);
                 if (el && el.classList.contains("active")) {
                     if (id === "modal-obs-confirm") cancelarObservacion();
@@ -1190,18 +1633,23 @@ function bindEvents() {
         }
     });
 
-    // Búsqueda
-    document.getElementById("search-input").addEventListener("input", e => {
-        state.searchQuery = e.target.value.toLowerCase().trim();
-        if (!state.searchQuery) state.searchAllStates = false;
+    const runSearch = debounce((val) => {
+        state.searchQuery = val;
+        if (!val) state.searchAllStates = false;
+        state.pagination.page = 1;
         renderTablaVotantes();
+    }, 300);
+
+    document.getElementById("search-input").addEventListener("input", e => {
+        runSearch(e.target.value.toLowerCase().trim());
     });
 
-    // Enter en padrón ANR
     const padronInp = document.getElementById("padron-anr-input");
     if (padronInp) padronInp.addEventListener("keydown", e => {
         if (e.key === "Enter") buscarPadronANR();
     });
+
+    bindImportEvents();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1547,7 +1995,6 @@ function _unbindEliminarListeners() {
         .forEach(r => r.removeEventListener("click", _onFilaClickEliminar));
 }
 
-// Re-bind tras cada re-render de la tabla (MutationObserver)
 document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => {
         const obs = new MutationObserver(() => {

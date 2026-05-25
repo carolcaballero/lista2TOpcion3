@@ -30,7 +30,6 @@ const ADMIN_HASH      = "3125998a39f131e03ee8a3cad1ea1fb31327e6a610e1c21cc0ff50e
 const ADMIN_FULLNAME  = "Administrador/a";
 const SESSION_KEY     = "ce_session_v5";
 const SESSION_TTL_MS  = 7 * 24 * 60 * 60 * 1000;
-const CSV_PATH        = "data/votantes.csv";
 const TZ_PY           = "America/Asuncion";
 const OFFLINE_QUEUE_KEY = "ce_offline_queue_v1";
 
@@ -174,7 +173,7 @@ function renderBitacora(eventos) {
         "Quitar No Votó":"#7C3AED","Nuevo Votante":"#2563EB","Nuevo Operador":"#DB2777",
         "Eliminar Operador":"#B91C1C","Observación":"#CA8A04","Login":"#059669",
         "Logout":"#6B7280","Consulta Padrón":"#CA8A04","Cambio Contraseña":"#7C3AED",
-        "Exportar CSV":"#0891B2"
+        "Exportar XLSX":"#0891B2"
     };
     tbody.innerHTML = eventos.map(e => {
         const hora  = e.hora_py || timestampAParaguay(e.timestamp) || "---";
@@ -240,7 +239,7 @@ async function handleLogin(e) {
         if (userIn.toLowerCase() === ADMIN_USER_ID) {
             if (passHash === ADMIN_HASH) {
                 resetBtn();
-                loginSuccess({ username: ADMIN_USER_ID, fullname: ADMIN_FULLNAME, isAdmin: true, local: "", mesa: "" }, true);
+                loginSuccess({ username: ADMIN_USER_ID, fullname: ADMIN_FULLNAME, isAdmin: true, local: "" }, true);
                 return;
             } else {
                 errEl.textContent = "Contraseña incorrecta para Admin.";
@@ -253,7 +252,7 @@ async function handleLogin(e) {
             const match = u.passwordHash ? u.passwordHash === passHash : u.password === passIn;
             if (match) {
                 resetBtn();
-                loginSuccess({ username: u.username, fullname: u.fullname, isAdmin: false, local: u.local || "", mesa: u.mesa || "" }, true);
+                loginSuccess({ username: u.username, fullname: u.fullname, isAdmin: false, local: u.local || "" }, true);
                 return;
             }
         }
@@ -287,9 +286,9 @@ function loginSuccess(user, persist) {
         if (displayEl) displayEl.textContent = user.fullname;
 
         if (assignEl) {
-            if (user.local || user.mesa) {
+            if (user.local) {
                 assignEl.classList.remove("hidden");
-                assignEl.textContent = `📍 ${user.local || "--"} · 🗳️ ${user.mesa || "--"}`;
+                assignEl.textContent = `📍 ${user.local}`;
             } else {
                 assignEl.classList.add("hidden");
             }
@@ -385,15 +384,8 @@ async function quitarPresencia() {
 //  CARGA DE DATOS
 // ═══════════════════════════════════════════════════════════════
 async function loadPadronYEscuchar() {
-    try {
-        const res    = await fetch(CSV_PATH);
-        const texto  = await res.text();
-        state.padron = parsearCSV(texto);
-    } catch (err) {
-        console.error("CSV error:", err);
-        toast("No se pudo cargar el padrón base.", "error");
-        state.padron = [];
-    }
+    // La planilla arranca vacía. Los votantes se agregan uno a uno desde el padrón ANR o manualmente.
+    state.padron = [];
 
     try {
         const snap = await getDocs(collection(db, "padron_extra"));
@@ -429,23 +421,8 @@ async function loadPadronYEscuchar() {
     if (state.currentUser?.isAdmin) {
         cargarUsuarios();
         escucharBitacora();
+        cargarLocalesDesdePadron();
     }
-}
-
-function parsearCSV(texto) {
-    const lineas = texto.split("\n").filter(l => l.trim());
-    const result = [];
-    for (let i = 1; i < lineas.length; i++) {
-        const c   = lineas[i].split(",");
-        const ced = String(c[2]?.trim() || "").replace(/[\s\-]/g, "").replace(/^0+/, "");
-        result.push({
-            id:        c[0]?.trim() || String(i),
-            nombre:    c[1]?.trim() || "Sin nombre",
-            cedula:    ced,
-            domicilio: c[4]?.trim() || "---",
-        });
-    }
-    return result;
 }
 
 const getVoto = c => state.votos[c]?.voto          || "Pendiente";
@@ -613,13 +590,8 @@ function renderTablaVotantes() {
     // ── Filtro por asignación de operador (no admin) ──────────
     if (state.currentUser && !state.currentUser.isAdmin) {
         const asigLocal = (state.currentUser.local || "").trim().toLowerCase();
-        const asigMesa  = (state.currentUser.mesa  || "").trim().toLowerCase();
-        if (asigLocal || asigMesa) {
-            lista = lista.filter(v => {
-                const matchLocal = asigLocal && (v.local || "").toLowerCase() === asigLocal;
-                const matchMesa  = asigMesa  && (v.mesa  || "").toLowerCase() === asigMesa;
-                return matchLocal || matchMesa;
-            });
+        if (asigLocal) {
+            lista = lista.filter(v => (v.local || "").toLowerCase() === asigLocal);
         }
     }
 
@@ -1080,7 +1052,6 @@ async function handleRegistrarUsuario(e) {
     const username = document.getElementById("reg-username").value.trim().toLowerCase();
     const password = document.getElementById("reg-password").value;
     const local    = document.getElementById("reg-local").value.trim();
-    const mesa     = document.getElementById("reg-mesa").value.trim();
 
     if (username === ADMIN_USER_ID) {
         toast("Ese nombre de usuario está reservado.", "error");
@@ -1091,9 +1062,9 @@ async function handleRegistrarUsuario(e) {
         const existe = await getDoc(doc(db, "usuarios", username));
         if (existe.exists()) { toast("El nombre de usuario ya existe.", "error"); return; }
         const passwordHash = await sha256(password);
-        await setDoc(doc(db, "usuarios", username), { username, fullname, phone, passwordHash, isAdmin: false, local, mesa });
+        await setDoc(doc(db, "usuarios", username), { username, fullname, phone, passwordHash, isAdmin: false, local });
         toast(`✔ Operador "${fullname}" creado correctamente.`);
-        await registrarBitacora("Nuevo Operador", `Creó operador ${fullname} (usuario: ${username})${local ? " · Local: "+local : ""}${mesa ? " · Mesa: "+mesa : ""}`);
+        await registrarBitacora("Nuevo Operador", `Creó operador ${fullname} (usuario: ${username})${local ? " · Local: "+local : ""}`);
         document.getElementById("register-user-form").reset();
         cargarUsuarios();
     } catch (err) {
@@ -1141,7 +1112,7 @@ function renderTablaUsuarios() {
                 }
             </td>
             <td><code>${escHtml(u.username)}</code></td>
-            <td>${escHtml(u.local || "—")}<br><span style="font-size:.72rem;color:var(--color-gray)">Mesa: ${escHtml(u.mesa || "—")}</span></td>
+            <td>${escHtml(u.local || "—")}</td>
             <td style="white-space:nowrap">
                 <div style="display:flex;gap:6px;align-items:center;">
                     <button class="btn-secondary" onclick="abrirCambiarPassword('${escHtml(u.username)}')"
@@ -1158,6 +1129,27 @@ function renderTablaUsuarios() {
             </td>`;
         tbody.appendChild(tr);
     });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CARGAR LOCALES DESDE PADRÓN ANR
+// ═══════════════════════════════════════════════════════════════
+async function cargarLocalesDesdePadron() {
+    try {
+        const padron = await cargarPadronCSV();
+        const locales = [...new Set(padron.map(r => r.LOCAL_VOTACION).filter(Boolean))].sort();
+        const select = document.getElementById("reg-local");
+        if (!select) return;
+        select.innerHTML = '<option value="">Seleccionar local...</option>';
+        locales.forEach(loc => {
+            const opt = document.createElement("option");
+            opt.value = loc;
+            opt.textContent = loc;
+            select.appendChild(opt);
+        });
+    } catch (err) {
+        console.warn("No se pudieron cargar los locales del padrón:", err);
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1236,6 +1228,7 @@ function switchTab(tab) {
         if (tabAdmin) tabAdmin.classList.add("active");
         cargarUsuarios();
         escucharBitacora();
+        cargarLocalesDesdePadron();
     } else if (tab === "padron-anr") {
         if (padronAnr) padronAnr.style.display = "";
         if (tabPadronAnr) tabPadronAnr.classList.add("active");
@@ -1255,7 +1248,17 @@ function switchTab(tab) {
 //  ESTADÍSTICAS / CHARTS
 // ═══════════════════════════════════════════════════════════════
 function renderStatsCharts() {
-    if (!state.padron.length) return;
+    if (!state.padron.length) {
+        // Mostrar mensaje de vacío en los contenedores de gráficos
+        ["chart-mesa", "chart-global", "chart-hora"].forEach(id => {
+            const canvas = document.getElementById(id);
+            if (canvas) {
+                const ctx = canvas.getContext("2d");
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        });
+        return;
+    }
 
     // Datos por mesa
     const mesas = {};
@@ -1414,29 +1417,37 @@ function debounce(fn, ms = 300) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  EXPORTAR CSV
+//  EXPORTAR XLSX
 // ═══════════════════════════════════════════════════════════════
-window.exportarCSV = function() {
-    const filas = [["N°","Nombre","Cédula","Domicilio","Estado","Operador","Observación"]];
+window.exportarXLSX = function() {
+    const filas = [["N°","Nombre","Cédula","Domicilio","Local","Mesa","Orden","Estado","Operador","Observación"]];
     state.padron.forEach((v, i) => {
-        filas.push([i+1, v.nombre, v.cedula, v.domicilio,
-            getVoto(v.cedula), getLog(v.cedula), getObs(v.cedula)]);
+        filas.push([
+            i+1,
+            v.nombre,
+            v.cedula,
+            v.domicilio || "",
+            v.local || "",
+            v.mesa || "",
+            v.orden || "",
+            getVoto(v.cedula),
+            getLog(v.cedula),
+            getObs(v.cedula)
+        ]);
     });
-    const bom = "\uFEFF";
-    const csv = bom + filas.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
+
+    const ws = XLSX.utils.aoa_to_sheet(filas);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Planilla");
+
     const fecha = new Date().toLocaleString("es-PY", {
         timeZone:"America/Asuncion",
         day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"
     }).replace(/[\/:, ]/g,"-").replace(/--/g,"-");
-    a.href     = url;
-    a.download = `padron-electoral-${fecha}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast("✔ Padrón exportado correctamente.", "ok");
-    registrarBitacora("Exportar CSV", `Exportó el padrón completo (${state.padron.length} registros)`);
+
+    XLSX.writeFile(wb, `planilla-electoral-${fecha}.xlsx`);
+    toast("✔ Planilla exportada correctamente (XLSX).", "ok");
+    registrarBitacora("Exportar XLSX", `Exportó la planilla (${state.padron.length} registros)`);
 };
 
 // ═══════════════════════════════════════════════════════════════

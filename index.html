@@ -985,6 +985,33 @@
             text-transform: uppercase;
             letter-spacing: .4px;
         }
+
+        /* ═══════════════════════════════════════
+           STATS SELECTORS
+           ═══════════════════════════════════════ */
+        .stats-selectors {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .stats-selectors select {
+            padding: 8px 12px;
+            border: 1.5px solid var(--color-border);
+            border-radius: var(--r-sm);
+            font-size: .82rem;
+            font-weight: 700;
+            color: var(--color-dark);
+            background: var(--color-bg-soft);
+            cursor: pointer;
+            font-family: inherit;
+            transition: all var(--t-base);
+        }
+        .stats-selectors select:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px var(--color-primary-glow);
+        }
     </style>
 </head>
 <body>
@@ -1013,6 +1040,8 @@
     <symbol id="icon-bar-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></symbol>
     <symbol id="icon-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></symbol>
     <symbol id="icon-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+    <symbol id="icon-file-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></symbol>
+    <symbol id="icon-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></symbol>
 </svg>
 
 <!-- TOASTS -->
@@ -1269,7 +1298,7 @@
                 Administración
             </button>
             <button id="tab-padron-anr" class="tab-btn">
-                <svg class="icon" style="color:inherit;margin-right:4px;width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <svg class="icon" style="color:inherit;margin-right:4px;width:14px;height:14px;"><use href="#icon-file-text"/></svg>
                 Padrón ANR
             </button>
         </div>
@@ -1375,10 +1404,15 @@
                         <svg width="16" height="16" style="color:var(--color-primary-accent)"><use href="#icon-bar-chart"/></svg>
                         <span id="bar-chart-title">Participación por Local</span>
                     </h4>
-                    <select id="chart-type-selector" style="padding:6px 10px;border:1.5px solid var(--color-border);border-radius:var(--r-sm);font-size:.78rem;font-weight:800;color:var(--color-dark);background:var(--color-bg-soft);cursor:pointer;font-family:inherit;">
-                        <option value="local">Por Local</option>
-                        <option value="mesa">Por Mesa</option>
-                    </select>
+                    <div class="stats-selectors">
+                        <select id="chart-type-selector">
+                            <option value="local">Por Local</option>
+                            <option value="mesa">Por Mesa</option>
+                        </select>
+                        <select id="chart-local-selector" class="hidden">
+                            <option value="">Todos los locales</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="chart-wrap"><canvas id="chart-mesa"></canvas></div>
             </div>
@@ -1427,24 +1461,14 @@
             </div>
 
             <div class="admin-card">
-                <h3><svg class="icon"><use href="#icon-upload"/></svg>Importar Votantes (CSV)</h3>
+                <h3><svg class="icon"><use href="#icon-download"/></svg>Exportar Planilla Excel (Estadísticas)</h3>
                 <p style="font-size:.82rem;color:var(--color-text-soft);margin-bottom:14px;line-height:1.5;">
-                    Subí un CSV con columnas: <strong>Nombre, Cédula, Domicilio, Local, Mesa, Orden</strong>. Se agregarán al padrón extra.
+                    Descargá un archivo Excel completo con la <strong>planilla de votantes</strong>, <strong>estadísticas por local</strong>, <strong>por mesa</strong> y <strong>resumen general</strong>.
                 </p>
-                <div class="file-drop" id="file-drop-zone">
-                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--color-gray)"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    <div class="file-drop-text">Arrastrá un archivo CSV aquí</div>
-                    <div class="file-drop-hint">o hacé clic para seleccionar</div>
-                    <input type="file" id="import-csv-input" accept=".csv" style="display:none;">
-                </div>
-                <div id="import-preview-wrap" style="display:none;margin-top:14px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                        <span style="font-size:.82rem;font-weight:800;color:var(--color-dark);">Vista previa</span>
-                        <span id="import-count" style="font-size:.78rem;color:var(--color-gray);font-weight:700;"></span>
-                    </div>
-                    <div class="import-preview" id="import-preview-table"></div>
-                    <button id="btn-import-confirm" class="btn-primary" style="margin-top:12px;width:100%;">Confirmar Importación</button>
-                </div>
+                <button onclick="exportarEstadisticasXLSX()" class="btn-primary" style="display:flex;align-items:center;justify-content:center;gap:8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Descargar Excel Completo
+                </button>
             </div>
         </div>
 
@@ -1503,7 +1527,7 @@
 
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
                 <div style="background:linear-gradient(135deg,var(--color-primary-accent),var(--color-primary-hover));padding:10px;border-radius:var(--r-md);box-shadow:0 5px 14px rgba(185,28,28,.3);">
-                    <svg width="24" height="24" viewBox="0 0 640 640" fill="#fff" style="display:block"><path d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff" style="display:block"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1" ry="1"/></svg>
                 </div>
                 <div>
                     <h2 style="font-size:1.05rem;color:var(--color-dark);margin:0;font-weight:900;letter-spacing:-.2px;">Consulta Padrón ANR</h2>

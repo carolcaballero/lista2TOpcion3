@@ -43,3 +43,4 @@ self.addEventListener('fetch', event => {
     }).catch(() => caches.match('./index.html'))
   );
 });
+

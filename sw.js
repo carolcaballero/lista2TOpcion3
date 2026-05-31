@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ce-v8-cache-v2';
+const CACHE_NAME = 'ce-v9-cache-v1';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -19,6 +19,7 @@ self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    )  // ← paréntesis que faltaba
   );
   self.clients.claim();
 });
@@ -43,4 +44,3 @@ self.addEventListener('fetch', event => {
     }).catch(() => caches.match('./index.html'))
   );
 });
-

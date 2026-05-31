@@ -986,24 +986,7 @@
             letter-spacing: .4px;
         }
 
-        /* ═══════════════════════════════════════
-           STATS SELECTORS (oculto el selector de local)
-           ═══════════════════════════════════════ */
-        .stats-selectors {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        .stats-selectors select {
-            display: none; /* Eliminamos el selector de local */
-        }
-        #btn-volver-locales {
-            margin-left: auto;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
+        /* local selector moved to styles.css */
 
         /* ═══════════════════════════════════════
            STATS - LOCAL SUMMARY CARDS
@@ -1284,32 +1267,40 @@
         <div id="pagination-controls" style="margin-top:12px;"></div>
     </div>
 
-    <!-- ESTADÍSTICAS (sin selector de local, con tarjetas-resumen + drill-down por mesa) -->
+    <!-- ESTADÍSTICAS — selección de local → mesas → torta global + horario -->
     <div id="view-stats" style="display:none;">
-        <!-- Resumen de Locales (tarjetas clickeables) -->
+
+        <!-- Tarjetas resumen de locales (siempre visibles) -->
         <div id="locales-summary" class="locales-summary"></div>
+
+        <!-- Selector visual de locales (se oculta al elegir uno) -->
+        <div class="chart-card" style="margin-bottom:14px;">
+            <h4 style="margin-bottom:14px;display:flex;align-items:center;gap:8px;">
+                <svg width="16" height="16" style="color:var(--color-primary-accent)"><use href="#icon-bar-chart"/></svg>
+                <span id="bar-chart-title">Seleccioná un local para ver estadísticas por mesa</span>
+                <button id="btn-volver-locales" class="btn-secondary hidden" onclick="volverALocales()" style="font-size:.75rem;padding:6px 12px;margin-left:auto;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                    Volver
+                </button>
+            </h4>
+            <!-- Botones para elegir local -->
+            <div id="local-selector-btns" class="local-selector-btns"></div>
+            <!-- Canvas del gráfico de barras por mesa -->
+            <div class="chart-wrap" style="display:none;" id="chart-mesa-wrap"><canvas id="chart-mesa"></canvas></div>
+            <!-- Tabla de detalle por mesa -->
+            <div id="mesa-tabla-wrap"></div>
+        </div>
 
         <div class="stats-grid">
             <div class="chart-card">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-                    <h4 style="margin:0;display:flex;align-items:center;gap:8px;">
-                        <svg width="16" height="16" style="color:var(--color-primary-accent)"><use href="#icon-bar-chart"/></svg>
-                        <span id="bar-chart-title">Participación por Locales</span>
-                    </h4>
-                    <button id="btn-volver-locales" class="btn-secondary hidden" onclick="volverALocales()" style="font-size:.75rem;padding:6px 12px;">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-                        Volver a locales
-                    </button>
-                </div>
-                <div class="chart-wrap"><canvas id="chart-mesa"></canvas></div>
-                <p id="chart-hint" style="text-align:center;font-size:.72rem;color:var(--color-gray);margin-top:10px;font-weight:600;">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;"><path d="M9 11.24V7.5a2.5 2.5 0 0 1 5 0v3.74"/><path d="M14 11.5v-3a2.5 2.5 0 0 1 5 0v6a6 6 0 0 1-12 0V9a2.5 2.5 0 0 1 5 0v2"/></svg>
-                    Toca una barra para ver el desglose por mesa
-                </p>
+                <h4><svg width="16" height="16" style="color:var(--color-success)"><use href="#icon-check"/></svg> Distribución General</h4>
+                <div class="chart-wrap"><canvas id="chart-global"></canvas></div>
             </div>
-            <div class="chart-card"><h4><svg width="16" height="16" style="color:var(--color-success)"><use href="#icon-check"/></svg> Distribución General</h4><div class="chart-wrap"><canvas id="chart-global"></canvas></div></div>
+            <div class="chart-card">
+                <h4><svg width="16" height="16" style="color:var(--color-warn)"><use href="#icon-clock"/></svg> Participación Horaria <span style="font-size:.7rem;font-weight:600;color:var(--color-gray);margin-left:6px;">07:00 – 17:00</span></h4>
+                <div class="chart-wrap" style="height:220px;"><canvas id="chart-hora"></canvas></div>
+            </div>
         </div>
-        <div class="chart-card"><h4><svg width="16" height="16" style="color:var(--color-warn)"><use href="#icon-clock"/></svg> Participación Horaria</h4><div class="chart-wrap" style="height:220px;"><canvas id="chart-hora"></canvas></div></div>
     </div>
 
     <!-- ADMINISTRACIÓN -->
@@ -1321,7 +1312,11 @@
                     <div class="form-group"><label><svg class="icon" style="width:14px;height:14px"><use href="#icon-phone"/></svg> WhatsApp</label><input type="tel" id="reg-phone" required></div>
                     <div class="form-group"><label>Usuario</label><input type="text" id="reg-username" required></div>
                     <div class="form-group"><label><svg class="icon" style="width:14px;height:14px"><use href="#icon-lock"/></svg> Contraseña</label><input type="password" id="reg-password" required></div>
-                    <div class="form-group"><label>Local Asignado</label><select id="reg-local" required><option value="">Seleccionar local...</option></select></div>
+                    <div class="form-group">
+                        <label><svg class="icon" style="width:14px;height:14px"><use href="#icon-shield"/></svg> Local Asignado</label>
+                        <input type="hidden" id="reg-local-value" name="reg-local">
+                        <div id="reg-local-picker" class="local-picker-wrap"></div>
+                    </div>
                     <button type="submit" class="btn-primary">Crear Operador</button>
                 </form>
             </div>

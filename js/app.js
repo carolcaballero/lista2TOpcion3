@@ -1113,7 +1113,7 @@ async function handleRegistrarUsuario(e) {
     const phone    = document.getElementById("reg-phone").value.trim();
     const username = document.getElementById("reg-username").value.trim().toLowerCase();
     const password = document.getElementById("reg-password").value;
-    const local    = document.getElementById("reg-local").value.trim();
+    const local    = (document.getElementById("reg-local-value")?.value || document.getElementById("reg-local")?.value || "").trim();
 
     if (username === ADMIN_USER_ID) {
         toast("Ese nombre de usuario está reservado.", "error");
@@ -1198,7 +1198,7 @@ function renderTablaUsuarios() {
 // ═══════════════════════════════════════════════════════════════
 const LOCALES_CONFIG = {
     "GIMNASIO MUNICIPAL":       { mesaMin: 1,  mesaMax: 20, color: "#B91C1C", colorSoft: "#FCA5A5", icon: "icon-shield"     },
-    "MUSEO HISTORICO":          { mesaMin: 21, mesaMax: 40, color: "#1E40AF", colorSoft: "#93C5FD", icon: "icon-clipboard"  },
+    "COLEGIO NACIONAL SEBASTIAN DE YEGROS": { mesaMin: 21, mesaMax: 40, color: "#1E40AF", colorSoft: "#93C5FD", icon: "icon-users"    },
     "ESC.CARLOS ANTONIO LOPEZ": { mesaMin: 41, mesaMax: 65, color: "#15803D", colorSoft: "#86EFAC", icon: "icon-file-text"  }
 };
 
@@ -1232,6 +1232,35 @@ function determinarLocal(votante) {
 }
 
 async function cargarLocalesDesdePadron() {
+    // Poblar selector visual de locales en formulario de operadores
+    const localPickerWrap = document.getElementById("reg-local-picker");
+    const localHidden = document.getElementById("reg-local-value");
+    if (localPickerWrap) {
+        localPickerWrap.innerHTML = "";
+        Object.entries(LOCALES_CONFIG).forEach(([loc, conf]) => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "local-picker-btn";
+            btn.dataset.local = loc;
+            btn.style.setProperty("--lc", conf.color);
+            btn.style.setProperty("--ls", conf.colorSoft);
+            btn.innerHTML = `
+                <svg width="13" height="13" style="color:${conf.color}"><use href="#${conf.icon}"/></svg>
+                <span>${loc}</span>
+                <span class="lp-mesas" style="color:${conf.color}">M${conf.mesaMin}–${conf.mesaMax}</span>`;
+            btn.addEventListener("click", () => {
+                localPickerWrap.querySelectorAll(".local-picker-btn").forEach(b => b.classList.remove("selected"));
+                btn.classList.add("selected");
+                btn.style.background = conf.color + "18";
+                btn.style.borderColor = conf.color;
+                if (localHidden) localHidden.value = loc;
+            });
+            localPickerWrap.appendChild(btn);
+        });
+        // Reset on re-open
+        if (localHidden) localHidden.value = "";
+    }
+    // Fallback: si existe el <select> viejo, también poblarlo
     const select = document.getElementById("reg-local");
     if (select) {
         select.innerHTML = '<option value="">Seleccionar local...</option>';
@@ -1242,9 +1271,6 @@ async function cargarLocalesDesdePadron() {
             select.appendChild(opt);
         });
     }
-    // También poblar el selector de estadísticas (aunque se elimina del HTML, lo dejamos por compatibilidad)
-    const statsSelect = document.getElementById("chart-local-selector");
-    if (statsSelect) statsSelect.innerHTML = '<option value="">Seleccionar local</option>';
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1342,6 +1368,8 @@ function renderStatsCharts() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
             }
         });
+        // Mostrar selector de locales cuando no hay datos
+        _renderSelectorLocales();
         return;
     }
 
@@ -1350,16 +1378,23 @@ function renderStatsCharts() {
     const hintEl    = document.getElementById("chart-hint");
 
     if (currentStatsView === "mesas" && currentLocalForMesas) {
-        // ── Vista drill-down: Estadísticas por mesa del local seleccionado ──
+        // ── Vista mesas: barras por mesa mostrando solo Votaron ──
         if (titleEl)   titleEl.textContent = `Mesas — ${currentLocalForMesas}`;
         if (btnVolver) btnVolver.classList.remove("hidden");
         if (hintEl)    hintEl.style.display = "none";
 
+        // Ocultar el selector de locales, mostrar canvas
+        const selectorEl = document.getElementById("local-selector-btns");
+        if (selectorEl) selectorEl.style.display = "none";
+        const chartWrap = document.getElementById("chart-mesa-wrap");
+        if (chartWrap) chartWrap.style.display = "block";
+
         const config = LOCALES_CONFIG[currentLocalForMesas];
         if (config) {
-            const colorLocal = getColorLocal(currentLocalForMesas);
+            const colorLocal   = getColorLocal(currentLocalForMesas);
+            const colorSoftL   = getColorLocalSoft(currentLocalForMesas);
 
-            // Por cada mesa: voted, noVoted, pending
+            // Construir datos por mesa (solo mesas con al menos 1 inscripto)
             const mesas = {};
             for (let m = config.mesaMin; m <= config.mesaMax; m++) {
                 mesas[m] = { voted: 0, noVoted: 0, pending: 0, total: 0 };
@@ -1375,171 +1410,103 @@ function renderStatsCharts() {
                 else                          mesas[numMesa].pending++;
             });
 
-            const labels    = Object.keys(mesas).map(m => `M${m}`);
-            const dataVoted = Object.values(mesas).map(m => m.voted);
-            const dataNo    = Object.values(mesas).map(m => m.noVoted);
-            const dataPend  = Object.values(mesas).map(m => m.pending);
-            const totals    = Object.values(mesas).map(m => m.total);
+            // Filtrar solo mesas con inscriptos
+            const mesasActivas = Object.entries(mesas).filter(([, d]) => d.total > 0);
+            const labels    = mesasActivas.map(([m]) => `M${m}`);
+            const dataVoted = mesasActivas.map(([, d]) => d.voted);
+            const totals    = mesasActivas.map(([, d]) => d.total);
 
             const ctxMesa = document.getElementById("chart-mesa");
             if (ctxMesa) {
                 if (state.charts.mesa) state.charts.mesa.destroy();
+
+                // Gradientes por barra según % de participación
+                const ctx2d = ctxMesa.getContext("2d");
+                const gradients = dataVoted.map(() => {
+                    const g = ctx2d.createLinearGradient(0, 0, 0, 300);
+                    g.addColorStop(0, colorLocal);
+                    g.addColorStop(1, colorSoftL);
+                    return g;
+                });
+
                 state.charts.mesa = new Chart(ctxMesa, {
                     type: "bar",
                     data: {
                         labels: labels,
                         datasets: [
-                            { label: "Votaron",    data: dataVoted, backgroundColor: "#15803D", borderRadius: 4, stack: "s1" },
-                            { label: "No Votaron", data: dataNo,    backgroundColor: colorLocal, borderRadius: 4, stack: "s1" },
-                            { label: "Pendientes", data: dataPend,  backgroundColor: "#D1D5DB", borderRadius: 4, stack: "s1" }
+                            {
+                                label: "Votaron",
+                                data: dataVoted,
+                                backgroundColor: gradients,
+                                borderColor: colorLocal,
+                                borderWidth: 2,
+                                borderRadius: 6,
+                                maxBarThickness: 55
+                            }
                         ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        interaction: { mode: 'index', intersect: false },
                         plugins: {
-                            legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11, weight: '600' } } },
+                            legend: { display: false },
                             tooltip: {
                                 callbacks: {
-                                    title: (items) => items[0]?.label ? `Mesa ${items[0].label.replace('M','')}` : '',
-                                    footer: (items) => {
-                                        const idx = items[0]?.dataIndex;
-                                        if (idx === undefined) return '';
-                                        const t = totals[idx];
-                                        const v = dataVoted[idx];
-                                        return `Total inscriptos: ${t} · Participación: ${t ? ((v/t)*100).toFixed(1) : 0}%`;
+                                    title: (items) => `Mesa ${items[0]?.label?.replace('M','') || ''}`,
+                                    label: (ctx) => {
+                                        const i = ctx.dataIndex;
+                                        const v = dataVoted[i];
+                                        const t = totals[i];
+                                        return `Votaron: ${v} de ${t} inscriptos (${t ? ((v/t)*100).toFixed(1) : 0}%)`;
                                     }
                                 }
                             }
                         },
                         scales: {
-                            x: { stacked: true, ticks: { font: { size: 10, weight: '600' } } },
-                            y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
+                            x: { ticks: { font: { size: 11, weight: '700' }, color: '#374151' } },
+                            y: {
+                                beginAtZero: true,
+                                ticks: { stepSize: 1, precision: 0 },
+                                title: { display: true, text: 'Votantes', font: { size: 11, weight: '700' }, color: '#6B7280' }
+                            }
                         }
                     }
                 });
             }
+
+            // ── Tabla de detalle por mesa ──
+            _renderTablaMesas(mesasActivas, colorLocal);
         }
     } else {
-        // ── Vista general: Participación por Local (barras con colores distintivos) ──
+        // ── Vista selector: mostrar botones de locales para elegir ──
         currentStatsView = "locales";
-        if (titleEl)   titleEl.textContent = "Participación por Locales";
+        if (titleEl)   titleEl.textContent = "Seleccioná un local para ver estadísticas por mesa";
         if (btnVolver) btnVolver.classList.add("hidden");
-        if (hintEl)    hintEl.style.display = "block";
+        if (hintEl)    hintEl.style.display = "none";
 
-        const agrupado = {};
-        Object.keys(LOCALES_CONFIG).forEach(local => { agrupado[local] = { voted: 0, total: 0 }; });
-        agrupado["OTRO"] = { voted: 0, total: 0 };
+        // Ocultar canvas, mostrar selector
+        const chartWrap2 = document.getElementById("chart-mesa-wrap");
+        if (chartWrap2) chartWrap2.style.display = "none";
 
-        state.padron.forEach(v => {
-            const localVotante = determinarLocal(v);
-            agrupado[localVotante].total++;
-            if (getVoto(v.cedula) === "Votó") agrupado[localVotante].voted++;
-        });
-
-        // Filtrar OTRO si no tiene registros
-        const todosLocales = [...Object.keys(LOCALES_CONFIG)];
-        if (agrupado["OTRO"].total > 0) todosLocales.push("OTRO");
-
-        const labels        = todosLocales;
-        const dataValues    = labels.map(l => agrupado[l].voted);
-        const totalsByLocal = labels.map(l => agrupado[l].total);
-        const colorsArr     = labels.map(l => getColorLocal(l));
-        const colorsSoft    = labels.map(l => getColorLocalSoft(l));
-
+        // Limpiar chart anterior
         const ctxMesa = document.getElementById("chart-mesa");
         if (ctxMesa) {
-            if (state.charts.mesa) state.charts.mesa.destroy();
-
-            // Gradientes por barra
+            if (state.charts.mesa) { state.charts.mesa.destroy(); state.charts.mesa = null; }
             const ctx2d = ctxMesa.getContext("2d");
-            const gradients = colorsArr.map((c, i) => {
-                const g = ctx2d.createLinearGradient(0, 0, 0, 280);
-                g.addColorStop(0, c);
-                g.addColorStop(1, colorsSoft[i]);
-                return g;
-            });
-
-            state.charts.mesa = new Chart(ctxMesa, {
-                type: "bar",
-                data: {
-                    labels: labels.map(l => l.length > 18 ? l.substring(0, 16) + "…" : l),
-                    datasets: [
-                        {
-                            label: "Votaron",
-                            data: dataValues,
-                            backgroundColor: gradients,
-                            borderColor: colorsArr,
-                            borderWidth: 2,
-                            borderRadius: 8,
-                            maxBarThickness: 70
-                        },
-                        {
-                            label: "Inscriptos",
-                            data: totalsByLocal,
-                            backgroundColor: "transparent",
-                            borderColor: colorsArr,
-                            borderWidth: 1.5,
-                            borderDash: [4, 4],
-                            borderRadius: 4,
-                            type: "bar",
-                            maxBarThickness: 70,
-                            order: 2
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: "bottom",
-                            labels: { boxWidth: 12, font: { size: 11, weight: '700' } }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                title: (items) => labels[items[0]?.dataIndex] || '',
-                                label: (ctx) => {
-                                    const i = ctx.dataIndex;
-                                    if (ctx.datasetIndex === 0) {
-                                        const v = dataValues[i];
-                                        const t = totalsByLocal[i];
-                                        return `Votaron: ${v} de ${t} (${t ? ((v/t)*100).toFixed(1) : 0}%)`;
-                                    }
-                                    return `Inscriptos: ${totalsByLocal[i]}`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: { ticks: { font: { size: 10, weight: '700' }, color: '#374151' } },
-                        y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
-                    },
-                    onClick: (e, activeEls) => {
-                        if (activeEls.length) {
-                            const index = activeEls[0].index !== undefined ? activeEls[0].index : activeEls[0].dataIndex;
-                            const localSeleccionado = labels[index];
-                            if (localSeleccionado !== "OTRO" && LOCALES_CONFIG[localSeleccionado]) {
-                                currentStatsView = "mesas";
-                                currentLocalForMesas = localSeleccionado;
-                                renderStatsCharts();
-                            }
-                        }
-                    },
-                    onHover: (e, activeEls) => {
-                        if (e.native && e.native.target) {
-                            e.native.target.style.cursor = activeEls.length ? 'pointer' : 'default';
-                        }
-                    }
-                }
-            });
+            ctx2d.clearRect(0, 0, ctxMesa.width, ctxMesa.height);
         }
+
+        // Limpiar tabla de mesas
+        const tablaWrap = document.getElementById("mesa-tabla-wrap");
+        if (tablaWrap) tablaWrap.innerHTML = "";
+
+        // Mostrar selector de locales
+        _renderSelectorLocales();
     }
 
     // ── Gráfico de torta global (siempre visible) ──
-    const total = state.padron.length;
-    const voted = state.padron.filter(v => getVoto(v.cedula) === "Votó").length;
+    const total   = state.padron.length;
+    const voted   = state.padron.filter(v => getVoto(v.cedula) === "Votó").length;
     const noVoted = state.padron.filter(v => getVoto(v.cedula) === "No Votó").length;
     const pending = total - voted - noVoted;
 
@@ -1581,10 +1548,10 @@ function renderStatsCharts() {
         });
     }
 
-    // ── Gráfico horario (líneas con gradiente) ──
+    // ── Gráfico horario — hasta las 17:00 ──
     const horas = {};
-    for (let h = 7; h <= 18; h++) horas[`${h}:00`] = 0;
-    Object.entries(state.votos).forEach(([cedula, v]) => {
+    for (let h = 7; h <= 17; h++) horas[`${h}:00`] = 0;
+    Object.entries(state.votos).forEach(([, v]) => {
         if (v.voto !== "Votó" || !v.timestamp) return;
         const d = v.timestamp.toDate ? v.timestamp.toDate() : new Date(v.timestamp);
         const horaPY = new Date(d.toLocaleString("en-US", { timeZone: TZ_PY }));
@@ -1596,7 +1563,7 @@ function renderStatsCharts() {
         if (state.charts.hora) state.charts.hora.destroy();
         const ctx2dH = ctxHora.getContext("2d");
         const grad = ctx2dH.createLinearGradient(0, 0, 0, 220);
-        grad.addColorStop(0, "rgba(185,28,28,0.35)");
+        grad.addColorStop(0, "rgba(185,28,28,0.38)");
         grad.addColorStop(1, "rgba(185,28,28,0.02)");
 
         state.charts.hora = new Chart(ctxHora, {
@@ -1610,8 +1577,8 @@ function renderStatsCharts() {
                     backgroundColor: grad,
                     fill: true,
                     tension: 0.4,
-                    pointRadius: 4,
-                    pointHoverRadius: 7,
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
                     pointBackgroundColor: "#B91C1C",
                     pointBorderColor: "#fff",
                     pointBorderWidth: 2,
@@ -1636,10 +1603,138 @@ function renderStatsCharts() {
     }
 }
 
+// ── Renderiza botones para elegir local ──────────────────────────
+function _renderSelectorLocales() {
+    const selectorEl = document.getElementById("local-selector-btns");
+    if (!selectorEl) return;
+    selectorEl.innerHTML = "";
+    selectorEl.style.display = "flex";
+
+    Object.entries(LOCALES_CONFIG).forEach(([local, conf]) => {
+        // Contar inscriptos y votaron de este local
+        let total = 0, voted = 0;
+        state.padron.forEach(v => {
+            if (determinarLocal(v) !== local) return;
+            total++;
+            if (getVoto(v.cedula) === "Votó") voted++;
+        });
+        const pct = total ? Math.round((voted / total) * 100) : 0;
+
+        const btn = document.createElement("button");
+        btn.className = "local-sel-btn";
+        btn.style.borderColor = conf.color;
+        btn.style.setProperty("--local-color", conf.color);
+        btn.style.setProperty("--local-soft", conf.colorSoft);
+        btn.innerHTML = `
+            <div class="local-sel-icon" style="background:${conf.color}">
+                <svg width="16" height="16"><use href="#${conf.icon}"/></svg>
+            </div>
+            <div class="local-sel-body">
+                <div class="local-sel-name" style="color:${conf.color}">${local}</div>
+                <div class="local-sel-mesas">Mesas ${conf.mesaMin}–${conf.mesaMax}</div>
+                <div class="local-sel-stat">
+                    <span style="color:${conf.color};font-weight:800;">${voted}</span>
+                    <span style="color:#6B7280"> / ${total} votaron</span>
+                    <span class="local-sel-pct" style="background:${conf.color}15;color:${conf.color}">${pct}%</span>
+                </div>
+                <div class="local-sel-bar">
+                    <div class="local-sel-bar-fill" style="width:${pct}%;background:linear-gradient(90deg,${conf.color},${conf.colorSoft})"></div>
+                </div>
+            </div>
+            <svg class="local-sel-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${conf.color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        `;
+        btn.addEventListener("click", () => {
+            currentStatsView = "mesas";
+            currentLocalForMesas = local;
+            renderStatsCharts();
+            document.getElementById("chart-mesa")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+        selectorEl.appendChild(btn);
+    });
+}
+
+// ── Renderiza tabla de detalle por mesa ─────────────────────────
+function _renderTablaMesas(mesasActivas, colorLocal) {
+    const tablaWrap = document.getElementById("mesa-tabla-wrap");
+    if (!tablaWrap) return;
+
+    if (!mesasActivas.length) {
+        tablaWrap.innerHTML = `<p style="text-align:center;color:var(--color-gray);font-size:.85rem;padding:16px;">Sin datos de mesas para este local.</p>`;
+        return;
+    }
+
+    let totalVoted = 0, totalNoVoted = 0, totalPend = 0, totalTotal = 0;
+    mesasActivas.forEach(([, d]) => {
+        totalVoted  += d.voted;
+        totalNoVoted += d.noVoted;
+        totalPend   += d.pending;
+        totalTotal  += d.total;
+    });
+
+    const rows = mesasActivas.map(([mesa, d]) => {
+        const pct = d.total ? ((d.voted / d.total) * 100).toFixed(1) : "0.0";
+        const pctNum = parseFloat(pct);
+        const barColor = pctNum >= 70 ? "#15803D" : pctNum >= 40 ? colorLocal : "#9CA3AF";
+        return `
+        <tr>
+            <td><strong style="color:${colorLocal}">M${mesa}</strong></td>
+            <td style="text-align:center;">${d.total}</td>
+            <td style="text-align:center;"><span style="color:#15803D;font-weight:800;">${d.voted}</span></td>
+            <td style="text-align:center;"><span style="color:#B91C1C;font-weight:700;">${d.noVoted}</span></td>
+            <td style="text-align:center;"><span style="color:#6B7280;">${d.pending}</span></td>
+            <td style="min-width:110px;">
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <div style="flex:1;height:6px;background:#F3F4F6;border-radius:100px;overflow:hidden;">
+                        <div style="height:100%;width:${pct}%;background:${barColor};border-radius:100px;transition:width .6s ease;"></div>
+                    </div>
+                    <span style="font-size:.75rem;font-weight:800;color:${barColor};min-width:36px;text-align:right;">${pct}%</span>
+                </div>
+            </td>
+        </tr>`;
+    }).join("");
+
+    const totalPct = totalTotal ? ((totalVoted / totalTotal) * 100).toFixed(1) : "0.0";
+
+    tablaWrap.innerHTML = `
+        <div style="margin-top:18px;background:#fff;border:1px solid var(--color-border);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow-sm);">
+            <div style="padding:10px 16px;background:linear-gradient(135deg,${colorLocal},${colorLocal}cc);display:flex;align-items:center;gap:8px;">
+                <svg width="14" height="14" style="color:#fff"><use href="#icon-list"/></svg>
+                <span style="color:#fff;font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.5px;">Detalle por Mesa — ${currentLocalForMesas}</span>
+            </div>
+            <div style="overflow-x:auto;">
+                <table style="white-space:nowrap;">
+                    <thead>
+                        <tr>
+                            <th>Mesa</th>
+                            <th style="text-align:center;">Inscriptos</th>
+                            <th style="text-align:center;">Votaron</th>
+                            <th style="text-align:center;">No Votaron</th>
+                            <th style="text-align:center;">Pendientes</th>
+                            <th>Participación</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                        <tr style="background:${colorLocal}0d;border-top:2px solid ${colorLocal}44;">
+                            <td><strong style="color:${colorLocal}">TOTAL</strong></td>
+                            <td style="text-align:center;"><strong>${totalTotal}</strong></td>
+                            <td style="text-align:center;"><strong style="color:#15803D;">${totalVoted}</strong></td>
+                            <td style="text-align:center;"><strong style="color:#B91C1C;">${totalNoVoted}</strong></td>
+                            <td style="text-align:center;"><strong style="color:#6B7280;">${totalPend}</strong></td>
+                            <td><strong style="color:${colorLocal}">${totalPct}%</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
+}
+
 window.volverALocales = function() {
     currentStatsView = "locales";
     currentLocalForMesas = null;
     renderStatsCharts();
+};
+
 };
 
 // ═══════════════════════════════════════════════════════════════

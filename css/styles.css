@@ -1920,3 +1920,173 @@ td input[type="checkbox"],
         scroll-behavior: auto !important;
     }
 }
+/* ═══════════════ AJUSTES v11.0 — POST APP.JS ═══════════════ */
+
+/* Locales en FILAS (uno debajo del otro) */
+#reg-local-picker.local-picker-wrap {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: .55rem !important;
+}
+.local-picker-btn {
+    width: 100%;
+    justify-content: flex-start;
+    padding: .75rem 1rem !important;
+    min-height: 50px;
+}
+.local-picker-btn .lp-name {
+    flex: 1;
+    text-align: left;
+    font-weight: 700;
+}
+.local-picker-btn .lp-icon { flex-shrink: 0; }
+.local-picker-btn.selected {
+    box-shadow: 0 4px 14px rgba(15,23,42,0.12);
+    transform: translateX(2px);
+}
+
+/* Local card activo en estadísticas */
+.local-card.active {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+    border-left-width: 6px;
+    background: linear-gradient(135deg, #fff, #FFF8F8);
+}
+.local-card.active::before {
+    content: "▼";
+    position: absolute;
+    bottom: -8px; left: 50%;
+    transform: translateX(-50%);
+    color: var(--color-primary);
+    font-size: .8rem;
+    z-index: 2;
+}
+
+/* Botones de acción uniformes en tabla de operadores */
+.btn-action-row {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+.btn-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    min-width: 130px;
+    flex: 1;
+    padding: .55rem .9rem;
+    border: 1.5px solid transparent;
+    border-radius: var(--r-md);
+    font-weight: 700;
+    font-size: .76rem;
+    text-transform: uppercase;
+    letter-spacing: .3px;
+    cursor: pointer;
+    transition: all var(--t-base);
+    box-shadow: var(--shadow-xs);
+    -webkit-tap-highlight-color: transparent;
+}
+.btn-action .material-icons { font-size: 16px; }
+.btn-action:active { transform: scale(.96); }
+
+.btn-action-blue {
+    background: #1D4ED8;
+    color: #fff;
+    border-color: #1D4ED8;
+    box-shadow: 0 4px 12px rgba(29,78,216,.30);
+}
+.btn-action-blue:hover {
+    background: #1E40AF;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(29,78,216,.40);
+}
+
+.btn-action-red {
+    background: var(--gradient-primary);
+    color: #fff;
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-red);
+}
+.btn-action-red:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-red-lg);
+}
+
+/* Historial — diseño tipo timeline */
+.historial-list {
+    max-height: 360px;
+    overflow-y: auto;
+    padding-right: .4rem;
+    margin-bottom: 1rem;
+}
+.historial-item {
+    display: flex;
+    gap: .75rem;
+    padding: .8rem 0;
+    border-bottom: 1px dashed var(--color-border-soft);
+    align-items: flex-start;
+}
+.historial-item:last-child { border-bottom: none; }
+
+.historial-icon {
+    flex-shrink: 0;
+    width: 36px; height: 36px;
+    border-radius: var(--r-md);
+    display: grid; place-items: center;
+    border: 1px solid currentColor;
+}
+.historial-icon .material-icons { font-size: 20px; }
+
+.historial-body { flex: 1; min-width: 0; }
+.historial-accion {
+    font-weight: 800;
+    font-size: .9rem;
+    margin-bottom: .15rem;
+}
+.hist-trans {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    font-size: .75rem;
+    color: var(--color-text-soft);
+    background: var(--color-bg-soft);
+    padding: .15rem .55rem;
+    border-radius: var(--r-pill);
+    margin: .15rem 0;
+}
+.hist-prev { font-weight: 600; text-decoration: line-through; opacity: .7; }
+.hist-next { font-weight: 800; }
+
+.historial-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .25rem;
+    font-size: .72rem;
+    color: var(--color-gray);
+    margin-top: .25rem;
+}
+.historial-meta .material-icons { color: var(--color-gray); }
+
+.historial-detalle {
+    margin-top: .35rem;
+    background: var(--color-bg-soft);
+    padding: .45rem .65rem;
+    border-radius: var(--r-sm);
+    font-size: .78rem;
+    color: var(--color-text);
+    font-style: italic;
+    border-left: 3px solid var(--color-border-strong);
+}
+
+.historial-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--color-gray);
+    font-size: .9rem;
+}
+
+/* Si el operador NO es admin: ocultar columnas/checkbox y barra selección */
+/* (la lógica la hace JS, pero por las dudas estilamos el TD vacío) */
+.tabla-desktop tbody tr td:first-child:empty { padding: 0; }

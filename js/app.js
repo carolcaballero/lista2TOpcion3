@@ -1,13 +1,10 @@
 // ═══════════════════════════════════════════════════════════════
-//  CONTROL ELECTORAL — app.js v11.0
-//  • Stats arranca con GIMNASIO MUNICIPAL
-//  • Gráfico Participación Horaria 07:00–17:00 funcional
-//  • Tabla bajo gráfico de mesas eliminada
-//  • Icono tinglado/polideportivo SVG
-//  • Limpieza de campos login al entrar/salir
-//  • Botones Clave/Eliminar uniformes
-//  • Eliminación solo admin (menú 3 puntos condicional)
-//  • Historial completo en menú 3 puntos
+//  CONTROL ELECTORAL — app.js v12.0
+//  • Fix bug selección checkbox (event propagation correcto)
+//  • Menú 3 puntos enriquecido (Historial, Marcar, Copiar, WhatsApp, Eliminar)
+//  • Modales elegantes para eliminar operador + limpiar bitácora
+//  • Historial muestra todos los "Cambiado por"
+//  • Botones de acción de planilla mejorados
 // ═══════════════════════════════════════════════════════════════
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -52,7 +49,6 @@ const state = {
     unsubBitacora:    null,
     onlineUsers:      {},
     presenceInterval: null,
-    prevMetrics:      { total: 0, voted: 0, novoted: 0, pending: 0 },
     pagination:       { page: 1, perPage: 50 },
     charts:           { mesa: null, global: null, hora: null },
     notifiedThresholds: new Set(),
@@ -92,15 +88,12 @@ function formatearFechaParaguay(date) {
         });
     }
 }
-
 function ahoraParaguay() { return formatearFechaParaguay(new Date()); }
 function timestampAParaguay(ts) {
     if (!ts) return "---";
     const d = ts.toDate ? ts.toDate() : new Date(ts);
     return formatearFechaParaguay(d);
 }
-
-// Obtener hora (0-23) en Paraguay a partir de un timestamp
 function horaEnParaguay(ts) {
     if (!ts) return null;
     const d = ts.toDate ? ts.toDate() : new Date(ts);
@@ -110,9 +103,7 @@ function horaEnParaguay(ts) {
         }).formatToParts(d);
         const h = partes.find(p => p.type === "hour");
         return h ? parseInt(h.value, 10) : null;
-    } catch {
-        return d.getHours();
-    }
+    } catch { return d.getHours(); }
 }
 
 // ═══════════════ OFFLINE QUEUE ═══════════════
@@ -120,15 +111,8 @@ function getOfflineQueue() {
     try { return JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || "[]"); }
     catch { return []; }
 }
-function saveOfflineQueue(q) {
-    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(q));
-    updateOfflineBadge();
-}
-function addOfflineAction(action) {
-    const q = getOfflineQueue();
-    q.push({ ...action, queuedAt: Date.now() });
-    saveOfflineQueue(q);
-}
+function saveOfflineQueue(q) { localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(q)); updateOfflineBadge(); }
+function addOfflineAction(action) { const q = getOfflineQueue(); q.push({ ...action, queuedAt: Date.now() }); saveOfflineQueue(q); }
 async function syncOfflineQueue() {
     const q = getOfflineQueue();
     if (!q.length || !navigator.onLine) return;
@@ -137,14 +121,10 @@ async function syncOfflineQueue() {
     for (const item of q) {
         try {
             await setDoc(doc(db, "votos", item.cedula), {
-                voto:           item.voto,
-                observaciones:  item.observaciones || "",
-                modificado_por: item.modificado_por,
-                timestamp:      serverTimestamp()
+                voto: item.voto, observaciones: item.observaciones || "",
+                modificado_por: item.modificado_por, timestamp: serverTimestamp()
             });
-            if (item.historial) {
-                await addDoc(collection(db, "votos", item.cedula, "historial"), item.historial);
-            }
+            if (item.historial) await addDoc(collection(db, "votos", item.cedula, "historial"), item.historial);
             ok++;
         } catch (e) { remaining.push(item); err++; }
     }
@@ -153,21 +133,18 @@ async function syncOfflineQueue() {
     if (ok > 0) { toast(`✔ ${ok} acciones offline sincronizadas.`, "ok"); actualizarDashboard(); }
     if (err > 0) toast(`⚠ ${err} acciones quedaron pendientes.`, "warn");
 }
-
 function iniciarReintentosOffline() {
     if (state.offlineRetryInterval) clearInterval(state.offlineRetryInterval);
     state.offlineRetryInterval = setInterval(() => {
         if (navigator.onLine && getOfflineQueue().length > 0) syncOfflineQueue();
     }, 30000);
 }
-
 function updateOfflineBadge() {
     const q = getOfflineQueue();
     const el = document.getElementById("offline-indicator");
     if (!el) return;
-    if (q.length === 0 && navigator.onLine) {
-        el.classList.add("hidden");
-    } else {
+    if (q.length === 0 && navigator.onLine) el.classList.add("hidden");
+    else {
         el.classList.remove("hidden");
         const countSpan = el.querySelector(".offline-count") || (() => {
             const span = document.createElement("span");
@@ -191,7 +168,6 @@ async function registrarBitacora(accion, detalle) {
         });
     } catch (e) { console.warn("Bitácora error:", e); }
 }
-
 function escucharBitacora() {
     if (state.unsubBitacora) state.unsubBitacora();
     const q = query(collection(db, "bitacora"), orderBy("timestamp", "desc"), limit(150));
@@ -201,7 +177,6 @@ function escucharBitacora() {
         renderBitacora(eventos);
     }, err => console.error("Bitácora listener:", err));
 }
-
 function renderBitacora(eventos) {
     const tbody = document.getElementById("bitacora-tbody");
     if (!tbody) return;
@@ -214,7 +189,7 @@ function renderBitacora(eventos) {
         "Quitar No Votó":"#7F1D1D","Nuevo Votante":"#374151","Nuevo Operador":"#B91C1C",
         "Eliminar Operador":"#B91C1C","Observación":"#B45309","Login":"#15803D",
         "Logout":"#6B7280","Consulta Padrón":"#B45309","Cambio Contraseña":"#7F1D1D",
-        "Exportar XLSX":"#374151","Exportar Estadísticas":"#374151"
+        "Exportar XLSX":"#374151","Exportar Estadísticas":"#374151","Limpiar Bitácora":"#7F1D1D"
     };
     tbody.innerHTML = eventos.map(e => {
         const hora  = e.hora_py || timestampAParaguay(e.timestamp) || "---";
@@ -243,7 +218,6 @@ document.addEventListener("DOMContentLoaded", () => {
             document.querySelectorAll('.menu-tres-puntos .dropdown.show').forEach(d => d.classList.remove('show'));
         }
     });
-
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             document.querySelectorAll('.menu-tres-puntos .dropdown.show').forEach(d => d.classList.remove('show'));
@@ -253,14 +227,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function bindNetworkEvents() {
     window.addEventListener("online",  () => {
-        setStatus(true);
-        updateOfflineBadge();
-        syncOfflineQueue();
+        setStatus(true); updateOfflineBadge(); syncOfflineQueue();
         toast("Conexión restablecida", "ok");
     });
     window.addEventListener("offline", () => {
-        setStatus(false);
-        updateOfflineBadge();
+        setStatus(false); updateOfflineBadge();
         toast("Sin conexión. Modo offline activado.", "warn");
     });
 }
@@ -270,9 +241,8 @@ function ajustarStickyFiltros() {
     const header = document.querySelector(".main-header");
     if (!filterWrapper || !header) return;
     const updateTop = () => {
-        if (window.innerWidth < 768) {
-            filterWrapper.style.top = `${header.offsetHeight}px`;
-        } else filterWrapper.style.top = "";
+        if (window.innerWidth < 768) filterWrapper.style.top = `${header.offsetHeight}px`;
+        else filterWrapper.style.top = "";
     };
     updateTop();
     window.addEventListener("resize", updateTop);
@@ -280,7 +250,6 @@ function ajustarStickyFiltros() {
     observer.observe(header);
 }
 
-// ═══════════════ HELPER: limpiar credenciales del DOM ═══════════════
 function limpiarCredencialesLogin() {
     try {
         const userEl = document.getElementById("username");
@@ -299,12 +268,8 @@ function checkSession() {
         if (raw) {
             const session = JSON.parse(raw);
             const age = Date.now() - (session.loginAt || 0);
-            if (age < SESSION_TTL_MS && session.user) {
-                loginSuccess(session.user, false);
-                return;
-            } else {
-                localStorage.removeItem(SESSION_KEY);
-            }
+            if (age < SESSION_TTL_MS && session.user) { loginSuccess(session.user, false); return; }
+            else localStorage.removeItem(SESSION_KEY);
         }
     } catch { /**/ }
     showLogin();
@@ -329,10 +294,7 @@ async function handleLogin(e) {
                 resetBtn();
                 loginSuccess({ username: ADMIN_USER_ID, fullname: ADMIN_FULLNAME, isAdmin: true, local: "" }, true);
                 return;
-            } else {
-                errEl.textContent = "Contraseña incorrecta para Admin.";
-                resetBtn(); return;
-            }
+            } else { errEl.textContent = "Contraseña incorrecta para Admin."; resetBtn(); return; }
         }
         const snap = await getDoc(doc(db, "usuarios", userIn.toLowerCase()));
         if (snap.exists()) {
@@ -348,13 +310,9 @@ async function handleLogin(e) {
         resetBtn();
     } catch (err) {
         console.error("Login error:", err);
-        if (err.code === "unavailable" || err.message?.includes("network")) {
-            errEl.textContent = "Sin conexión. Verificá tu red e intentá de nuevo.";
-        } else if (err.code === "permission-denied") {
-            errEl.textContent = "Error de permisos. Contactá al administrador.";
-        } else {
-            errEl.textContent = "Error al conectar. Revisá tu internet.";
-        }
+        if (err.code === "unavailable" || err.message?.includes("network")) errEl.textContent = "Sin conexión. Verificá tu red e intentá de nuevo.";
+        else if (err.code === "permission-denied") errEl.textContent = "Error de permisos. Contactá al administrador.";
+        else errEl.textContent = "Error al conectar. Revisá tu internet.";
         resetBtn();
     }
 }
@@ -366,22 +324,15 @@ function loginSuccess(user, persist) {
             try { localStorage.setItem(SESSION_KEY, JSON.stringify({ user, loginAt: Date.now() })); }
             catch(e) { console.warn("No se pudo guardar sesión:", e); }
         }
-
         const prefixEl  = document.getElementById("user-prefix");
         const displayEl = document.getElementById("current-user-display");
         const assignEl  = document.getElementById("user-assignment");
         if (prefixEl)  prefixEl.textContent  = user.isAdmin ? "" : "Operador: ";
         if (displayEl) displayEl.textContent = user.fullname;
-
         if (assignEl) {
-            if (user.local) {
-                assignEl.classList.remove("hidden");
-                assignEl.textContent = `📍 ${user.local}`;
-            } else {
-                assignEl.classList.add("hidden");
-            }
+            if (user.local) { assignEl.classList.remove("hidden"); assignEl.textContent = `📍 ${user.local}`; }
+            else assignEl.classList.add("hidden");
         }
-
         const tabAdmin    = document.getElementById("tab-admin");
         const btnExportar = document.getElementById("btn-exportar");
         const bottomAdmin = document.getElementById("bottom-tab-admin");
@@ -393,10 +344,7 @@ function loginSuccess(user, persist) {
         state.currentFilter = "todos";
         switchTab("planilla");
         updateOfflineBadge();
-
-        // 🧹 Limpiar credenciales del DOM al entrar
         limpiarCredencialesLogin();
-
         loadPadronYEscuchar();
         iniciarPresencia();
         registrarBitacora("Login", `${user.fullname} ingresó al sistema`);
@@ -424,7 +372,6 @@ function handleLogout() {
     state.notifiedThresholds.clear();
     setStatus(false);
     showLogin();
-    // 🧹 Limpiar credenciales al salir
     limpiarCredencialesLogin();
 }
 
@@ -433,37 +380,30 @@ async function iniciarPresencia() {
     if (!state.currentUser) return;
     await marcarOnline();
     state.presenceInterval = setInterval(marcarOnline, 25000);
-
     if (state.unsubPresencia) state.unsubPresencia();
     state.unsubPresencia = onSnapshot(collection(db, "presencia"), snap => {
         state.onlineUsers = {};
         const ahora = Date.now();
         snap.forEach(d => {
-            const data     = d.data();
+            const data = d.data();
             const lastSeen = data.lastSeen?.toMillis?.() || 0;
             if (ahora - lastSeen < 90000) state.onlineUsers[d.id] = data;
         });
     }, err => console.warn("Presencia listener:", err));
-
     window.addEventListener("beforeunload", quitarPresencia);
 }
-
 async function marcarOnline() {
     if (!state.currentUser) return;
     try {
         await setDoc(doc(db, "presencia", state.currentUser.username.toLowerCase()), {
-            username: state.currentUser.username,
-            fullname: state.currentUser.fullname,
-            isAdmin:  state.currentUser.isAdmin,
-            lastSeen: serverTimestamp()
+            username: state.currentUser.username, fullname: state.currentUser.fullname,
+            isAdmin:  state.currentUser.isAdmin, lastSeen: serverTimestamp()
         });
     } catch (e) { console.warn("marcarOnline:", e); }
 }
-
 async function quitarPresencia() {
     if (!state.currentUser) return;
-    try { await deleteDoc(doc(db, "presencia", state.currentUser.username.toLowerCase())); }
-    catch { /**/ }
+    try { await deleteDoc(doc(db, "presencia", state.currentUser.username.toLowerCase())); } catch { /**/ }
 }
 
 // ═══════════════ CARGA DE DATOS ═══════════════
@@ -486,24 +426,18 @@ async function loadPadronYEscuchar() {
                 });
         });
     } catch { /**/ }
-
     if (state.unsubVotos) state.unsubVotos();
-    state.unsubVotos = onSnapshot(
-        collection(db, "votos"),
+    state.unsubVotos = onSnapshot(collection(db, "votos"),
         snap => {
             state.votos = {};
             snap.forEach(d => { state.votos[d.id] = d.data(); });
             setStatus(true);
             actualizarDashboard();
             checkNotificationThresholds();
-            // si estamos viendo stats, refrescar gráfico de hora también
-            if (document.getElementById("view-stats")?.style.display !== "none") {
-                renderStatsCharts();
-            }
+            if (document.getElementById("view-stats")?.style.display !== "none") renderStatsCharts();
         },
         err => { console.error(err); setStatus(false); }
     );
-
     if (state.currentUser?.isAdmin) {
         cargarUsuarios();
         escucharBitacora();
@@ -530,16 +464,10 @@ function checkNotificationThresholds() {
         }
     });
 }
-
 function sendNotification(title, body) {
     if (!("Notification" in window)) return;
-    if (Notification.permission === "granted") {
-        new Notification(title, { body, icon: "https://cdn-icons-png.flaticon.com/512/2099/2099190.png" });
-    } else if (Notification.permission !== "denied") {
-        Notification.requestPermission().then(p => {
-            if (p === "granted") new Notification(title, { body });
-        });
-    }
+    if (Notification.permission === "granted") new Notification(title, { body, icon: "https://cdn-icons-png.flaticon.com/512/2099/2099190.png" });
+    else if (Notification.permission !== "denied") Notification.requestPermission().then(p => { if (p === "granted") new Notification(title, { body }); });
 }
 
 // ═══════════════ PAGINACIÓN ═══════════════
@@ -556,14 +484,11 @@ function renderPaginationControls(totalItems) {
     let startPage = Math.max(1, page - 2);
     let endPage   = Math.min(totalPages, startPage + 4);
     if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
-    for (let i = startPage; i <= endPage; i++) {
-        html += `<button class="btn-page ${i === page ? "active" : ""}" onclick="cambiarPagina(${i})">${i}</button>`;
-    }
+    for (let i = startPage; i <= endPage; i++) html += `<button class="btn-page ${i === page ? "active" : ""}" onclick="cambiarPagina(${i})">${i}</button>`;
     html += `<button class="btn-page ${page === totalPages ? "disabled" : ""}" onclick="cambiarPagina(${page + 1})" ${page === totalPages ? "disabled" : ""}>Sig. →</button>`;
     html += `</div></div>`;
     container.innerHTML = html;
 }
-
 window.cambiarPagina = function(nuevaPagina) {
     state.pagination.page = nuevaPagina;
     renderTablaVotantes();
@@ -576,7 +501,6 @@ async function renderTablaVotantes() {
     if (state.isRendering) return;
     state.isRendering = true;
     mostrarLoadingEnTabla(true);
-
     await new Promise(r => setTimeout(r, 10));
 
     const isAdmin = !!state.currentUser?.isAdmin;
@@ -639,26 +563,20 @@ async function renderTablaVotantes() {
             const otros = totalMatch - lista.length;
             if (otros > 0) {
                 searchHint.style.display = "flex";
-                searchHint.innerHTML = `
-                    <span class="material-icons" style="font-size:16px;">search</span>
+                searchHint.innerHTML = `<span class="material-icons" style="font-size:16px;">search</span>
                     <span>Se encontraron <strong>${otros}</strong> resultado${otros>1?"s":""} en otros estados.</span>
                     <button onclick="activarBusquedaGlobal()" class="btn-hint-global">Ver todos</button>`;
             } else searchHint.style.display = "none";
         } else if (q && state.searchAllStates) {
             searchHint.style.display = "flex";
-            searchHint.innerHTML = `
-                <span class="material-icons" style="font-size:16px;">search</span>
+            searchHint.innerHTML = `<span class="material-icons" style="font-size:16px;">search</span>
                 <span>Mostrando resultados de <strong>todos los estados</strong>.</span>
                 <button onclick="desactivarBusquedaGlobal()" class="btn-hint-volver">Volver al filtro</button>`;
         } else searchHint.style.display = "none";
     }
 
-    // Mostrar/ocultar barra de selección múltiple SOLO para admin
     const barraSel = document.getElementById("barra-seleccion");
-    if (barraSel && !isAdmin) {
-        barraSel.style.display = "none";
-        selectedCedulas.clear();
-    }
+    if (barraSel && !isAdmin) { barraSel.style.display = "none"; selectedCedulas.clear(); }
 
     // ── Tarjetas móviles ──
     const cardsContainer = document.getElementById("cards-container");
@@ -672,11 +590,8 @@ async function renderTablaVotantes() {
                 </div>`;
         } else {
             const debeMostrarSecciones = (state.currentFilter === "todos" && !q && totalPages === 1);
-            if (debeMostrarSecciones) {
-                cardsContainer.innerHTML = construirCardsConSecciones(lista, true, isAdmin);
-            } else {
-                cardsContainer.innerHTML = paginatedList.map((v, idx) => construirTarjeta(v, start + idx, isAdmin)).join("");
-            }
+            if (debeMostrarSecciones) cardsContainer.innerHTML = construirCardsConSecciones(lista, true, isAdmin);
+            else cardsContainer.innerHTML = paginatedList.map((v, idx) => construirTarjeta(v, start + idx, isAdmin)).join("");
         }
     }
 
@@ -697,15 +612,8 @@ async function renderTablaVotantes() {
                 if (voto === "No Votó") { badgeClass = "badge badge-novoted"; badgeLabel = "No Votó"; }
 
                 const checked = selectedCedulas.has(v.cedula) ? "checked" : "";
-
-                // 🔐 Menú 3 puntos: opción "Eliminar" SOLO para admin
-                const menuEliminar = isAdmin
-                    ? `<a href="#" onclick="event.preventDefault(); eliminarIndividual('${v.cedula}')"><span class="material-icons">delete</span> Eliminar</a>`
-                    : "";
-
-                // 🔐 Checkbox para selección múltiple SOLO para admin
                 const cellCheckbox = isAdmin
-                    ? `<td><input type="checkbox" class="sel-checkbox" data-cedula="${v.cedula}" ${checked} onchange="handleCheckboxChange(this)"></td>`
+                    ? `<td><label class="sel-checkbox-wrap"><input type="checkbox" class="sel-checkbox" data-cedula="${v.cedula}" ${checked}></label></td>`
                     : `<td></td>`;
 
                 const tr = document.createElement("tr");
@@ -720,36 +628,37 @@ async function renderTablaVotantes() {
                     <td style="font-size:.82rem;font-family:monospace;">${escHtml(v.orden || "—")}</td>
                     <td><span class="${badgeClass}">${badgeLabel}</span></td>
                     <td>
-                        <div class="action-btns">
-                            <button class="btn-accion ${voto==='Votó'?'sel-voto':''}" onclick="accionVoto('${v.cedula}','Votó')" title="Votó">
-                                <span class="material-icons" style="font-size:18px;">check_circle</span>
+                        <div class="action-btns action-btns-table">
+                            <button class="btn-accion ${voto==='Votó'?'sel-voto':''}" data-action="voto" data-cedula="${v.cedula}" title="Marcar Votó">
+                                <span class="material-icons">check_circle</span>
                             </button>
-                            <button class="btn-accion ${voto==='No Votó'?'sel-novoto':''}" onclick="accionVoto('${v.cedula}','No Votó')" title="No Votó">
-                                <span class="material-icons" style="font-size:18px;">cancel</span>
+                            <button class="btn-accion ${voto==='No Votó'?'sel-novoto':''}" data-action="novoto" data-cedula="${v.cedula}" title="Marcar No Votó">
+                                <span class="material-icons">cancel</span>
                             </button>
                         </div>
                     </td>
                     <td>
-                        <button class="btn-obs ${obs ? 'has-obs' : ''}" onclick="abrirModalObservacion('${v.cedula}', ${jsEscape(v.nombre)})">
+                        <button class="btn-obs ${obs ? 'has-obs' : ''}" data-action="obs" data-cedula="${v.cedula}" data-nombre="${escHtml(v.nombre)}">
                             <span class="material-icons" style="font-size:16px;">edit</span>
                             <span class="obs-preview">${obs ? escHtml(obs) : "Agregar obs..."}</span>
                         </button>
                     </td>
-                    <td><span class="log-span">${escHtml(log)}</span></td>
+                    <td><span class="log-span" title="${escHtml(log)}">${escHtml(log)}</span></td>
                     <td>
                         <div class="menu-tres-puntos">
-                            <button class="btn-puntos" onclick="toggleMenu(event, '${v.cedula}')">⋯</button>
-                            <div class="dropdown" id="menu-${v.cedula}">
-                                <a href="#" onclick="event.preventDefault(); abrirHistorial('${v.cedula}', ${jsEscape(v.nombre)})"><span class="material-icons">history</span> Historial</a>
-                                <a href="#" onclick="event.preventDefault(); abrirModalObservacion('${v.cedula}', ${jsEscape(v.nombre)})"><span class="material-icons">edit</span> Observación</a>
-                                ${menuEliminar}
-                            </div>
+                            <button class="btn-puntos" data-action="menu" data-cedula="${v.cedula}" title="Más opciones">
+                                <span class="material-icons">more_vert</span>
+                            </button>
+                            ${construirDropdownMenu(v, voto, obs, isAdmin)}
                         </div>
                     </td>`;
                 tbody.appendChild(tr);
             });
         }
     }
+
+    // 🔑 BINDING DELEGADO — un solo listener por contenedor
+    bindRowEvents();
 
     const master = document.getElementById("checkbox-todos");
     if (master) master.checked = paginatedList.length > 0 && paginatedList.every(v => selectedCedulas.has(v.cedula));
@@ -764,27 +673,22 @@ function mostrarLoadingEnTabla(show) {
     const cards = document.getElementById("cards-container");
     const tbody = document.getElementById("votantes-table-body");
     if (show) {
-        if (cards && cards.children.length === 0) {
+        if (cards && cards.children.length === 0)
             cards.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><span class="loading-text">Cargando...</span></div>`;
-        }
-        if (tbody && tbody.children.length === 0) {
+        if (tbody && tbody.children.length === 0)
             tbody.innerHTML = `<tr><td colspan="12" class="spinner-cell"><div class="spinner"></div></td></tr>`;
-        }
     }
 }
 
 function construirCardsConSecciones(lista, mostrarSecciones, isAdmin) {
     if (!mostrarSecciones) return lista.map((v, idx) => construirTarjeta(v, idx, isAdmin)).join("");
-
     const grupos = { "Votó": [], "No Votó": [], "Pendiente": [] };
     lista.forEach(v => {
         const estado = getVoto(v.cedula);
         if (grupos[estado]) grupos[estado].push(v);
     });
-
     let html = "";
     let contadorGlobal = 0;
-
     const renderGrupo = (titulo, items, claseSection, iconName) => {
         if (!items.length) return "";
         let h = `
@@ -793,17 +697,63 @@ function construirCardsConSecciones(lista, mostrarSecciones, isAdmin) {
                 ${titulo}
                 <span class="sd-count">${items.length}</span>
             </div>`;
-        items.forEach(v => {
-            contadorGlobal++;
-            h += construirTarjeta(v, contadorGlobal - 1, isAdmin);
-        });
+        items.forEach(v => { contadorGlobal++; h += construirTarjeta(v, contadorGlobal - 1, isAdmin); });
         return h;
     };
-
     html += renderGrupo("Votaron",    grupos["Votó"],     "sd-voted",   "check_circle");
     html += renderGrupo("No Votaron", grupos["No Votó"],  "sd-novoted", "cancel");
     html += renderGrupo("Pendientes", grupos["Pendiente"], "sd-pending", "schedule");
     return html;
+}
+
+// 🆕 Dropdown del menú 3 puntos: opciones ampliadas
+function construirDropdownMenu(v, voto, obs, isAdmin) {
+    const id = `menu-${v.cedula}`;
+    const nombreEsc = jsEscape(v.nombre);
+
+    // Acciones de voto contextuales
+    let accionesVoto = "";
+    if (voto === "Pendiente") {
+        accionesVoto += `
+            <a href="#" data-action="quick-voto"   data-cedula="${v.cedula}"><svg class="svg-icon" aria-hidden="true" style="color:#15803D;"><use href="#i-check"/></svg> Marcar como <strong>Votó</strong></a>
+            <a href="#" data-action="quick-novoto" data-cedula="${v.cedula}" data-nombre="${nombreEsc}"><svg class="svg-icon" aria-hidden="true" style="color:#B45309;"><use href="#i-cancel"/></svg> Marcar como <strong>No Votó</strong></a>`;
+    } else if (voto === "Votó") {
+        accionesVoto += `
+            <a href="#" data-action="quick-novoto" data-cedula="${v.cedula}" data-nombre="${nombreEsc}"><svg class="svg-icon" aria-hidden="true" style="color:#B45309;"><use href="#i-cancel"/></svg> Cambiar a <strong>No Votó</strong></a>
+            <a href="#" data-action="quick-voto"   data-cedula="${v.cedula}"><svg class="svg-icon" aria-hidden="true" style="color:#B91C1C;"><use href="#i-arrow-back"/></svg> Quitar voto (Pendiente)</a>`;
+    } else { // No Votó
+        accionesVoto += `
+            <a href="#" data-action="quick-voto"   data-cedula="${v.cedula}"><svg class="svg-icon" aria-hidden="true" style="color:#15803D;"><use href="#i-check"/></svg> Cambiar a <strong>Votó</strong></a>
+            <a href="#" data-action="quick-novoto" data-cedula="${v.cedula}" data-nombre="${nombreEsc}"><svg class="svg-icon" aria-hidden="true" style="color:#B91C1C;"><use href="#i-arrow-back"/></svg> Quitar No Votó (Pendiente)</a>`;
+    }
+
+    const menuObs = obs
+        ? `<a href="#" data-action="obs" data-cedula="${v.cedula}" data-nombre="${nombreEsc}"><svg class="svg-icon" aria-hidden="true" style="color:#B45309;"><use href="#i-edit"/></svg> Editar observación</a>`
+        : `<a href="#" data-action="obs" data-cedula="${v.cedula}" data-nombre="${nombreEsc}"><svg class="svg-icon" aria-hidden="true" style="color:#B45309;"><use href="#i-edit"/></svg> Agregar observación</a>`;
+
+    const menuEliminar = isAdmin
+        ? `<div class="dropdown-divider"></div>
+           <a href="#" class="dropdown-danger" data-action="eliminar" data-cedula="${v.cedula}"><svg class="svg-icon" aria-hidden="true"><use href="#i-delete"/></svg> Eliminar votante</a>`
+        : "";
+
+    return `
+        <div class="dropdown" id="${id}">
+            <div class="dropdown-header">
+                <span class="dropdown-header-name">${escHtml(v.nombre)}</span>
+                <span class="dropdown-header-ced">CI ${escHtml(v.cedula)}</span>
+            </div>
+            <a href="#" data-action="historial" data-cedula="${v.cedula}" data-nombre="${nombreEsc}" class="dropdown-primary">
+                <svg class="svg-icon" aria-hidden="true" style="color:#1D4ED8;"><use href="#i-history"/></svg>
+                <span><strong>Ver historial completo</strong><br><small>Todos los cambios y "Cambiado por"</small></span>
+            </a>
+            <div class="dropdown-divider"></div>
+            ${accionesVoto}
+            <div class="dropdown-divider"></div>
+            ${menuObs}
+            <a href="#" data-action="copiar-ci" data-cedula="${v.cedula}"><svg class="svg-icon" aria-hidden="true" style="color:#475569;"><use href="#i-copy"/></svg> Copiar cédula</a>
+            <a href="#" data-action="compartir-wa" data-cedula="${v.cedula}" data-nombre="${nombreEsc}"><svg class="svg-icon" aria-hidden="true" style="color:#15803D;"><use href="#i-whatsapp"/></svg> Compartir por WhatsApp</a>
+            ${menuEliminar}
+        </div>`;
 }
 
 function construirTarjeta(v, idx, isAdmin) {
@@ -819,81 +769,141 @@ function construirTarjeta(v, idx, isAdmin) {
     const obsLabel    = obs ? escHtml(obs) : "Agregar observación...";
     const obsClass    = obs ? "btn-obs has-obs" : "btn-obs";
     const checked = selectedCedulas.has(v.cedula) ? "checked" : "";
-
-    // 🔐 Checkbox y opción eliminar SOLO admin
     const checkboxHtml = isAdmin
-        ? `<input type="checkbox" class="sel-checkbox" data-cedula="${v.cedula}" ${checked} onchange="handleCheckboxChange(this)" onclick="event.stopPropagation()">`
-        : "";
-    const menuEliminar = isAdmin
-        ? `<a href="#" onclick="event.preventDefault(); eliminarIndividual('${v.cedula}')"><span class="material-icons">delete</span> Eliminar</a>`
+        ? `<label class="sel-checkbox-wrap"><input type="checkbox" class="sel-checkbox" data-cedula="${v.cedula}" ${checked}></label>`
         : "";
 
     return `
         <div class="card-votante ${estadoClass}" data-cedula="${escHtml(v.cedula)}">
             <div class="card-top">
                 <div class="card-info">
-                    <div style="display:flex; align-items:center; gap:8px;">
+                    <div class="card-head-row">
                         ${checkboxHtml}
                         <div class="card-num">${idx+1}.</div>
+                        <span class="${badgeClass} card-badge">${badgeLabel}</span>
                     </div>
                     <div class="card-nombre" title="${escHtml(v.nombre)}">${escHtml(v.nombre)}</div>
                     <div class="card-cedula">CI: ${escHtml(v.cedula)}</div>
-                    ${v.local  ? `<div class="card-domicilio" style="font-size:.74rem;">📍 ${escHtml(v.local)}</div>` : ""}
-                    ${v.mesa   ? `<div class="card-domicilio" style="font-size:.74rem;">🗳️ Mesa <strong>${escHtml(v.mesa)}</strong>${v.orden ? " · Orden " + escHtml(v.orden) : ""}</div>` : ""}
+                    ${v.local  ? `<div class="card-domicilio">📍 ${escHtml(v.local)}</div>` : ""}
+                    ${v.mesa   ? `<div class="card-domicilio">🗳️ Mesa <strong>${escHtml(v.mesa)}</strong>${v.orden ? " · Orden " + escHtml(v.orden) : ""}</div>` : ""}
                 </div>
-                <span class="${badgeClass}">${badgeLabel}</span>
+                <div class="menu-tres-puntos card-menu">
+                    <button class="btn-puntos" data-action="menu" data-cedula="${v.cedula}" title="Más opciones">
+                        <span class="material-icons">more_vert</span>
+                    </button>
+                    ${construirDropdownMenu(v, voto, obs, isAdmin)}
+                </div>
             </div>
-            <div class="action-btns">
-                <button class="btn-accion ${voto==='Votó'?'sel-voto':''}" onclick="accionVoto('${v.cedula}','Votó')">
-                    <span class="material-icons" style="font-size:18px;">check_circle</span>
-                    ${voto === "Votó" ? "Quitar" : "Votó"}
+            <div class="action-btns action-btns-card">
+                <button class="btn-accion btn-accion-lg ${voto==='Votó'?'sel-voto':''}" data-action="voto" data-cedula="${v.cedula}">
+                    <span class="material-icons">check_circle</span>
+                    <span class="btn-accion-label">${voto === "Votó" ? "Quitar voto" : "Votó"}</span>
                 </button>
-                <button class="btn-accion ${voto==='No Votó'?'sel-novoto':''}" onclick="accionVoto('${v.cedula}','No Votó')">
-                    <span class="material-icons" style="font-size:18px;">cancel</span>
-                    ${voto === "No Votó" ? "Quitar" : "No Votó"}
+                <button class="btn-accion btn-accion-lg ${voto==='No Votó'?'sel-novoto':''}" data-action="novoto" data-cedula="${v.cedula}" data-nombre="${jsEscape(v.nombre)}">
+                    <span class="material-icons">cancel</span>
+                    <span class="btn-accion-label">${voto === "No Votó" ? "Quitar No Votó" : "No Votó"}</span>
                 </button>
             </div>
-            <button class="${obsClass}" onclick="abrirModalObservacion('${v.cedula}', ${jsEscape(v.nombre)})">
+            <button class="${obsClass}" data-action="obs" data-cedula="${v.cedula}" data-nombre="${jsEscape(v.nombre)}">
                 <span class="material-icons" style="font-size:16px;">edit</span>
                 <span class="obs-preview">${obsLabel}</span>
             </button>
-            ${log !== "---" ? `<div class="card-log">${escHtml(log)}</div>` : ""}
-            <div class="menu-tres-puntos" style="margin-top:8px;text-align:right;">
-                <button class="btn-puntos" onclick="toggleMenu(event, '${v.cedula}')">⋯</button>
-                <div class="dropdown" id="menu-${v.cedula}">
-                    <a href="#" onclick="event.preventDefault(); abrirHistorial('${v.cedula}', ${jsEscape(v.nombre)})"><span class="material-icons">history</span> Ver historial completo</a>
-                    <a href="#" onclick="event.preventDefault(); abrirModalObservacion('${v.cedula}', ${jsEscape(v.nombre)})"><span class="material-icons">edit</span> Observación</a>
-                    ${menuEliminar}
-                </div>
-            </div>
+            ${log !== "---" ? `<div class="card-log"><span class="material-icons">person</span> ${escHtml(log)}</div>` : ""}
         </div>`;
 }
 
-// ═══════════════ CHECKBOXES ═══════════════
+// ═══════════════ 🔑 BINDING DELEGADO (fix bug selección) ═══════════════
+function bindRowEvents() {
+    const cards = document.getElementById("cards-container");
+    const tbody = document.getElementById("votantes-table-body");
+
+    [cards, tbody].forEach(root => {
+        if (!root) return;
+        // Limpiamos handlers previos clonando
+        const fresh = root.cloneNode(true);
+        root.parentNode.replaceChild(fresh, root);
+    });
+
+    // Re-obtener tras clonar
+    const cards2 = document.getElementById("cards-container");
+    const tbody2 = document.getElementById("votantes-table-body");
+
+    [cards2, tbody2].forEach(root => {
+        if (!root) return;
+
+        // Click delegado para data-action
+        root.addEventListener("click", (e) => {
+            const target = e.target.closest("[data-action]");
+            if (!target) return;
+
+            // No interferir con checkboxes ni el wrap del label
+            if (e.target.classList.contains("sel-checkbox") || e.target.closest(".sel-checkbox-wrap")) return;
+
+            const action = target.dataset.action;
+            const cedula = target.dataset.cedula;
+            const nombre = target.dataset.nombre || "";
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            switch(action) {
+                case "voto":          accionVoto(cedula, "Votó"); break;
+                case "novoto":        accionVoto(cedula, "No Votó"); break;
+                case "quick-voto":    quickVoto(cedula); break;
+                case "quick-novoto":  quickNoVoto(cedula, nombre); break;
+                case "obs":           abrirModalObservacion(cedula, nombre); break;
+                case "historial":     abrirHistorial(cedula, nombre); break;
+                case "menu":          toggleMenu(e, cedula); break;
+                case "eliminar":      eliminarIndividual(cedula); break;
+                case "copiar-ci":     copiarCedula(cedula); break;
+                case "compartir-wa":  compartirWhatsApp(cedula, nombre); break;
+            }
+
+            // Cerrar dropdown tras una acción de menú
+            if (target.closest(".dropdown")) {
+                document.querySelectorAll('.menu-tres-puntos .dropdown.show').forEach(d => d.classList.remove('show'));
+            }
+        });
+
+        // 🔑 Cambio de checkbox SOLO en la celda específica
+        root.addEventListener("change", (e) => {
+            const cb = e.target.closest(".sel-checkbox");
+            if (!cb) return;
+            e.stopPropagation();
+            const cedula = cb.dataset.cedula;
+            if (!cedula) return;
+            if (cb.checked) selectedCedulas.add(cedula);
+            else selectedCedulas.delete(cedula);
+            actualizarBarraSeleccion();
+            const master = document.getElementById("checkbox-todos");
+            if (master) {
+                const allCheckboxes = root.querySelectorAll('.sel-checkbox');
+                master.checked = allCheckboxes.length > 0 && [...allCheckboxes].every(cb2 => cb2.checked);
+            }
+        });
+    });
+}
+
+// ═══════════════ CHECKBOXES — funciones globales ═══════════════
 window.handleCheckboxChange = function(checkbox) {
+    // Legacy no-op (ahora se maneja por delegación). Mantener por compatibilidad.
     const cedula = checkbox.dataset.cedula;
+    if (!cedula) return;
     if (checkbox.checked) selectedCedulas.add(cedula);
     else selectedCedulas.delete(cedula);
     actualizarBarraSeleccion();
-    const master = document.getElementById("checkbox-todos");
-    if (master) {
-        const allCheckboxes = document.querySelectorAll('.sel-checkbox');
-        master.checked = allCheckboxes.length > 0 && [...allCheckboxes].every(cb => cb.checked);
-    }
 };
 
 window.toggleTodosCheckbox = function() {
     if (!state.currentUser?.isAdmin) return;
     const master = document.getElementById("checkbox-todos");
-    const checkboxes = document.querySelectorAll(".sel-checkbox");
-    checkboxes.forEach(cb => {
+    document.querySelectorAll(".sel-checkbox").forEach(cb => {
         cb.checked = master.checked;
         if (master.checked) selectedCedulas.add(cb.dataset.cedula);
         else selectedCedulas.delete(cb.dataset.cedula);
     });
     actualizarBarraSeleccion();
 };
-
 window.seleccionarTodosCheckbox = function() {
     if (!state.currentUser?.isAdmin) return;
     document.querySelectorAll(".sel-checkbox").forEach(cb => { cb.checked = true; selectedCedulas.add(cb.dataset.cedula); });
@@ -901,7 +911,6 @@ window.seleccionarTodosCheckbox = function() {
     if (master) master.checked = true;
     actualizarBarraSeleccion();
 };
-
 window.deseleccionarTodos = function() {
     document.querySelectorAll(".sel-checkbox").forEach(cb => { cb.checked = false; });
     selectedCedulas.clear();
@@ -914,7 +923,6 @@ function actualizarBarraSeleccion() {
     const barra = document.getElementById("barra-seleccion");
     const contador = document.getElementById("contador-seleccion");
     if (!barra) return;
-    // 🔐 Sólo admin puede ver la barra
     if (!state.currentUser?.isAdmin) { barra.style.display = "none"; return; }
     const count = selectedCedulas.size;
     if (count > 0) {
@@ -924,7 +932,7 @@ function actualizarBarraSeleccion() {
 }
 
 // ═══════════════ MENÚ 3 PUNTOS ═══════════════
-window.toggleMenu = function(event, cedula) {
+function toggleMenu(event, cedula) {
     event.stopPropagation();
     event.preventDefault();
     document.querySelectorAll('.menu-tres-puntos .dropdown.show').forEach(d => {
@@ -932,36 +940,85 @@ window.toggleMenu = function(event, cedula) {
     });
     const menu = document.getElementById(`menu-${cedula}`);
     if (menu) menu.classList.toggle('show');
-};
+}
+window.toggleMenu = toggleMenu;
 
-// ═══════════════ ELIMINACIÓN INDIVIDUAL (solo admin) ═══════════════
-window.eliminarIndividual = async function(cedula) {
-    if (!state.currentUser?.isAdmin) {
-        toast("Solo el administrador puede eliminar registros.", "error");
-        return;
-    }
-    if (!confirm(`¿Eliminar definitivamente al votante CI ${cedula}?`)) return;
+// ═══════════════ NUEVAS ACCIONES DEL MENÚ ═══════════════
+async function copiarCedula(cedula) {
     try {
-        await deleteDoc(doc(db, "padron_extra", cedula));
-        await deleteDoc(doc(db, "votos", cedula));
-        state.padron = state.padron.filter(p => p.cedula !== cedula);
-        delete state.votos[cedula];
-        selectedCedulas.delete(cedula);
-        toast("Registro eliminado.", "ok");
-        registrarBitacora("Eliminar Votante", `Eliminó CI ${cedula}`);
-        actualizarDashboard();
-        renderTablaVotantes();
-    } catch (e) {
-        toast("Error al eliminar. Verificá la conexión.", "error");
+        await navigator.clipboard.writeText(cedula);
+        toast(`✔ Cédula ${cedula} copiada.`, "ok");
+    } catch {
+        // Fallback
+        const ta = document.createElement("textarea");
+        ta.value = cedula;
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand("copy"); toast(`✔ Cédula ${cedula} copiada.`, "ok"); }
+        catch { toast("No se pudo copiar.", "error"); }
+        ta.remove();
     }
-};
+}
+
+function compartirWhatsApp(cedula, nombre) {
+    const v = state.padron.find(p => p.cedula === cedula);
+    if (!v) return;
+    const voto = getVoto(cedula);
+    const texto = `📋 *Control Electoral*\n\n👤 *Nombre:* ${v.nombre}\n🆔 *CI:* ${v.cedula}\n📍 *Local:* ${v.local || "—"}\n🗳️ *Mesa:* ${v.mesa || "—"} · Orden ${v.orden || "—"}\n📊 *Estado:* ${voto}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(texto)}`;
+    window.open(url, "_blank");
+    toast(`Compartiendo datos de ${nombre || v.nombre}...`, "ok");
+}
+
+function quickVoto(cedula) {
+    const v = state.padron.find(p => p.cedula === cedula);
+    if (!v) return;
+    const actual = getVoto(cedula);
+    if (actual === "Votó") {
+        guardarVoto(cedula, "Pendiente", getObs(cedula), "Quitar Voto", `Quitó VOTO de ${v.nombre}`, actual, "Pendiente");
+    } else {
+        guardarVoto(cedula, "Votó", getObs(cedula), "Votó", `Registró a ${v.nombre} como VOTÓ`, actual, "Votó");
+    }
+}
+
+function quickNoVoto(cedula, nombre) {
+    const v = state.padron.find(p => p.cedula === cedula);
+    if (!v) return;
+    const actual = getVoto(cedula);
+    if (actual === "No Votó") {
+        guardarVoto(cedula, "Pendiente", getObs(cedula), "Quitar No Votó", `Quitó NO VOTÓ de ${v.nombre}`, actual, "Pendiente");
+    } else {
+        state.pendingNoVoto = { cedula, nombre: nombre || v.nombre };
+        document.getElementById("modal-novoto-name").textContent = nombre || v.nombre;
+        document.getElementById("modal-obs-input").value = getObs(cedula);
+        abrirModal("modal-novoto");
+    }
+}
+
+// ═══════════════ ELIMINACIÓN INDIVIDUAL (admin) ═══════════════
+function eliminarIndividual(cedula) {
+    if (!state.currentUser?.isAdmin) { toast("Solo el administrador puede eliminar registros.", "error"); return; }
+    selectedCedulas.clear();
+    selectedCedulas.add(cedula);
+    actualizarBarraSeleccion();
+    pedirConfirmacionEliminar();
+}
+window.eliminarIndividual = eliminarIndividual;
 
 window.pedirConfirmacionEliminar = function() {
     if (selectedCedulas.size === 0) return;
     if (!state.currentUser?.isAdmin) { toast("Solo el administrador puede eliminar registros.", "error"); return; }
     const n = selectedCedulas.size;
     const txt = document.getElementById("modal-eliminar-texto");
-    if (txt) txt.textContent = `¿Estás seguro que querés eliminar ${n} registro${n > 1 ? "s" : ""} de la planilla? Esta acción no se puede deshacer.`;
+    if (txt) {
+        if (n === 1) {
+            const ced = [...selectedCedulas][0];
+            const v = state.padron.find(p => p.cedula === ced);
+            txt.innerHTML = `¿Estás seguro que querés eliminar a <strong>${escHtml(v?.nombre || ced)}</strong> (CI: ${ced}) de la planilla?<br>Esta acción no se puede deshacer.`;
+        } else {
+            txt.textContent = `¿Estás seguro que querés eliminar ${n} registros de la planilla? Esta acción no se puede deshacer.`;
+        }
+    }
     abrirModal("modal-eliminar-confirm");
 };
 
@@ -979,8 +1036,7 @@ window.confirmarEliminarSeleccionados = async function() {
             ok++;
         } catch (e) { console.error("Error eliminando", cedula, e); err++; }
     }
-    await registrarBitacora("Eliminar Votantes",
-        `Admin eliminó ${ok} votante${ok > 1 ? "s" : ""}. Cédulas: ${cedulas.join(", ")}`);
+    await registrarBitacora("Eliminar Votantes", `Admin eliminó ${ok} votante${ok > 1 ? "s" : ""}. Cédulas: ${cedulas.join(", ")}`);
     selectedCedulas.clear();
     const master = document.getElementById("checkbox-todos");
     if (master) master.checked = false;
@@ -993,118 +1049,137 @@ window.confirmarEliminarSeleccionados = async function() {
         err === 0 ? "ok" : "warn");
 };
 
-// ═══════════════ HISTORIAL DE CAMBIOS (mejorado) ═══════════════
-window.abrirHistorial = async function(cedula, nombre) {
-    document.getElementById("modal-hist-nombre").textContent = `${nombre} (CI: ${cedula})`;
+// ═══════════════ HISTORIAL DE CAMBIOS ═══════════════
+async function abrirHistorial(cedula, nombre) {
+    document.getElementById("modal-hist-nombre").innerHTML = `
+        <div class="hist-header-info">
+            <strong>${escHtml(nombre || "Votante")}</strong>
+            <span class="hist-ci-chip">CI: ${escHtml(cedula)}</span>
+        </div>`;
     const list = document.getElementById("modal-hist-list");
     list.innerHTML = `<div style="text-align:center;padding:20px;"><div class="spinner" style="margin:0 auto 10px;"></div>Cargando historial...</div>`;
     abrirModal("modal-historial");
 
     try {
-        const qRef = query(collection(db, "votos", cedula, "historial"), orderBy("timestamp", "desc"), limit(60));
+        const qRef = query(collection(db, "votos", cedula, "historial"), orderBy("timestamp", "desc"), limit(100));
         const snap = await getDocs(qRef);
+
+        // Estado actual (cabecera resumen)
+        const actual = state.votos[cedula];
+        const votoActual = actual?.voto || "Pendiente";
+        const cambiadoPor = actual?.modificado_por || "—";
+
+        let resumenHtml = `
+            <div class="hist-summary">
+                <div class="hist-summary-row">
+                    <span class="hist-summary-label">Estado actual</span>
+                    <span class="badge ${votoActual === "Votó" ? "badge-voted" : votoActual === "No Votó" ? "badge-novoted" : "badge-pending"}">${votoActual}</span>
+                </div>
+                <div class="hist-summary-row">
+                    <span class="hist-summary-label">Última modificación</span>
+                    <span class="hist-summary-value">${escHtml(cambiadoPor)}</span>
+                </div>
+                ${actual?.observaciones ? `<div class="hist-summary-row"><span class="hist-summary-label">Observación</span><span class="hist-summary-value">"${escHtml(actual.observaciones)}"</span></div>` : ""}
+            </div>`;
+
         if (snap.empty) {
-            list.innerHTML = `<div class="historial-empty"><span class="material-icons" style="font-size:42px;opacity:.3;">history_toggle_off</span><br>Sin actividad registrada.<br><span style="font-size:.78rem;color:var(--color-gray);">No hay cambios para este votante aún.</span></div>`;
+            list.innerHTML = resumenHtml + `<div class="historial-empty"><span class="material-icons" style="font-size:42px;opacity:.3;">history_toggle_off</span><br>Sin cambios registrados.<br><span style="font-size:.78rem;color:var(--color-gray);">Cuando se realice algún cambio aparecerá aquí.</span></div>`;
             return;
         }
-        let html = "";
+
+        const accionInfo = {
+            "Votó":          { color: "#15803D", icon: "check_circle",   label: "Voto registrado" },
+            "No Votó":       { color: "#B45309", icon: "cancel",         label: "Marcó No Votó" },
+            "Quitar Voto":   { color: "#B91C1C", icon: "remove_circle",  label: "Quitó voto" },
+            "Quitar No Votó":{ color: "#7F1D1D", icon: "remove_circle",  label: "Quitó No Votó" },
+            "Observación":   { color: "#B45309", icon: "edit",           label: "Observación" }
+        };
+
+        let timelineHtml = `<div class="hist-timeline-title"><span class="material-icons">history</span> Línea de tiempo (${snap.size} eventos)</div>`;
+        let timeline = "";
+        let primer = true;
         snap.forEach(d => {
             const h = d.data();
             const hora = h.hora_py || timestampAParaguay(h.timestamp);
-
-            // Color e icono por acción
-            const accionInfo = {
-                "Votó":          { color: "#15803D", icon: "check_circle",   label: "Voto registrado" },
-                "No Votó":       { color: "#B45309", icon: "cancel",         label: "No votó" },
-                "Quitar Voto":   { color: "#B91C1C", icon: "remove_circle",  label: "Quitó voto" },
-                "Quitar No Votó":{ color: "#7F1D1D", icon: "remove_circle",  label: "Quitó No votó" },
-                "Observación":   { color: "#B45309", icon: "edit",           label: "Observación" }
-            };
             const info = accionInfo[h.accion] || { color: "#6B7280", icon: "info", label: h.accion || "Cambio" };
 
-            const transicion = (h.estadoAnterior && h.estadoNuevo)
-                ? `<span class="hist-trans"><span class="hist-prev">${escHtml(h.estadoAnterior)}</span> <span class="material-icons" style="font-size:14px;vertical-align:middle;">arrow_right_alt</span> <span class="hist-next" style="color:${info.color};">${escHtml(h.estadoNuevo)}</span></span>`
+            const transicion = (h.estadoAnterior && h.estadoNuevo && h.estadoAnterior !== h.estadoNuevo)
+                ? `<span class="hist-trans"><span class="hist-prev">${escHtml(h.estadoAnterior)}</span> <span class="material-icons" style="font-size:14px;">arrow_right_alt</span> <span class="hist-next" style="color:${info.color};">${escHtml(h.estadoNuevo)}</span></span>`
                 : "";
 
-            html += `
-                <div class="historial-item">
-                    <div class="historial-icon" style="background:${info.color}1a;color:${info.color};">
+            timeline += `
+                <div class="historial-item ${primer ? 'is-latest' : ''}">
+                    <div class="historial-icon" style="background:${info.color}1a;color:${info.color};border-color:${info.color}55;">
                         <span class="material-icons">${info.icon}</span>
                     </div>
                     <div class="historial-body">
-                        <div class="historial-accion" style="color:${info.color};">${escHtml(info.label)}</div>
+                        <div class="historial-accion" style="color:${info.color};">${escHtml(info.label)}${primer ? ' <span class="hist-latest-tag">Más reciente</span>' : ''}</div>
                         ${transicion}
                         <div class="historial-meta">
-                            <span class="material-icons" style="font-size:12px;">person</span> ${escHtml(h.operador || "---")}
-                            <span class="material-icons" style="font-size:12px;margin-left:6px;">schedule</span> ${escHtml(hora)}
+                            <span class="hist-meta-chip"><span class="material-icons">person</span> ${escHtml(h.operador || "---")}</span>
+                            <span class="hist-meta-chip"><span class="material-icons">schedule</span> ${escHtml(hora)}</span>
                         </div>
                         ${h.detalle ? `<div class="historial-detalle">${escHtml(h.detalle)}</div>` : ""}
                     </div>
                 </div>`;
+            primer = false;
         });
-        list.innerHTML = html;
+
+        list.innerHTML = resumenHtml + timelineHtml + timeline;
     } catch (e) {
         console.error(e);
-        list.innerHTML = `<div style="text-align:center;padding:20px;color:var(--color-danger);">Error al cargar historial.</div>`;
+        list.innerHTML = `<div style="text-align:center;padding:20px;color:var(--color-danger);">Error al cargar historial.<br><small>${escHtml(e.message || "")}</small></div>`;
     }
-};
+}
+window.abrirHistorial = abrirHistorial;
 
 // ═══════════════ ACCIONES DE VOTO ═══════════════
-window.accionVoto = function(cedula, accion) {
+function accionVoto(cedula, accion) {
     const actual = getVoto(cedula);
     const v      = state.padron.find(p => p.cedula === cedula);
     const nombre = v?.nombre || cedula;
 
     if (actual === "Votó" && accion === "Votó") {
-        guardarVoto(cedula, "Pendiente", "", "Quitar Voto", `Quitó VOTO de ${nombre}`, actual, "Pendiente");
-        return;
+        guardarVoto(cedula, "Pendiente", getObs(cedula), "Quitar Voto", `Quitó VOTO de ${nombre}`, actual, "Pendiente"); return;
     }
     if (actual === "No Votó" && accion === "No Votó") {
-        guardarVoto(cedula, "Pendiente", "", "Quitar No Votó", `Quitó NO VOTÓ de ${nombre}`, actual, "Pendiente");
-        return;
+        guardarVoto(cedula, "Pendiente", getObs(cedula), "Quitar No Votó", `Quitó NO VOTÓ de ${nombre}`, actual, "Pendiente"); return;
     }
-
     if (accion === "No Votó") {
         state.pendingNoVoto = { cedula, nombre };
         document.getElementById("modal-novoto-name").textContent = nombre;
         document.getElementById("modal-obs-input").value = getObs(cedula);
         abrirModal("modal-novoto");
     } else {
-        guardarVoto(cedula, "Votó", "", "Votó", `Registró a ${nombre} como VOTÓ`, actual, "Votó");
+        guardarVoto(cedula, "Votó", getObs(cedula), "Votó", `Registró a ${nombre} como VOTÓ`, actual, "Votó");
     }
-};
+}
+window.accionVoto = accionVoto;
 
-window.confirmNoVoto = function() {
+function confirmNoVoto() {
     if (!state.pendingNoVoto) return;
     const { cedula, nombre } = state.pendingNoVoto;
     const obs = document.getElementById("modal-obs-input").value.trim();
     guardarVoto(cedula, "No Votó", obs, "No Votó",
-        `Registró a ${nombre} como NO VOTÓ${obs ? " — " + obs : ""}`, "Pendiente", "No Votó");
+        `Registró a ${nombre} como NO VOTÓ${obs ? " — " + obs : ""}`, getVoto(cedula), "No Votó");
     cerrarModal("modal-novoto");
     state.pendingNoVoto = null;
-};
+}
+window.confirmNoVoto = confirmNoVoto;
 
 async function guardarVoto(cedula, voto, observaciones, accionBit, detalleBit, estadoAnterior, estadoNuevo) {
     const operador = state.currentUser.isAdmin ? "Administrador/a" : state.currentUser.username;
     const hora     = ahoraParaguay();
     const modPor   = `${operador} — ${hora}`;
-
-    const payload = {
-        voto, observaciones,
-        modificado_por: modPor,
-        timestamp:      serverTimestamp()
-    };
-
+    const payload = { voto, observaciones, modificado_por: modPor, timestamp: serverTimestamp() };
     const histPayload = {
-        accion: accionBit,
-        detalle: detalleBit,
+        accion: accionBit, detalle: detalleBit,
         operador: state.currentUser.fullname || operador,
         hora_py: hora,
         estadoAnterior: estadoAnterior || "Pendiente",
         estadoNuevo: estadoNuevo || voto,
         timestamp: serverTimestamp()
     };
-
     if (!navigator.onLine) {
         addOfflineAction({ cedula, voto, observaciones, modificado_por: modPor, historial: histPayload });
         toast("Sin conexión. Acción guardada para sincronizar.", "warn");
@@ -1113,7 +1188,6 @@ async function guardarVoto(cedula, voto, observaciones, accionBit, detalleBit, e
         await registrarBitacora(accionBit, detalleBit + " (OFFLINE)");
         return;
     }
-
     try {
         await setDoc(doc(db, "votos", cedula), payload);
         await addDoc(collection(db, "votos", cedula, "historial"), histPayload);
@@ -1129,8 +1203,7 @@ async function guardarVoto(cedula, voto, observaciones, accionBit, detalleBit, e
 
 // ═══════════════ OBSERVACIONES ═══════════════
 let _obsPendiente = null;
-
-window.abrirModalObservacion = function(cedula, nombre) {
+function abrirModalObservacion(cedula, nombre) {
     const obsActual = getObs(cedula);
     _obsPendiente = { cedula, nombre, anterior: obsActual };
     const textoEl  = document.getElementById("modal-obs-texto");
@@ -1138,42 +1211,37 @@ window.abrirModalObservacion = function(cedula, nombre) {
     if (nombreEl) nombreEl.textContent = `Votante: ${nombre}`;
     if (textoEl)  {
         textoEl.value = obsActual;
-        setTimeout(() => {
-            textoEl.focus();
-            textoEl.setSelectionRange(textoEl.value.length, textoEl.value.length);
-        }, 150);
+        setTimeout(() => { textoEl.focus(); textoEl.setSelectionRange(textoEl.value.length, textoEl.value.length); }, 150);
     }
     abrirModal("modal-obs-confirm");
-};
+}
+window.abrirModalObservacion = abrirModalObservacion;
 
-window.confirmarObservacion = async function() {
+async function confirmarObservacion() {
     if (!_obsPendiente) return;
     const { cedula, nombre, anterior } = _obsPendiente;
     const texto = (document.getElementById("modal-obs-texto")?.value || "").trim();
     cerrarModal("modal-obs-confirm");
     await actualizarObservacion(cedula, texto, nombre, anterior);
     _obsPendiente = null;
-};
+}
+window.confirmarObservacion = confirmarObservacion;
 
-window.cancelarObservacion = function() {
-    _obsPendiente = null;
-    cerrarModal("modal-obs-confirm");
-};
+function cancelarObservacion() { _obsPendiente = null; cerrarModal("modal-obs-confirm"); }
+window.cancelarObservacion = cancelarObservacion;
 
-window.actualizarObservacion = async function(cedula, texto, nombre, anterior) {
+async function actualizarObservacion(cedula, texto, nombre, anterior) {
     const actual   = state.votos[cedula] || {};
     const operador = state.currentUser.isAdmin ? "Administrador/a" : state.currentUser.username;
     const hora     = ahoraParaguay();
     const v        = state.padron.find(p => p.cedula === cedula);
     try {
         await setDoc(doc(db, "votos", cedula), {
-            voto:           actual.voto || "Pendiente",
-            observaciones:  texto,
+            voto: actual.voto || "Pendiente",
+            observaciones: texto,
             modificado_por: `${operador} — ${hora}`,
-            timestamp:      serverTimestamp()
+            timestamp: serverTimestamp()
         });
-
-        // Guardar también en historial del votante
         try {
             await addDoc(collection(db, "votos", cedula, "historial"), {
                 accion: "Observación",
@@ -1185,14 +1253,11 @@ window.actualizarObservacion = async function(cedula, texto, nombre, anterior) {
                 timestamp: serverTimestamp()
             });
         } catch(e) { /* historial opcional */ }
-
         toast("✔ Observación guardada.", "ok");
-        await registrarBitacora("Observación",
-            `Actualizó obs. de ${v?.nombre || nombre || cedula}: "${texto.substring(0,60)}"`);
-    } catch {
-        toast("Error al guardar observación.", "error");
-    }
-};
+        await registrarBitacora("Observación", `Actualizó obs. de ${v?.nombre || nombre || cedula}: "${texto.substring(0,60)}"`);
+    } catch { toast("Error al guardar observación.", "error"); }
+}
+window.actualizarObservacion = actualizarObservacion;
 
 // ═══════════════ ADMIN: OPERADORES ═══════════════
 async function cargarUsuarios() {
@@ -1214,7 +1279,6 @@ async function handleRegistrarUsuario(e) {
 
     if (!local) { toast("Seleccioná un local para el operador.", "error"); return; }
     if (username === ADMIN_USER_ID) { toast("Ese nombre de usuario está reservado.", "error"); return; }
-
     try {
         const existe = await getDoc(doc(db, "usuarios", username));
         if (existe.exists()) { toast("El nombre de usuario ya existe.", "error"); return; }
@@ -1228,16 +1292,28 @@ async function handleRegistrarUsuario(e) {
     } catch (err) { console.error(err); toast("Error al crear el usuario.", "error"); }
 }
 
-window.deleteUser = async function(username) {
-    if (!confirm(`¿Eliminar al operador "${username}"?`)) return;
+// 🆕 Eliminar operador con modal elegante
+window.pedirEliminarOperador = function(username) {
     const u = state.usuarios.find(x => x.username === username);
+    document.getElementById("del-user-username").value = username;
+    document.getElementById("del-user-label").textContent = u?.fullname ? `${u.fullname} (${username})` : username;
+    abrirModal("modal-del-user");
+};
+
+window.confirmarEliminarOperador = async function() {
+    const username = document.getElementById("del-user-username").value;
+    if (!username) return;
+    const u = state.usuarios.find(x => x.username === username);
+    cerrarModal("modal-del-user");
     try {
         await deleteDoc(doc(db, "usuarios", username));
-        toast(`Operador "${username}" eliminado.`, "warn");
+        toast(`Operador "${u?.fullname || username}" eliminado.`, "warn");
         await registrarBitacora("Eliminar Operador", `Eliminó operador ${u?.fullname || username}`);
         cargarUsuarios();
     } catch { toast("Error al eliminar el operador.", "error"); }
 };
+// Compatibilidad
+window.deleteUser = window.pedirEliminarOperador;
 
 function renderTablaUsuarios() {
     const tbody = document.getElementById("users-table-body");
@@ -1262,7 +1338,7 @@ function renderTablaUsuarios() {
                     <button class="btn-action btn-action-blue" onclick="abrirCambiarPassword('${escHtml(u.username)}')">
                         <span class="material-icons">lock</span> Cambiar Clave
                     </button>
-                    <button class="btn-action btn-action-red" onclick="deleteUser('${escHtml(u.username)}')">
+                    <button class="btn-action btn-action-red" onclick="pedirEliminarOperador('${escHtml(u.username)}')">
                         <span class="material-icons">delete</span> Eliminar
                     </button>
                 </div>
@@ -1272,13 +1348,11 @@ function renderTablaUsuarios() {
 }
 
 // ═══════════════ LOCALES CONFIG ═══════════════
-// 🏟️ Icono GIMNASIO MUNICIPAL = "tinglado" (SVG inline). Para Material Icons usamos "sports_handball" como fallback decente.
 const LOCALES_CONFIG = {
     "GIMNASIO MUNICIPAL":                   { mesaMin: 1,  mesaMax: 20, color: "#B91C1C", colorSoft: "#FCA5A5", icon: "sports_handball", svgId: "i-tinglado" },
     "COLEGIO NACIONAL SEBASTIAN DE YEGROS": { mesaMin: 21, mesaMax: 40, color: "#1E40AF", colorSoft: "#93C5FD", icon: "school",          svgId: "i-escuela"  },
     "ESC.CARLOS ANTONIO LOPEZ":             { mesaMin: 41, mesaMax: 65, color: "#15803D", colorSoft: "#86EFAC", icon: "local_library",   svgId: "i-biblioteca" }
 };
-
 function getColorLocal(local) { return (LOCALES_CONFIG[local] && LOCALES_CONFIG[local].color) || "#9CA3AF"; }
 function getColorLocalSoft(local) { return (LOCALES_CONFIG[local] && LOCALES_CONFIG[local].colorSoft) || "#D1D5DB"; }
 function determinarLocal(votante) {
@@ -1301,7 +1375,6 @@ async function cargarLocalesDesdePadron() {
             btn.dataset.local = loc;
             btn.style.setProperty("--lc", conf.color);
             btn.style.setProperty("--ls", conf.colorSoft);
-            // Usa SVG inline si existe; si no, fallback a Material Icons
             const iconHtml = conf.svgId
                 ? `<svg class="svg-icon lp-icon" aria-hidden="true" style="color:${conf.color};width:22px;height:22px;"><use href="#${conf.svgId}"/></svg>`
                 : `<span class="material-icons" style="color:${conf.color};">${conf.icon}</span>`;
@@ -1324,7 +1397,6 @@ async function cargarLocalesDesdePadron() {
 }
 
 // ═══════════════ ESTADÍSTICAS ═══════════════
-// 🎯 Arranca con GIMNASIO MUNICIPAL ya seleccionado
 let currentStatsView = "mesas";
 let currentLocalForMesas = "GIMNASIO MUNICIPAL";
 
@@ -1360,7 +1432,6 @@ function renderLocalesSummary() {
     const container = document.getElementById("locales-summary");
     if (!container) return;
     container.innerHTML = "";
-
     const todos = [...Object.keys(LOCALES_CONFIG), "OTRO"];
     todos.forEach(local => {
         const conf = LOCALES_CONFIG[local];
@@ -1371,14 +1442,12 @@ function renderLocalesSummary() {
             if (getVoto(v.cedula) === "Votó") voted++;
         });
         if (total === 0 && local === "OTRO") return;
-
         const pct = total ? Math.round((voted/total)*100) : 0;
         const color = getColorLocal(local);
         const colorSoft = getColorLocalSoft(local);
         const iconHtml = (conf && conf.svgId)
             ? `<svg class="svg-icon" aria-hidden="true" style="color:${color};width:18px;height:18px;"><use href="#${conf.svgId}"/></svg>`
             : `<span class="material-icons">${(conf && conf.icon) || "grid_view"}</span>`;
-
         const card = document.createElement("div");
         card.className = "local-card";
         card.style.borderLeftColor = color;
@@ -1388,8 +1457,7 @@ function renderLocalesSummary() {
             <div class="local-card-num" style="color:${color}">${voted}<span style="font-size:.85rem;color:var(--color-gray);"> / ${total}</span></div>
             <div class="local-card-meta">${conf ? `Mesas ${conf.mesaMin}–${conf.mesaMax}` : "Sin asignar"}</div>
             <div class="local-card-bar"><div class="local-card-bar-fill" style="width:${pct}%;background:linear-gradient(90deg,${color},${colorSoft})"></div></div>
-            <div class="local-card-pct" style="color:${color}">${pct}% de participación</div>
-        `;
+            <div class="local-card-pct" style="color:${color}">${pct}% de participación</div>`;
         if (local !== "OTRO") {
             card.addEventListener("click", () => {
                 currentStatsView = "mesas";
@@ -1404,19 +1472,16 @@ function renderLocalesSummary() {
 function renderStatsCharts() {
     renderLocalesSummary();
     if (!state.padron.length) return;
-
     const titleEl   = document.getElementById("bar-chart-title");
     const btnVolver = document.getElementById("btn-volver-locales");
     const hintEl    = document.getElementById("chart-hint");
     const mesaWrap  = document.getElementById("chart-mesa-wrap");
-
-    // 📊 Siempre mostramos el gráfico de mesas (arranca con GIMNASIO MUNICIPAL)
     const localAMostrar = currentLocalForMesas || "GIMNASIO MUNICIPAL";
     const conf = LOCALES_CONFIG[localAMostrar];
     const colorLocal = getColorLocal(localAMostrar);
 
     if (titleEl) titleEl.textContent = `Votos por mesa — ${localAMostrar}`;
-    if (btnVolver) btnVolver.classList.add("hidden"); // no hay "volver" porque ya no hay vista neutra
+    if (btnVolver) btnVolver.classList.add("hidden");
     if (hintEl) hintEl.style.display = "none";
     if (mesaWrap) mesaWrap.style.display = "";
 
@@ -1433,50 +1498,29 @@ function renderStatsCharts() {
             else if (estado === "No Votó") mesas[numMesa].noVoted++;
             else mesas[numMesa].pending++;
         });
-
         const mesasActivas = Object.entries(mesas).map(([m, d]) => ({ mesa: m, ...d }));
         const labels = mesasActivas.map(d => `M${d.mesa}`);
         const dataVoted = mesasActivas.map(d => d.voted);
-
         const ctxMesa = document.getElementById("chart-mesa");
         if (ctxMesa) {
             if (state.charts.mesa) state.charts.mesa.destroy();
             state.charts.mesa = new Chart(ctxMesa, {
                 type: "bar",
-                data: {
-                    labels,
-                    datasets: [{
-                        label: "Votaron",
-                        data: dataVoted,
-                        backgroundColor: colorLocal + "cc",
-                        borderColor: colorLocal,
-                        borderWidth: 1.5,
-                        borderRadius: 6,
-                        hoverBackgroundColor: colorLocal
-                    }]
-                },
+                data: { labels, datasets: [{ label: "Votaron", data: dataVoted,
+                    backgroundColor: colorLocal + "cc", borderColor: colorLocal,
+                    borderWidth: 1.5, borderRadius: 6, hoverBackgroundColor: colorLocal }] },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     animation: { duration: 700, easing: "easeOutQuart" },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: "rgba(15,23,42,0.92)",
-                            padding: 10, cornerRadius: 8, titleFont:{weight:700}
-                        }
-                    },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { font: { weight: 600 } } },
-                        y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, grid: { color: "rgba(15,23,42,0.06)" } }
-                    }
+                    plugins: { legend: { display: false },
+                        tooltip: { backgroundColor: "rgba(15,23,42,0.92)", padding: 10, cornerRadius: 8, titleFont:{weight:700} } },
+                    scales: { x: { grid: { display: false }, ticks: { font: { weight: 600 } } },
+                        y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 }, grid: { color: "rgba(15,23,42,0.06)" } } }
                 }
             });
         }
-        // 🧹 Tabla bajo gráfico ELIMINADA (no se llama más a _renderTablaMesas)
     }
 
-    // ── Gráfico global doughnut ──
     const total = state.padron.length;
     const voted = state.padron.filter(v => getVoto(v.cedula)==="Votó").length;
     const noVoted = state.padron.filter(v => getVoto(v.cedula)==="No Votó").length;
@@ -1487,37 +1531,25 @@ function renderStatsCharts() {
         state.charts.global = new Chart(ctxGlobal, {
             type: "doughnut",
             plugins: [doughnutLabelsPlugin],
-            data: {
-                labels: ["Votaron","No Votaron","Pendientes"],
-                datasets: [{ data: [voted, noVoted, pending], backgroundColor: ["#15803D","#B91C1C","#9CA3AF"], borderColor: "#fff", borderWidth: 3 }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
+            data: { labels: ["Votaron","No Votaron","Pendientes"],
+                datasets: [{ data: [voted, noVoted, pending], backgroundColor: ["#15803D","#B91C1C","#9CA3AF"], borderColor: "#fff", borderWidth: 3 }] },
+            options: { responsive: true, maintainAspectRatio: false,
                 animation: { animateRotate: true, duration: 800 },
-                plugins: { legend: { position: "bottom", labels: { font:{weight:600}, padding:14, usePointStyle:true } } }
-            }
+                plugins: { legend: { position: "bottom", labels: { font:{weight:600}, padding:14, usePointStyle:true } } } }
         });
     }
-
-    // ── Gráfico participación horaria 07:00–17:00 ──
     _renderChartHora();
 }
 
-// 🕒 PARTICIPACIÓN HORARIA 07:00 – 17:00
 function _renderChartHora() {
     const ctxHora = document.getElementById("chart-hora");
     if (!ctxHora) return;
-
     const HORAS = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
     const counts = new Array(HORAS.length).fill(0);
-
-    // Contamos cuántos votos "Votó" se registraron en cada franja horaria
     Object.values(state.votos).forEach(v => {
         if (v?.voto !== "Votó") return;
         let h = horaEnParaguay(v.timestamp);
         if (h === null || isNaN(h)) {
-            // Fallback: intentar parsear desde modificado_por "operador — dd/mm/yyyy hh:mm"
             const m = String(v.modificado_por || "").match(/(\d{1,2}):(\d{2})\s*$/);
             if (m) h = parseInt(m[1], 10);
         }
@@ -1525,71 +1557,42 @@ function _renderChartHora() {
         const idx = HORAS.indexOf(h);
         if (idx >= 0) counts[idx]++;
     });
-
-    // Acumulado (curva creciente de participación)
     const acumulado = [];
     counts.reduce((acc, n, i) => { acumulado[i] = acc + n; return acumulado[i]; }, 0);
-
     const labels = HORAS.map(h => `${String(h).padStart(2,"0")}:00`);
-
     if (state.charts.hora) state.charts.hora.destroy();
     state.charts.hora = new Chart(ctxHora, {
         type: "line",
         data: {
             labels,
             datasets: [
-                {
-                    label: "Votos en esa hora",
-                    data: counts,
-                    backgroundColor: "rgba(180,83,9,0.18)",
-                    borderColor: "#B45309",
-                    borderWidth: 2,
-                    pointBackgroundColor: "#B45309",
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    tension: 0.35,
-                    fill: true,
-                    yAxisID: "y"
-                },
-                {
-                    label: "Acumulado",
-                    data: acumulado,
-                    borderColor: "#15803D",
-                    backgroundColor: "rgba(21,128,61,0.08)",
-                    borderWidth: 2,
-                    borderDash: [6, 4],
-                    pointBackgroundColor: "#15803D",
-                    pointRadius: 3,
-                    tension: 0.3,
-                    fill: false,
-                    yAxisID: "y"
-                }
+                { label: "Votos en esa hora", data: counts,
+                  backgroundColor: "rgba(180,83,9,0.18)", borderColor: "#B45309",
+                  borderWidth: 2, pointBackgroundColor: "#B45309", pointRadius: 4, pointHoverRadius: 6,
+                  tension: 0.35, fill: true, yAxisID: "y" },
+                { label: "Acumulado", data: acumulado,
+                  borderColor: "#15803D", backgroundColor: "rgba(21,128,61,0.08)",
+                  borderWidth: 2, borderDash: [6, 4], pointBackgroundColor: "#15803D",
+                  pointRadius: 3, tension: 0.3, fill: false, yAxisID: "y" }
             ]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
+        options: { responsive: true, maintainAspectRatio: false,
             animation: { duration: 800, easing: "easeOutQuart" },
             interaction: { mode: "index", intersect: false },
-            plugins: {
-                legend: { position: "bottom", labels: { font:{weight:600}, padding:12, usePointStyle:true } },
-                tooltip: { backgroundColor: "rgba(15,23,42,0.92)", padding: 10, cornerRadius: 8 }
-            },
-            scales: {
-                x: { grid: { display: false }, ticks: { font: { weight: 600 } } },
-                y: { beginAtZero: true, ticks: { precision: 0, stepSize: 1 }, grid: { color: "rgba(15,23,42,0.06)" } }
-            }
+            plugins: { legend: { position: "bottom", labels: { font:{weight:600}, padding:12, usePointStyle:true } },
+                tooltip: { backgroundColor: "rgba(15,23,42,0.92)", padding: 10, cornerRadius: 8 } },
+            scales: { x: { grid: { display: false }, ticks: { font: { weight: 600 } } },
+                y: { beginAtZero: true, ticks: { precision: 0, stepSize: 1 }, grid: { color: "rgba(15,23,42,0.06)" } } }
         }
     });
 }
 
-window.volverALocales = function() {
-    // Mantenemos la vista de mesas siempre; "volver" no aplica más.
-    // Por compatibilidad, lo dejamos como noop o vuelve al gimnasio.
+function volverALocales() {
     currentStatsView = "mesas";
     currentLocalForMesas = "GIMNASIO MUNICIPAL";
     renderStatsCharts();
-};
+}
+window.volverALocales = volverALocales;
 
 // ═══════════════ MODALES / TOASTS / STATUS ═══════════════
 function abrirModal(id) { document.getElementById(id)?.classList.add("active"); }
@@ -1613,12 +1616,10 @@ function setStatus(online) {
     if (label) label.textContent = online ? "en línea" : "sin conexión";
 }
 
-// ═══════════════ UTILIDADES ═══════════════
 function escHtml(str) { return String(str ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
-function jsEscape(str) { return JSON.stringify(String(str ?? "")).replace(/"/g,"&quot;"); }
+function jsEscape(str) { return String(str ?? "").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
 function debounce(fn, ms=300) { let t; return (...args)=>{ clearTimeout(t); t = setTimeout(()=>fn.apply(this,args), ms); }; }
 
-// ═══════════════ EXPORTAR XLSX ═══════════════
 window.exportarXLSX = function() {
     const filas = [["N°","Nombre","Cédula","Domicilio","Local","Mesa","Orden","Estado","Operador","Observación"]];
     state.padron.forEach((v,i)=> filas.push([i+1,v.nombre,v.cedula,v.domicilio||"",v.local||"",v.mesa||"",v.orden||"",getVoto(v.cedula),getLog(v.cedula),getObs(v.cedula)]));
@@ -1678,19 +1679,15 @@ function bindEvents() {
 
     document.getElementById("register-user-form").addEventListener("submit", handleRegistrarUsuario);
 
-    ["modal-novoto","modal-chpass","modal-obs-confirm","modal-historial","modal-eliminar-confirm"].forEach(id => {
+    ["modal-novoto","modal-chpass","modal-obs-confirm","modal-historial","modal-eliminar-confirm","modal-del-user","modal-clear-bit"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener("click", function(e) { if (e.target === this) cerrarModal(id); });
     });
 
     const runSearch = debounce((val) => { state.searchQuery = val; if(!val) state.searchAllStates=false; state.pagination.page=1; renderTablaVotantes(); }, 300);
     document.getElementById("search-input").addEventListener("input", e => runSearch(e.target.value.toLowerCase().trim()));
-
     document.getElementById("padron-anr-input")?.addEventListener("keydown", e => { if(e.key==="Enter") buscarPadronANR(); });
-
-    document.querySelectorAll('.bottom-nav-item').forEach(btn => {
-        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-    });
+    document.querySelectorAll('.bottom-nav-item').forEach(btn => { btn.addEventListener('click', () => switchTab(btn.dataset.tab)); });
 }
 
 // ═══════════════ PADRÓN ANR ═══════════════
@@ -1757,10 +1754,8 @@ window.agregarDesdePardon = async function() {
     const apellidos = document.getElementById("pr-apellidos")?.textContent?.trim() || "";
     const nombre = `${nombres} ${apellidos}`.trim();
     if (!cedula || !nombre) { toast("No hay datos para agregar.", "error"); return; }
-
     const cedulaNorm = String(cedula).replace(/[\s\-]/g, "").replace(/^0+/, "");
     if (state.padron.some(p => p.cedula === cedulaNorm)) { toast("Ya está en la planilla.", "warn"); return; }
-
     const local = document.getElementById("pr-local")?.textContent?.trim() || "";
     const mesa = document.getElementById("pr-mesa")?.textContent?.trim() || "";
     const orden = document.getElementById("pr-orden")?.textContent?.trim() || "";
@@ -1777,14 +1772,26 @@ window.agregarDesdePardon = async function() {
     }
 };
 
-// ═══════════════ LIMPIAR BITÁCORA ═══════════════
-window.limpiarBitacora = async function() {
+// ═══════════════ 🆕 LIMPIAR BITÁCORA con modal ═══════════════
+window.pedirLimpiarBitacora = function() {
     if (!state.currentUser?.isAdmin) return;
-    if (!confirm("¿Borrar TODA la bitácora?")) return;
-    const snap = await getDocs(collection(db, "bitacora"));
-    await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
-    toast("Bitácora limpiada.", "ok");
+    abrirModal("modal-clear-bit");
 };
+window.confirmarLimpiarBitacora = async function() {
+    if (!state.currentUser?.isAdmin) return;
+    cerrarModal("modal-clear-bit");
+    try {
+        const snap = await getDocs(collection(db, "bitacora"));
+        await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+        toast("Bitácora limpiada.", "ok");
+        await registrarBitacora("Limpiar Bitácora", `Admin limpió toda la bitácora`);
+    } catch(e) {
+        console.error(e);
+        toast("Error al limpiar bitácora.", "error");
+    }
+};
+// Compatibilidad
+window.limpiarBitacora = window.pedirLimpiarBitacora;
 
 // ═══════════════ FILTROS Y NAVEGACIÓN ═══════════════
 function cambiarFiltro(destino) {
@@ -1818,7 +1825,6 @@ function switchTab(tab) {
         document.getElementById("view-stats").style.display = "block";
         document.getElementById("tab-stats").classList.add("active");
         document.querySelector('.bottom-nav-item[data-tab="stats"]')?.classList.add("active");
-        // 🎯 Siempre arrancar (o continuar) mostrando GIMNASIO MUNICIPAL
         if (!currentLocalForMesas) currentLocalForMesas = "GIMNASIO MUNICIPAL";
         currentStatsView = "mesas";
         renderStatsCharts();
@@ -1836,30 +1842,10 @@ function switchTab(tab) {
     }
 }
 
-// Exponer funciones globales
+// Exponer
 window.exportarXLSX = exportarXLSX;
 window.exportarEstadisticasXLSX = function() { toast("Función disponible en administración.", "warn"); };
-window.accionVoto = accionVoto;
-window.abrirModalObservacion = abrirModalObservacion;
-window.abrirHistorial = abrirHistorial;
 window.activarBusquedaGlobal = ()=>{ state.searchAllStates=true; state.pagination.page=1; renderTablaVotantes(); };
 window.desactivarBusquedaGlobal = ()=>{ state.searchAllStates=false; state.pagination.page=1; renderTablaVotantes(); };
-window.confirmNoVoto = confirmNoVoto;
-window.confirmarObservacion = confirmarObservacion;
-window.cancelarObservacion = cancelarObservacion;
-window.volverALocales = volverALocales;
-window.agregarDesdePardon = agregarDesdePardon;
-window.buscarPadronANR = buscarPadronANR;
-window.abrirCambiarPassword = abrirCambiarPassword;
-window.confirmarCambiarPassword = confirmarCambiarPassword;
-window.deleteUser = deleteUser;
-window.handleCheckboxChange = handleCheckboxChange;
-window.toggleTodosCheckbox = toggleTodosCheckbox;
-window.seleccionarTodosCheckbox = seleccionarTodosCheckbox;
-window.deseleccionarTodos = deseleccionarTodos;
-window.pedirConfirmacionEliminar = pedirConfirmacionEliminar;
-window.confirmarEliminarSeleccionados = confirmarEliminarSeleccionados;
-window.eliminarIndividual = eliminarIndividual;
-window.toggleMenu = toggleMenu;
-window.limpiarBitacora = limpiarBitacora;
+
 

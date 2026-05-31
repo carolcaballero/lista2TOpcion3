@@ -1,7 +1,8 @@
 // ═══════════════════════════════════════════════════════════════
-//  CONTROL ELECTORAL — app.js v8.4
-//  Modo eliminación delegado + offline queue con reintentos + gráficos mejorados
-//  Formulario manual de votantes + sticky dinámico + fechas robustas
+//  CONTROL ELECTORAL — app.js v9.0
+//  Selección con checkboxes, menú contextual (3 puntos),
+//  barra inferior, mesas completas, limpiar bitácora,
+//  Material Design Icons, sin dashboard en planilla
 // ═══════════════════════════════════════════════════════════════
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -53,9 +54,12 @@ const state = {
     pagination:       { page: 1, perPage: 50 },
     charts:           { mesa: null, global: null, hora: null },
     notifiedThresholds: new Set(),
-    isRendering:      false,   // para indicador de carga
+    isRendering:      false,
     offlineRetryInterval: null,
 };
+
+// Set de cédulas seleccionadas mediante checkboxes
+const selectedCedulas = new Set();
 
 // ═══════════════════════════════════════════════════════════════
 //  SHA-256
@@ -84,9 +88,8 @@ function formatearFechaParaguay(date) {
             hour12: false
         }).format(date);
     } catch(e) {
-        // fallback manual
         const d = new Date(date);
-        const offset = -4 * 60; // UTC-4 aproximado
+        const offset = -4 * 60;
         const local = new Date(d.getTime() + (offset - d.getTimezoneOffset()) * 60000);
         return local.toLocaleString("es-PY", {
             day:"2-digit", month:"2-digit", year:"numeric",
@@ -241,7 +244,7 @@ document.addEventListener("DOMContentLoaded", () => {
     bindEvents();
     bindNetworkEvents();
     iniciarReintentosOffline();
-    ajustarStickyFiltros();   // sticky dinámico
+    ajustarStickyFiltros();
     checkSession();
 });
 
@@ -259,7 +262,6 @@ function bindNetworkEvents() {
     });
 }
 
-// Sticky dinámico para filtros en móvil
 function ajustarStickyFiltros() {
     const filterWrapper = document.getElementById("filter-wrapper");
     const header = document.querySelector(".main-header");
@@ -371,13 +373,14 @@ function loginSuccess(user, persist) {
 
         const tabAdmin    = document.getElementById("tab-admin");
         const btnExportar = document.getElementById("btn-exportar");
+        const bottomAdmin = document.getElementById("bottom-tab-admin");
         if (tabAdmin)    user.isAdmin ? tabAdmin.classList.remove("hidden")  : tabAdmin.classList.add("hidden");
         if (btnExportar) btnExportar.style.display = user.isAdmin ? "flex" : "none";
+        if (bottomAdmin) bottomAdmin.classList.toggle("hidden", !user.isAdmin);
 
         showApp();
         state.currentFilter = "todos";
         switchTab("planilla");
-        actualizarBotonTrash();
         updateOfflineBadge();
 
         const loginForm = document.getElementById("login-form");
@@ -394,9 +397,8 @@ function loginSuccess(user, persist) {
 
 function handleLogout() {
     registrarBitacora("Logout", `${state.currentUser?.fullname} cerró sesión`);
-    if (elimState?.activo) cancelarModoEliminar();
-    const btnTrash = document.getElementById("btn-trash-flotante");
-    if (btnTrash) btnTrash.classList.add("hidden");
+    selectedCedulas.clear();
+    actualizarBarraSeleccion();
     quitarPresencia();
     localStorage.removeItem(SESSION_KEY);
     if (state.unsubVotos)     { state.unsubVotos();     state.unsubVotos     = null; }
@@ -505,56 +507,11 @@ const getObs  = c => state.votos[c]?.observaciones || "";
 const getLog  = c => state.votos[c]?.modificado_por || "---";
 
 // ═══════════════════════════════════════════════════════════════
-//  DASHBOARD + ANIMACIÓN NUMÉRICA
+//  DASHBOARD (métricas internas, ya no se muestran en planilla)
 // ═══════════════════════════════════════════════════════════════
-function animateMetric(el, valor, prevValor) {
-    if (!el) return;
-    el.textContent = valor;
-    if (prevValor !== undefined && prevValor !== valor) {
-        el.classList.remove("bumping");
-        void el.offsetWidth;
-        el.classList.add("bumping");
-        setTimeout(() => el.classList.remove("bumping"), 500);
-    }
-}
-
 function actualizarDashboard() {
-    const total   = state.padron.length;
-    const voted   = state.padron.filter(v => getVoto(v.cedula) === "Votó").length;
-    const noVoted = state.padron.filter(v => getVoto(v.cedula) === "No Votó").length;
-    const pending = total - voted - noVoted;
-
-    const elTot = document.getElementById("metric-total");
-    const elVot = document.getElementById("metric-voted");
-    const elNov = document.getElementById("metric-novoted");
-    const elPen = document.getElementById("metric-pending");
-
-    animateMetric(elTot, total,   state.prevMetrics.total);
-    animateMetric(elVot, voted,   state.prevMetrics.voted);
-    animateMetric(elNov, noVoted, state.prevMetrics.novoted);
-    animateMetric(elPen, pending, state.prevMetrics.pending);
-
-    state.prevMetrics = { total, voted, novoted: noVoted, pending };
-
-    const pctVoted   = total > 0 ? (voted   / total * 100) : 0;
-    const pctNoVoted = total > 0 ? (noVoted / total * 100) : 0;
-    const pctPending = total > 0 ? (pending / total * 100) : 0;
-    const progV = document.getElementById("prog-voted");
-    const progN = document.getElementById("prog-novoted");
-    const progP = document.getElementById("prog-pending");
-    if (progV) progV.style.width = pctVoted.toFixed(1)   + "%";
-    if (progN) progN.style.width = pctNoVoted.toFixed(1) + "%";
-    if (progP) progP.style.width = pctPending.toFixed(1) + "%";
-    setText("pct-voted",   pctVoted.toFixed(0)   + "%");
-    setText("pct-novoted", pctNoVoted.toFixed(0) + "%");
-    setText("pct-pending", pctPending.toFixed(0) + "%");
-
-    renderTablaVotantes();
-}
-
-function setText(id, v) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = v;
+    // Solo se usa para actualizar métricas internas y gráficos en estadísticas
+    renderTablaVotantes(); // actualiza la planilla si está visible
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -627,14 +584,13 @@ window.cambiarPagina = function(nuevaPagina) {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  TABLA/TARJETAS VOTANTES (con indicador de carga)
+//  TABLA/TARJETAS VOTANTES (con checkboxes, menú 3 puntos)
 // ═══════════════════════════════════════════════════════════════
 async function renderTablaVotantes() {
     if (state.isRendering) return;
     state.isRendering = true;
     mostrarLoadingEnTabla(true);
 
-    // Pequeño delay para que el spinner se vea si la operación es rápida
     await new Promise(r => setTimeout(r, 10));
 
     const searchHint = document.getElementById("search-hint");
@@ -704,7 +660,7 @@ async function renderTablaVotantes() {
             if (otros > 0) {
                 searchHint.style.display = "flex";
                 searchHint.innerHTML = `
-                    <svg width="13" height="13" style="flex-shrink:0"><use href="#icon-search"/></svg>
+                    <span class="material-icons" style="font-size:16px;">search</span>
                     <span>Se encontraron <strong>${otros}</strong> resultado${otros>1?"s":""} en otros estados.</span>
                     <button onclick="activarBusquedaGlobal()" class="btn-hint-global">Ver todos</button>`;
             } else {
@@ -713,7 +669,7 @@ async function renderTablaVotantes() {
         } else if (q && state.searchAllStates) {
             searchHint.style.display = "flex";
             searchHint.innerHTML = `
-                <svg width="13" height="13" style="flex-shrink:0"><use href="#icon-search"/></svg>
+                <span class="material-icons" style="font-size:16px;">search</span>
                 <span>Mostrando resultados de <strong>todos los estados</strong>.</span>
                 <button onclick="desactivarBusquedaGlobal()" class="btn-hint-volver">Volver al filtro</button>`;
         } else {
@@ -721,12 +677,13 @@ async function renderTablaVotantes() {
         }
     }
 
+    // ── Tarjetas móviles ──
     const cardsContainer = document.getElementById("cards-container");
     if (cardsContainer) {
         if (!paginatedList.length) {
             cardsContainer.innerHTML = `
                 <div class="empty-state">
-                    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#icon-inbox"/></svg>
+                    <span class="material-icons" style="font-size:48px;opacity:.3;">inbox</span>
                     <strong>Sin resultados</strong>
                     No se encontraron registros para este criterio.
                 </div>`;
@@ -740,10 +697,11 @@ async function renderTablaVotantes() {
         }
     }
 
+    // ── Tabla escritorio ──
     const tbody = document.getElementById("votantes-table-body");
     if (tbody) {
         if (!paginatedList.length) {
-            tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--color-gray);padding:30px;">No se encontraron registros.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;padding:30px;">No se encontraron registros.</td></tr>`;
         } else {
             tbody.innerHTML = "";
             paginatedList.forEach((v, idx) => {
@@ -755,12 +713,12 @@ async function renderTablaVotantes() {
                 if (voto === "Votó")    { badgeClass = "badge badge-voted";   badgeLabel = "Votó"; }
                 if (voto === "No Votó") { badgeClass = "badge badge-novoted"; badgeLabel = "No Votó"; }
 
-                const clsVoto   = voto === "Votó"    ? "btn-accion sel-voto"   : "btn-accion";
-                const clsNoVoto = voto === "No Votó" ? "btn-accion sel-novoto" : "btn-accion";
+                const checked = selectedCedulas.has(v.cedula) ? "checked" : "";
 
                 const tr = document.createElement("tr");
                 tr.dataset.cedula = v.cedula;
                 tr.innerHTML = `
+                    <td><input type="checkbox" class="sel-checkbox" data-cedula="${v.cedula}" ${checked} onchange="handleCheckboxChange(this)"></td>
                     <td><strong>${start + idx + 1}</strong></td>
                     <td>${escHtml(v.nombre)}</td>
                     <td style="font-family:monospace">${v.cedula}</td>
@@ -770,13 +728,11 @@ async function renderTablaVotantes() {
                     <td><span class="${badgeClass}">${badgeLabel}</span></td>
                     <td>
                         <div class="action-btns">
-                            <button class="${clsVoto}" onclick="accionVoto('${v.cedula}','Votó')" title="${voto==='Votó'?'Quitar voto':'Marcar como Votó'}">
-                                <svg width="12" height="12"><use href="#icon-check"/></svg>
-                                ${voto === "Votó" ? "Votó ✕" : "Votó"}
+                            <button class="btn-accion ${voto==='Votó'?'sel-voto':''}" onclick="accionVoto('${v.cedula}','Votó')" title="Votó">
+                                <span class="material-icons" style="font-size:16px;">check_circle</span>
                             </button>
-                            <button class="${clsNoVoto}" onclick="accionVoto('${v.cedula}','No Votó')" title="${voto==='No Votó'?'Quitar No Votó':'Marcar como No Votó'}">
-                                <svg width="12" height="12"><use href="#icon-x"/></svg>
-                                ${voto === "No Votó" ? "No Votó ✕" : "No Votó"}
+                            <button class="btn-accion ${voto==='No Votó'?'sel-novoto':''}" onclick="accionVoto('${v.cedula}','No Votó')" title="No Votó">
+                                <span class="material-icons" style="font-size:16px;">cancel</span>
                             </button>
                         </div>
                     </td>
@@ -784,22 +740,34 @@ async function renderTablaVotantes() {
                         <button class="btn-obs ${obs ? 'has-obs' : ''}"
                             style="min-width:130px;"
                             onclick="abrirModalObservacion('${v.cedula}', ${jsEscape(v.nombre)})">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            <span class="material-icons" style="font-size:14px;">edit</span>
                             <span class="obs-preview">${obs ? escHtml(obs) : "Agregar obs..."}</span>
                         </button>
                     </td>
                     <td><span class="log-span">${escHtml(log)}</span></td>
                     <td>
-                        <button class="btn-secondary" style="padding:6px 10px;font-size:.72rem;" onclick="abrirHistorial('${v.cedula}', ${jsEscape(v.nombre)})" title="Ver historial">
-                            <svg width="12" height="12"><use href="#icon-history"/></svg>
-                        </button>
+                        <div class="menu-tres-puntos">
+                            <button class="btn-puntos" onclick="event.stopPropagation(); toggleMenu(event, '${v.cedula}')">⋯</button>
+                            <div class="dropdown" id="menu-${v.cedula}">
+                                <a href="#" onclick="event.preventDefault(); abrirHistorial('${v.cedula}', ${jsEscape(v.nombre)})"><span class="material-icons">history</span> Historial</a>
+                                <a href="#" onclick="event.preventDefault(); abrirModalObservacion('${v.cedula}', ${jsEscape(v.nombre)})"><span class="material-icons">edit</span> Observación</a>
+                                <a href="#" onclick="event.preventDefault(); eliminarIndividual('${v.cedula}')"><span class="material-icons">delete</span> Eliminar</a>
+                            </div>
+                        </div>
                     </td>`;
                 tbody.appendChild(tr);
             });
         }
     }
 
+    // Actualizar checkbox maestro
+    const master = document.getElementById("checkbox-todos");
+    if (master) {
+        master.checked = paginatedList.length > 0 && paginatedList.every(v => selectedCedulas.has(v.cedula));
+    }
+
     renderPaginationControls(totalItems);
+    actualizarBarraSeleccion();
     state.isRendering = false;
     mostrarLoadingEnTabla(false);
 }
@@ -812,7 +780,7 @@ function mostrarLoadingEnTabla(show) {
             cards.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><span class="loading-text">Cargando...</span></div>`;
         }
         if (tbody && tbody.children.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="11" class="spinner-cell"><div class="spinner"></div></td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="12" class="spinner-cell"><div class="spinner"></div></td></tr>`;
         }
     }
 }
@@ -831,11 +799,11 @@ function construirCardsConSecciones(lista, mostrarSecciones) {
     let html = "";
     let contadorGlobal = 0;
 
-    const renderGrupo = (titulo, items, claseSection, iconId) => {
+    const renderGrupo = (titulo, items, claseSection, iconName) => {
         if (!items.length) return "";
         let h = `
             <div class="section-divider ${claseSection}">
-                <svg><use href="#${iconId}"/></svg>
+                <span class="material-icons">${iconName}</span>
                 ${titulo}
                 <span class="sd-count">${items.length}</span>
             </div>`;
@@ -846,9 +814,9 @@ function construirCardsConSecciones(lista, mostrarSecciones) {
         return h;
     };
 
-    html += renderGrupo("Votaron",    grupos["Votó"],     "sd-voted",   "icon-check");
-    html += renderGrupo("No Votaron", grupos["No Votó"],  "sd-novoted", "icon-x");
-    html += renderGrupo("Pendientes", grupos["Pendiente"], "sd-pending", "icon-clock");
+    html += renderGrupo("Votaron",    grupos["Votó"],     "sd-voted",   "check_circle");
+    html += renderGrupo("No Votaron", grupos["No Votó"],  "sd-novoted", "cancel");
+    html += renderGrupo("Pendientes", grupos["Pendiente"], "sd-pending", "schedule");
     return html;
 }
 
@@ -861,65 +829,195 @@ function construirTarjeta(v, idx) {
     if (voto === "Votó")    { badgeClass = "badge badge-voted";   badgeLabel = "Votó"; }
     if (voto === "No Votó") { badgeClass = "badge badge-novoted"; badgeLabel = "No Votó"; }
 
-    const clsVoto   = voto === "Votó"    ? "btn-accion sel-voto"   : "btn-accion";
-    const clsNoVoto = voto === "No Votó" ? "btn-accion sel-novoto" : "btn-accion";
-
     const estadoClass = voto === "Votó" ? "estado-voto" : voto === "No Votó" ? "estado-novoto" : "";
     const obsLabel    = obs ? escHtml(obs) : "Agregar observación...";
     const obsClass    = obs ? "btn-obs has-obs" : "btn-obs";
-
-    const elimCheck = elimState.activo ? `<div class="elim-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>` : '';
+    const checked = selectedCedulas.has(v.cedula) ? "checked" : "";
 
     return `
         <div class="card-votante ${estadoClass}" data-cedula="${escHtml(v.cedula)}">
-            ${elimCheck}
             <div class="card-top">
                 <div class="card-info">
-                    <div class="card-num">${idx+1}.</div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" class="sel-checkbox" data-cedula="${v.cedula}" ${checked} onchange="handleCheckboxChange(this)" onclick="event.stopPropagation()">
+                        <div class="card-num">${idx+1}.</div>
+                    </div>
                     <div class="card-nombre" title="${escHtml(v.nombre)}">${escHtml(v.nombre)}</div>
                     <div class="card-cedula">CI: ${escHtml(v.cedula)}</div>
                     ${v.local  ? `<div class="card-domicilio" style="font-size:.74rem;opacity:.85;">📍 ${escHtml(v.local)}</div>` : ""}
-                ${v.mesa   ? `<div class="card-domicilio" style="font-size:.74rem;opacity:.85;">🗳️ Mesa <strong>${escHtml(v.mesa)}</strong>${v.orden ? " · Orden " + escHtml(v.orden) : ""}</div>` : ""}
+                    ${v.mesa   ? `<div class="card-domicilio" style="font-size:.74rem;opacity:.85;">🗳️ Mesa <strong>${escHtml(v.mesa)}</strong>${v.orden ? " · Orden " + escHtml(v.orden) : ""}</div>` : ""}
                 </div>
                 <span class="${badgeClass}">${badgeLabel}</span>
             </div>
             <div class="action-btns">
-                <button class="${clsVoto}" onclick="accionVoto('${v.cedula}','Votó')">
-                    <svg width="13" height="13"><use href="#icon-check"/></svg>
-                    ${voto === "Votó" ? "Votó ✕" : "Votó"}
+                <button class="btn-accion ${voto==='Votó'?'sel-voto':''}" onclick="accionVoto('${v.cedula}','Votó')">
+                    <span class="material-icons" style="font-size:18px;">check_circle</span>
+                    ${voto === "Votó" ? "Quitar" : "Votó"}
                 </button>
-                <button class="${clsNoVoto}" onclick="accionVoto('${v.cedula}','No Votó')">
-                    <svg width="13" height="13"><use href="#icon-x"/></svg>
-                    ${voto === "No Votó" ? "No Votó ✕" : "No Votó"}
+                <button class="btn-accion ${voto==='No Votó'?'sel-novoto':''}" onclick="accionVoto('${v.cedula}','No Votó')">
+                    <span class="material-icons" style="font-size:18px;">cancel</span>
+                    ${voto === "No Votó" ? "Quitar" : "No Votó"}
                 </button>
             </div>
-            <button class="${obsClass}"
-                onclick="abrirModalObservacion('${v.cedula}', ${jsEscape(v.nombre)})">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <button class="${obsClass}" onclick="abrirModalObservacion('${v.cedula}', ${jsEscape(v.nombre)})">
+                <span class="material-icons" style="font-size:16px;">edit</span>
                 <span class="obs-preview">${obsLabel}</span>
             </button>
             ${log !== "---" ? `<div class="card-log">${escHtml(log)}</div>` : ""}
-            <div style="margin-top:8px;text-align:right;">
-                <button class="btn-secondary" style="padding:5px 10px;font-size:.7rem;" onclick="abrirHistorial('${v.cedula}', ${jsEscape(v.nombre)})">
-                    <svg width="11" height="11"><use href="#icon-history"/></svg> Historial
-                </button>
+            <div class="menu-tres-puntos" style="margin-top:8px;text-align:right;">
+                <button class="btn-puntos" onclick="event.stopPropagation(); toggleMenu(event, '${v.cedula}')">⋯</button>
+                <div class="dropdown" id="menu-${v.cedula}">
+                    <a href="#" onclick="event.preventDefault(); abrirHistorial('${v.cedula}', ${jsEscape(v.nombre)})"><span class="material-icons">history</span> Historial</a>
+                    <a href="#" onclick="event.preventDefault(); abrirModalObservacion('${v.cedula}', ${jsEscape(v.nombre)})"><span class="material-icons">edit</span> Observación</a>
+                    <a href="#" onclick="event.preventDefault(); eliminarIndividual('${v.cedula}')"><span class="material-icons">delete</span> Eliminar</a>
+                </div>
             </div>
         </div>`;
 }
 
-window.activarBusquedaGlobal = function() {
-    state.searchAllStates = true;
-    state.pagination.page = 1;
-    renderTablaVotantes();
+// ═══════════════════════════════════════════════════════════════
+//  CHECKBOXES Y SELECCIÓN MÚLTIPLE
+// ═══════════════════════════════════════════════════════════════
+window.handleCheckboxChange = function(checkbox) {
+    const cedula = checkbox.dataset.cedula;
+    if (checkbox.checked) selectedCedulas.add(cedula);
+    else selectedCedulas.delete(cedula);
+    actualizarBarraSeleccion();
+    // Sincronizar checkbox maestro
+    const master = document.getElementById("checkbox-todos");
+    if (master) {
+        const allCheckboxes = document.querySelectorAll('.sel-checkbox');
+        master.checked = allCheckboxes.length > 0 && [...allCheckboxes].every(cb => cb.checked);
+    }
 };
-window.desactivarBusquedaGlobal = function() {
-    state.searchAllStates = false;
-    state.pagination.page = 1;
-    renderTablaVotantes();
+
+window.toggleTodosCheckbox = function() {
+    const master = document.getElementById("checkbox-todos");
+    const checkboxes = document.querySelectorAll(".sel-checkbox");
+    checkboxes.forEach(cb => {
+        cb.checked = master.checked;
+        if (master.checked) selectedCedulas.add(cb.dataset.cedula);
+        else selectedCedulas.delete(cb.dataset.cedula);
+    });
+    actualizarBarraSeleccion();
+};
+
+window.seleccionarTodosCheckbox = function() {
+    document.querySelectorAll(".sel-checkbox").forEach(cb => { cb.checked = true; selectedCedulas.add(cb.dataset.cedula); });
+    const master = document.getElementById("checkbox-todos");
+    if (master) master.checked = true;
+    actualizarBarraSeleccion();
+};
+
+window.deseleccionarTodos = function() {
+    document.querySelectorAll(".sel-checkbox").forEach(cb => { cb.checked = false; });
+    selectedCedulas.clear();
+    const master = document.getElementById("checkbox-todos");
+    if (master) master.checked = false;
+    actualizarBarraSeleccion();
+};
+
+function actualizarBarraSeleccion() {
+    const barra = document.getElementById("barra-seleccion");
+    const contador = document.getElementById("contador-seleccion");
+    if (!barra) return;
+    const count = selectedCedulas.size;
+    if (count > 0) {
+        barra.style.display = "flex";
+        if (contador) contador.textContent = `${count} seleccionado${count>1?'s':''}`;
+    } else {
+        barra.style.display = "none";
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MENÚ DE 3 PUNTOS
+// ═══════════════════════════════════════════════════════════════
+window.toggleMenu = function(event, cedula) {
+    event.stopPropagation();
+    document.querySelectorAll('.menu-tres-puntos .dropdown').forEach(d => d.classList.remove('show'));
+    const menu = document.getElementById(`menu-${cedula}`);
+    if (menu) menu.classList.toggle('show');
+};
+
+document.addEventListener('click', () => {
+    document.querySelectorAll('.menu-tres-puntos .dropdown').forEach(d => d.classList.remove('show'));
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  ELIMINACIÓN INDIVIDUAL (desde menú)
+// ═══════════════════════════════════════════════════════════════
+window.eliminarIndividual = async function(cedula) {
+    if (!state.currentUser?.isAdmin) {
+        toast("Solo el administrador puede eliminar registros.", "error");
+        return;
+    }
+    if (!confirm(`¿Eliminar definitivamente al votante CI ${cedula}?`)) return;
+    try {
+        await deleteDoc(doc(db, "padron_extra", cedula));
+        await deleteDoc(doc(db, "votos", cedula));
+        state.padron = state.padron.filter(p => p.cedula !== cedula);
+        delete state.votos[cedula];
+        selectedCedulas.delete(cedula);
+        toast("Registro eliminado.", "ok");
+        registrarBitacora("Eliminar Votante", `Eliminó CI ${cedula}`);
+        actualizarDashboard();
+        renderTablaVotantes();
+    } catch (e) {
+        toast("Error al eliminar. Verificá la conexión.", "error");
+    }
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  HISTORIAL DE CAMBIOS
+//  ELIMINACIÓN MÚLTIPLE (desde barra de selección)
+// ═══════════════════════════════════════════════════════════════
+window.pedirConfirmacionEliminar = function() {
+    if (selectedCedulas.size === 0) return;
+    if (!state.currentUser?.isAdmin) {
+        toast("Solo el administrador puede eliminar registros.", "error");
+        return;
+    }
+    const n = selectedCedulas.size;
+    const txt = document.getElementById("modal-eliminar-texto");
+    if (txt) txt.textContent = `¿Estás seguro que querés eliminar ${n} registro${n > 1 ? "s" : ""} de la planilla? Esta acción no se puede deshacer.`;
+    abrirModal("modal-eliminar-confirm");
+};
+
+window.confirmarEliminarSeleccionados = async function() {
+    if (!state.currentUser?.isAdmin || selectedCedulas.size === 0) return;
+    cerrarModal("modal-eliminar-confirm");
+
+    const cedulas = [...selectedCedulas];
+    let ok = 0, err = 0;
+
+    for (const cedula of cedulas) {
+        try {
+            await deleteDoc(doc(db, "padron_extra", cedula));
+            await deleteDoc(doc(db, "votos", cedula));
+            state.padron = state.padron.filter(p => p.cedula !== cedula);
+            delete state.votos[cedula];
+            ok++;
+        } catch (e) { console.error("Error eliminando", cedula, e); err++; }
+    }
+
+    await registrarBitacora("Eliminar Votantes",
+        `Admin eliminó ${ok} votante${ok > 1 ? "s" : ""}. Cédulas: ${cedulas.join(", ")}`);
+
+    selectedCedulas.clear();
+    const master = document.getElementById("checkbox-todos");
+    if (master) master.checked = false;
+    actualizarBarraSeleccion();
+    actualizarDashboard();
+    renderTablaVotantes();
+
+    toast(err === 0
+        ? `✔ ${ok} registro${ok > 1 ? "s eliminados" : " eliminado"} correctamente.`
+        : `⚠ ${ok} eliminados, ${err} con error.`,
+        err === 0 ? "ok" : "warn");
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  HISTORIAL DE CAMBIOS (sin cambios)
 // ═══════════════════════════════════════════════════════════════
 window.abrirHistorial = async function(cedula, nombre) {
     document.getElementById("modal-hist-nombre").textContent = `${nombre} (CI: ${cedula})`;
@@ -954,7 +1052,7 @@ window.abrirHistorial = async function(cedula, nombre) {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  ACCIONES DE VOTO
+//  ACCIONES DE VOTO (sin cambios)
 // ═══════════════════════════════════════════════════════════════
 window.accionVoto = function(cedula, accion) {
     const actual = getVoto(cedula);
@@ -1034,7 +1132,7 @@ async function guardarVoto(cedula, voto, observaciones, accionBit, detalleBit, e
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  OBSERVACIONES — modal
+//  OBSERVACIONES — modal (sin cambios)
 // ═══════════════════════════════════════════════════════════════
 let _obsPendiente = null;
 
@@ -1092,11 +1190,7 @@ window.actualizarObservacion = async function(cedula, texto, nombre) {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  ADMIN: VOTANTES — Carga únicamente desde Padrón ANR
-//  (La función manual fue eliminada. Usar agregarDesdePardon().)
-
-// ═══════════════════════════════════════════════════════════════
-//  ADMIN: OPERADORES
+//  ADMIN: OPERADORES (sin cambios, salvo iconos)
 // ═══════════════════════════════════════════════════════════════
 async function cargarUsuarios() {
     try {
@@ -1117,7 +1211,6 @@ async function handleRegistrarUsuario(e) {
 
     if (!local) {
         toast("Seleccioná un local para el operador.", "error");
-        // Highlight the picker
         const picker = document.getElementById("reg-local-picker");
         if (picker) {
             picker.style.outline = "2px solid var(--color-primary)";
@@ -1139,7 +1232,6 @@ async function handleRegistrarUsuario(e) {
         toast(`✔ Operador "${fullname}" creado correctamente.`);
         await registrarBitacora("Nuevo Operador", `Creó operador ${fullname} (usuario: ${username})${local ? " · Local: "+local : ""}`);
         document.getElementById("register-user-form").reset();
-        // Reset visual picker
         const lp = document.getElementById("reg-local-picker");
         if (lp) lp.querySelectorAll(".local-picker-btn").forEach(b => {
             b.classList.remove("selected");
@@ -1187,8 +1279,7 @@ function renderTablaUsuarios() {
             <td>
                 ${waLink
                     ? `<a href="${waLink}" target="_blank" rel="noopener" class="wa-link">
-                           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:4px"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
-                           ${escHtml(u.phone)}
+                           <span class="material-icons" style="font-size:16px;">phone</span> ${escHtml(u.phone)}
                        </a>`
                     : escHtml(u.phone || "---")
                 }
@@ -1199,13 +1290,11 @@ function renderTablaUsuarios() {
                 <div style="display:flex;gap:6px;align-items:center;">
                     <button class="btn-secondary" onclick="abrirCambiarPassword('${escHtml(u.username)}')"
                         style="padding:7px 11px;font-size:.75rem;font-weight:800;display:flex;align-items:center;gap:4px;">
-                        <svg class="icon" style="width:12px;height:12px;color:var(--color-primary);margin:0"><use href="#icon-lock"/></svg>
-                        Clave
+                        <span class="material-icons" style="font-size:14px;">lock</span> Clave
                     </button>
                     <button class="btn-icon-danger" onclick="deleteUser('${escHtml(u.username)}')" title="Eliminar operador"
                         style="padding:7px 10px;font-size:.75rem;font-weight:800;display:flex;align-items:center;gap:4px;width:auto;height:auto;border-radius:var(--r-md);">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                        Eliminar
+                        <span class="material-icons" style="font-size:14px;">delete</span> Eliminar
                     </button>
                 </div>
             </td>`;
@@ -1214,22 +1303,19 @@ function renderTablaUsuarios() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  CARGAR LOCALES (desde configuración fija)
+//  LOCALES CONFIG (sin cambios)
 // ═══════════════════════════════════════════════════════════════
 const LOCALES_CONFIG = {
-    "GIMNASIO MUNICIPAL":                   { mesaMin: 1,  mesaMax: 20, color: "#B91C1C", colorSoft: "#FCA5A5", icon: "icon-gym"     },
-    "COLEGIO NACIONAL SEBASTIAN DE YEGROS": { mesaMin: 21, mesaMax: 40, color: "#1E40AF", colorSoft: "#93C5FD", icon: "icon-colegio" },
-    "ESC.CARLOS ANTONIO LOPEZ":             { mesaMin: 41, mesaMax: 65, color: "#15803D", colorSoft: "#86EFAC", icon: "icon-school"  }
+    "GIMNASIO MUNICIPAL":                   { mesaMin: 1,  mesaMax: 20, color: "#B91C1C", colorSoft: "#FCA5A5", icon: "fitness_center" },
+    "COLEGIO NACIONAL SEBASTIAN DE YEGROS": { mesaMin: 21, mesaMax: 40, color: "#1E40AF", colorSoft: "#93C5FD", icon: "school" },
+    "ESC.CARLOS ANTONIO LOPEZ":             { mesaMin: 41, mesaMax: 65, color: "#15803D", colorSoft: "#86EFAC", icon: "local_library" }
 };
 
-const LOCAL_COLOR_FALLBACK      = "#9CA3AF";
-const LOCAL_COLOR_FALLBACK_SOFT = "#D1D5DB";
-
 function getColorLocal(local) {
-    return (LOCALES_CONFIG[local] && LOCALES_CONFIG[local].color) || LOCAL_COLOR_FALLBACK;
+    return (LOCALES_CONFIG[local] && LOCALES_CONFIG[local].color) || "#9CA3AF";
 }
 function getColorLocalSoft(local) {
-    return (LOCALES_CONFIG[local] && LOCALES_CONFIG[local].colorSoft) || LOCAL_COLOR_FALLBACK_SOFT;
+    return (LOCALES_CONFIG[local] && LOCALES_CONFIG[local].colorSoft) || "#D1D5DB";
 }
 
 function normalizarLocal(nombre) {
@@ -1252,7 +1338,6 @@ function determinarLocal(votante) {
 }
 
 async function cargarLocalesDesdePadron() {
-    // Poblar selector visual de locales en formulario de operadores
     const localPickerWrap = document.getElementById("reg-local-picker");
     const localHidden = document.getElementById("reg-local-value");
     if (localPickerWrap) {
@@ -1265,7 +1350,7 @@ async function cargarLocalesDesdePadron() {
             btn.style.setProperty("--lc", conf.color);
             btn.style.setProperty("--ls", conf.colorSoft);
             btn.innerHTML = `
-                <svg width="13" height="13" style="color:${conf.color}"><use href="#${conf.icon}"/></svg>
+                <span class="material-icons" style="color:${conf.color}; font-size:18px;">${conf.icon}</span>
                 <span>${loc}</span>
                 <span class="lp-mesas" style="color:${conf.color}">M${conf.mesaMin}–${conf.mesaMax}</span>`;
             btn.addEventListener("click", () => {
@@ -1277,10 +1362,8 @@ async function cargarLocalesDesdePadron() {
             });
             localPickerWrap.appendChild(btn);
         });
-        // Reset on re-open
         if (localHidden) localHidden.value = "";
     }
-    // Fallback: si existe el <select> viejo, también poblarlo
     const select = document.getElementById("reg-local");
     if (select) {
         select.innerHTML = '<option value="">Seleccionar local...</option>';
@@ -1294,9 +1377,9 @@ async function cargarLocalesDesdePadron() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ESTADÍSTICAS (sin selector de locales, con clic en barras)
+//  ESTADÍSTICAS (con mesas completas)
 // ═══════════════════════════════════════════════════════════════
-let currentStatsView = "locales"; // "locales" o "mesas"
+let currentStatsView = "locales";
 let currentLocalForMesas = null;
 
 const doughnutLabelsPlugin = {
@@ -1311,7 +1394,6 @@ const doughnutLabelsPlugin = {
             const value = dataset.data[i];
             if (!value) return;
             const pct = ((value / total) * 100).toFixed(1) + '%';
-            // Calcular centro del arco de forma manual
             const radius = (arc.outerRadius + arc.innerRadius) / 2;
             const angle = (arc.startAngle + arc.endAngle) / 2;
             const x = arc.x + radius * Math.cos(angle);
@@ -1342,19 +1424,19 @@ function renderLocalesSummary() {
             total++;
             if (getVoto(v.cedula) === "Votó") voted++;
         });
-        if (total === 0 && local === "OTRO") return; // ocultar OTRO si está vacío
+        if (total === 0 && local === "OTRO") return;
 
         const pct = total ? Math.round((voted/total)*100) : 0;
         const color = getColorLocal(local);
         const colorSoft = getColorLocalSoft(local);
-        const icon  = (conf && conf.icon) || "icon-grid";
+        const icon  = (conf && conf.icon) || "grid_view";
 
         const card = document.createElement("div");
         card.className = "local-card";
         card.style.borderLeftColor = color;
         card.innerHTML = `
             <div class="local-card-name" style="color:${color}">
-                <svg width="14" height="14"><use href="#${icon}"/></svg>
+                <span class="material-icons" style="font-size:18px;">${icon}</span>
                 ${local}
             </div>
             <div class="local-card-num" style="color:${color}">${voted}<span style="font-size:.85rem;color:var(--color-gray);font-weight:700;"> / ${total}</span></div>
@@ -1362,18 +1444,16 @@ function renderLocalesSummary() {
             <div class="local-card-bar"><div class="local-card-bar-fill" style="width:${pct}%;background:linear-gradient(90deg, ${color}, ${colorSoft})"></div></div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-top:5px;">
                 <div class="local-card-pct" style="color:${color}">${pct}% de participación</div>
-                ${local !== "OTRO" ? `<span style="font-size:.65rem;font-weight:800;color:${color};opacity:.7;display:flex;align-items:center;gap:2px;">Ver mesas <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="9 18 15 12 9 6"/></svg></span>` : ""}
+                ${local !== "OTRO" ? `<span style="font-size:.65rem;font-weight:800;color:${color};opacity:.7;display:flex;align-items:center;gap:2px;">Ver mesas <span class="material-icons" style="font-size:14px;">chevron_right</span></span>` : ""}
             </div>
         `;
         if (local !== "OTRO") {
             card.addEventListener("click", () => {
-                // Quitar activo de todos
                 document.querySelectorAll(".local-card").forEach(c => {
                     c.style.boxShadow = "";
                     c.style.outline = "";
                     c.style.transform = "";
                 });
-                // Activar este
                 card.style.boxShadow = `0 0 0 3px ${color}55, var(--shadow-md)`;
                 card.style.transform = "translateY(-2px)";
                 currentStatsView = "mesas";
@@ -1389,7 +1469,6 @@ function renderLocalesSummary() {
 }
 
 function renderStatsCharts() {
-    // Render summary cards always
     renderLocalesSummary();
 
     if (!state.padron.length) {
@@ -1400,8 +1479,6 @@ function renderStatsCharts() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
             }
         });
-        // Mostrar selector de locales cuando no hay datos
-        _renderSelectorLocales();
         return;
     }
 
@@ -1412,7 +1489,6 @@ function renderStatsCharts() {
     const mesaWrap  = document.getElementById("chart-mesa-wrap");
 
     if (currentStatsView === "mesas" && currentLocalForMesas) {
-        // ── Vista mesas: barras verticales mostrando votos por mesa (solo Votaron) ──
         const conf       = LOCALES_CONFIG[currentLocalForMesas];
         const colorLocal = getColorLocal(currentLocalForMesas);
         const colorSoftL = getColorLocalSoft(currentLocalForMesas);
@@ -1425,13 +1501,12 @@ function renderStatsCharts() {
         if (hintEl)    hintEl.style.display = "none";
         if (mesaWrap)  mesaWrap.style.display = "";
 
-        // Inyectar ícono del local en el encabezado
         if (iconWrap && conf) {
-            iconWrap.innerHTML = `<svg width="18" height="18" style="color:${colorLocal};flex-shrink:0"><use href="#${conf.icon}"/></svg>`;
+            iconWrap.innerHTML = `<span class="material-icons" style="color:${colorLocal}; font-size:20px;">${conf.icon}</span>`;
         }
 
         if (conf) {
-            // Construir datos por mesa — solo inscriptos del padrón
+            // Todas las mesas, incluso vacías
             const mesas = {};
             for (let m = conf.mesaMin; m <= conf.mesaMax; m++) {
                 mesas[m] = { voted: 0, noVoted: 0, pending: 0, total: 0 };
@@ -1447,18 +1522,17 @@ function renderStatsCharts() {
                 else                           mesas[numMesa].pending++;
             });
 
-            // Solo mesas con al menos 1 inscripto
-            const mesasActivas = Object.entries(mesas).filter(([, d]) => d.total > 0);
-            const labels    = mesasActivas.map(([m]) => `M${m}`);
-            const dataVoted = mesasActivas.map(([, d]) => d.voted);
-            const totals    = mesasActivas.map(([, d]) => d.total);
+            // Convertir a array con todas las mesas
+            const mesasActivas = Object.entries(mesas).map(([m, d]) => ({ mesa: m, ...d }));
+            const labels    = mesasActivas.map(d => `M${d.mesa}`);
+            const dataVoted = mesasActivas.map(d => d.voted);
+            const totals    = mesasActivas.map(d => d.total);
 
             const ctxMesa = document.getElementById("chart-mesa");
             if (ctxMesa) {
                 if (state.charts.mesa) state.charts.mesa.destroy();
 
                 const ctx2d = ctxMesa.getContext("2d");
-                // Un gradiente vertical único para todas las barras (color del local)
                 const grad = ctx2d.createLinearGradient(0, 0, 0, 280);
                 grad.addColorStop(0, colorLocal);
                 grad.addColorStop(1, colorSoftL + "99");
@@ -1523,11 +1597,9 @@ function renderStatsCharts() {
                 });
             }
 
-            // Tabla de detalle por mesa
             _renderTablaMesas(mesasActivas, colorLocal);
         }
     } else {
-        // ── Vista inicial: mostrar hint, ocultar gráfico ──
         currentStatsView = "locales";
         if (titleEl) {
             titleEl.textContent = "Tocá una tarjeta para ver votos por mesa";
@@ -1538,18 +1610,16 @@ function renderStatsCharts() {
         if (mesaWrap)  mesaWrap.style.display = "none";
         if (iconWrap)  iconWrap.innerHTML = "";
 
-        // Limpiar gráfico anterior
         const ctxMesa = document.getElementById("chart-mesa");
         if (ctxMesa) {
             if (state.charts.mesa) { state.charts.mesa.destroy(); state.charts.mesa = null; }
         }
 
-        // Limpiar tabla de mesas
         const tablaWrap = document.getElementById("mesa-tabla-wrap");
         if (tablaWrap) tablaWrap.innerHTML = "";
     }
 
-    // ── Gráfico de torta global (siempre visible) ──
+    // Gráfico global
     const total   = state.padron.length;
     const voted   = state.padron.filter(v => getVoto(v.cedula) === "Votó").length;
     const noVoted = state.padron.filter(v => getVoto(v.cedula) === "No Votó").length;
@@ -1593,7 +1663,7 @@ function renderStatsCharts() {
         });
     }
 
-    // ── Gráfico horario — hasta las 17:00 ──
+    // Gráfico horario
     const horas = {};
     for (let h = 7; h <= 17; h++) horas[`${h}:00`] = 0;
     Object.entries(state.votos).forEach(([, v]) => {
@@ -1648,11 +1718,6 @@ function renderStatsCharts() {
     }
 }
 
-// ── Selector de locales eliminado: ahora se usan las tarjetas de resumen ──
-function _renderSelectorLocales() { /* no-op */ }
-
-
-// ── Renderiza tabla de detalle por mesa ─────────────────────────
 function _renderTablaMesas(mesasActivas, colorLocal) {
     const tablaWrap = document.getElementById("mesa-tabla-wrap");
     if (!tablaWrap) return;
@@ -1663,20 +1728,20 @@ function _renderTablaMesas(mesasActivas, colorLocal) {
     }
 
     let totalVoted = 0, totalNoVoted = 0, totalPend = 0, totalTotal = 0;
-    mesasActivas.forEach(([, d]) => {
+    mesasActivas.forEach(d => {
         totalVoted  += d.voted;
         totalNoVoted += d.noVoted;
         totalPend   += d.pending;
         totalTotal  += d.total;
     });
 
-    const rows = mesasActivas.map(([mesa, d]) => {
+    const rows = mesasActivas.map(d => {
         const pct = d.total ? ((d.voted / d.total) * 100).toFixed(1) : "0.0";
         const pctNum = parseFloat(pct);
         const barColor = pctNum >= 70 ? "#15803D" : pctNum >= 40 ? colorLocal : "#9CA3AF";
         return `
         <tr>
-            <td><strong style="color:${colorLocal}">M${mesa}</strong></td>
+            <td><strong style="color:${colorLocal}">M${d.mesa}</strong></td>
             <td style="text-align:center;">${d.total}</td>
             <td style="text-align:center;"><span style="color:#15803D;font-weight:800;">${d.voted}</span></td>
             <td style="text-align:center;"><span style="color:#B91C1C;font-weight:700;">${d.noVoted}</span></td>
@@ -1697,7 +1762,7 @@ function _renderTablaMesas(mesasActivas, colorLocal) {
     tablaWrap.innerHTML = `
         <div style="margin-top:18px;background:#fff;border:1px solid var(--color-border);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow-sm);">
             <div style="padding:10px 16px;background:linear-gradient(135deg,${colorLocal},${colorLocal}cc);display:flex;align-items:center;gap:8px;">
-                <svg width="14" height="14" style="color:#fff"><use href="#icon-list"/></svg>
+                <span class="material-icons" style="color:#fff; font-size:18px;">list</span>
                 <span style="color:#fff;font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.5px;">Detalle por Mesa — ${currentLocalForMesas}</span>
             </div>
             <div style="overflow-x:auto;">
@@ -1735,7 +1800,7 @@ window.volverALocales = function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  MODALES
+//  MODALES (sin cambios)
 // ═══════════════════════════════════════════════════════════════
 function abrirModal(id) {
     const el = document.getElementById(id);
@@ -1749,7 +1814,7 @@ function cerrarModal(id) {
 window.closeModal = cerrarModal;
 
 // ═══════════════════════════════════════════════════════════════
-//  TOASTS
+//  TOASTS (sin cambios)
 // ═══════════════════════════════════════════════════════════════
 function toast(msg, tipo = "ok") {
     const el = document.createElement("div");
@@ -1765,7 +1830,7 @@ function toast(msg, tipo = "ok") {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  STATUS DOT
+//  STATUS DOT (sin cambios)
 // ═══════════════════════════════════════════════════════════════
 function setStatus(online) {
     const dot   = document.getElementById("status-dot");
@@ -1775,7 +1840,7 @@ function setStatus(online) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  UTILIDADES
+//  UTILIDADES (sin cambios)
 // ═══════════════════════════════════════════════════════════════
 function escHtml(str) {
     return String(str ?? "")
@@ -1799,7 +1864,7 @@ function debounce(fn, ms = 300) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  EXPORTAR XLSX (Planilla simple)
+//  EXPORTAR XLSX (sin cambios)
 // ═══════════════════════════════════════════════════════════════
 window.exportarXLSX = function() {
     const filas = [["N°","Nombre","Cédula","Domicilio","Local","Mesa","Orden","Estado","Operador","Observación"]];
@@ -1833,12 +1898,11 @@ window.exportarXLSX = function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  EXPORTAR ESTADÍSTICAS XLSX (Admin — 4 hojas)
+//  EXPORTAR ESTADÍSTICAS XLSX (sin cambios)
 // ═══════════════════════════════════════════════════════════════
 window.exportarEstadisticasXLSX = function() {
     const wb = XLSX.utils.book_new();
 
-    // 1. Planilla
     const filasPlanilla = [["N°","Nombre","Cédula","Domicilio","Local","Mesa","Orden","Estado","Operador","Observación"]];
     state.padron.forEach((v, i) => {
         filasPlanilla.push([
@@ -1848,7 +1912,6 @@ window.exportarEstadisticasXLSX = function() {
     });
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasPlanilla), "Planilla");
 
-    // 2. Por Local
     const locales = {};
     state.padron.forEach(v => {
         const loc = v.local || "Sin local";
@@ -1866,7 +1929,6 @@ window.exportarEstadisticasXLSX = function() {
     });
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasLocal), "Por Local");
 
-    // 3. Por Mesa
     const mesas = {};
     state.padron.forEach(v => {
         if (!v.mesa) return;
@@ -1885,7 +1947,6 @@ window.exportarEstadisticasXLSX = function() {
     });
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasMesa), "Por Mesa");
 
-    // 4. Resumen General
     const total = state.padron.length;
     const voted = state.padron.filter(v => getVoto(v.cedula)==="Votó").length;
     const noVoted = state.padron.filter(v => getVoto(v.cedula)==="No Votó").length;
@@ -1910,7 +1971,7 @@ window.exportarEstadisticasXLSX = function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  CAMBIAR CONTRASEÑA DE OPERADOR
+//  CAMBIAR CONTRASEÑA (sin cambios)
 // ═══════════════════════════════════════════════════════════════
 window.abrirCambiarPassword = function(username) {
     const u = state.usuarios.find(x => x.username === username);
@@ -1949,7 +2010,7 @@ window.confirmarCambiarPassword = async function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  BIND EVENTOS
+//  BIND EVENTOS (actualizado con barra inferior)
 // ═══════════════════════════════════════════════════════════════
 function bindEvents() {
     document.getElementById("login-form").addEventListener("submit", handleLogin);
@@ -1960,28 +2021,12 @@ function bindEvents() {
     document.getElementById("btn-filter-voted").addEventListener("click",   () => cambiarFiltro("Votó"));
     document.getElementById("btn-filter-novoted").addEventListener("click", () => cambiarFiltro("No Votó"));
 
-    document.querySelectorAll(".dash-row[data-filter]").forEach(row => {
-        row.addEventListener("click", () => {
-            const f = row.getAttribute("data-filter");
-            if (f) {
-                const tabPlanilla = document.getElementById("tab-planilla");
-                if (tabPlanilla && !tabPlanilla.classList.contains("active")) {
-                    switchTab("planilla");
-                    setTimeout(() => cambiarFiltro(f), 50);
-                } else {
-                    cambiarFiltro(f);
-                }
-            }
-        });
-    });
-
     document.getElementById("tab-planilla").addEventListener("click",   () => switchTab("planilla"));
     document.getElementById("tab-stats").addEventListener("click",      () => switchTab("stats"));
     document.getElementById("tab-admin").addEventListener("click",      () => switchTab("admin"));
     document.getElementById("tab-padron-anr").addEventListener("click", () => switchTab("padron-anr"));
 
-    document.getElementById("register-user-form").addEventListener("submit",    handleRegistrarUsuario);
-    // Carga manual de votantes eliminada — todo se gestiona desde la pestaña Padrón ANR
+    document.getElementById("register-user-form").addEventListener("submit", handleRegistrarUsuario);
 
     ["modal-novoto","modal-chpass","modal-obs-confirm","modal-historial"].forEach(id => {
         const el = document.getElementById(id);
@@ -2020,10 +2065,18 @@ function bindEvents() {
     if (padronInp) padronInp.addEventListener("keydown", e => {
         if (e.key === "Enter") buscarPadronANR();
     });
+
+    // ── Barra de navegación inferior ──
+    document.querySelectorAll('.bottom-nav-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tab = btn.dataset.tab;
+            switchTab(tab);
+        });
+    });
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  PADRÓN ANR — Consulta desde CSV local
+//  PADRÓN ANR (sin cambios, solo iconos Material)
 // ═══════════════════════════════════════════════════════════════
 let _padronCache = null;
 
@@ -2076,7 +2129,7 @@ window.buscarPadronANR = async function() {
         btnAgregar.disabled = false;
         btnAgregar.style.background = "";
         btnAgregar.style.borderColor = "";
-        btnAgregar.innerHTML = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Añadir a la planilla`;
+        btnAgregar.innerHTML = `<span class="material-icons">add</span> Añadir a la planilla`;
     }
 
     try {
@@ -2099,7 +2152,7 @@ window.buscarPadronANR = async function() {
                 `Consultó CI ${cedula} → ${persona.NOMBRES} ${persona.APELLIDOS} · Mesa ${persona.MESA}`);
         } else {
             error.innerHTML = `
-                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#B91C1C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 10px;display:block;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span class="material-icons" style="font-size:48px;color:#B91C1C;">error_outline</span>
                 <div style="font-size:.92rem;font-weight:800;color:#B91C1C;margin-bottom:5px;">No está en el padrón</div>
                 <div style="font-size:.8rem;color:#6B7280;">La cédula <strong style="color:#374151;">${cedula}</strong> no figura en el padrón ANR de San Estanislao 2026.</div>`;
             error.style.display = "block";
@@ -2108,7 +2161,7 @@ window.buscarPadronANR = async function() {
     } catch (err) {
         loading.style.display = "none";
         error.innerHTML = `
-            <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 10px;display:block;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span class="material-icons" style="font-size:48px;color:#B45309;">warning_amber</span>
             <div style="font-size:.88rem;font-weight:800;color:#B45309;margin-bottom:5px;">No se pudo cargar el padrón</div>
             <div style="font-size:.78rem;color:#6B7280;">${escHtml(err.message)}</div>`;
         error.style.display = "block";
@@ -2116,9 +2169,6 @@ window.buscarPadronANR = async function() {
     }
 };
 
-// ═══════════════════════════════════════════════════════════════
-//  AÑADIR DESDE PADRÓN → PLANILLA
-// ═══════════════════════════════════════════════════════════════
 function normalizarCedula(c) {
     return String(c).replace(/[\s\-]/g, "").replace(/^0+/, "");
 }
@@ -2185,7 +2235,7 @@ window.agregarDesdePardon = async function() {
         toast("Error al guardar. Verificá la conexión.", "error");
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Añadir a la planilla`;
+            btn.innerHTML = `<span class="material-icons">add</span> Añadir a la planilla`;
         }
     }
 };
@@ -2197,211 +2247,29 @@ function _marcarBtnAgregado(exito) {
     if (exito) {
         btn.style.background = "linear-gradient(135deg, #15803D, #166534)";
         btn.style.borderColor = "#166534";
-        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Ya está en la planilla`;
+        btn.innerHTML = `<span class="material-icons">check</span> Ya está en la planilla`;
     } else {
         btn.style.background = "linear-gradient(135deg, #B45309, #92400E)";
         btn.style.borderColor = "#78350F";
-        btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Ya existe en la planilla`;
+        btn.innerHTML = `<span class="material-icons">error</span> Ya existe en la planilla`;
     }
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  MODO ELIMINACIÓN — Solo ADMIN (con delegación de eventos)
+//  LIMPIAR BITÁCORA (solo admin)
 // ═══════════════════════════════════════════════════════════════
-const elimState = {
-    activo:        false,
-    seleccionados: new Set()
-};
-
-function actualizarBotonTrash() {
-    const btn = document.getElementById("btn-trash-flotante");
-    if (!btn) return;
-    if (state.currentUser?.isAdmin) {
-        btn.classList.remove("hidden");
-        btn.title = elimState.activo ? "Cancelar selección" : "Eliminar registros";
-    } else {
-        btn.classList.add("hidden");
-        if (elimState.activo) cancelarModoEliminar();
-    }
-}
-
-function toggleModoEliminar() {
+window.limpiarBitacora = async function() {
     if (!state.currentUser?.isAdmin) return;
-    if (elimState.activo) {
-        cancelarModoEliminar();
-    } else {
-        activarModoEliminar();
-    }
-}
-
-window.activarModoEliminar = function() {
-    if (!state.currentUser?.isAdmin) return;
-    elimState.activo = true;
-    elimState.seleccionados.clear();
-
-    document.getElementById("cards-container")?.classList.add("modo-eliminar");
-    document.querySelector(".tabla-desktop")?.classList.add("modo-eliminar");
-
-    const btnTrash = document.getElementById("btn-trash-flotante");
-    if (btnTrash) {
-        btnTrash.classList.add("modo-activo");
-        btnTrash.title = "Cancelar selección";
-    }
-
-    document.getElementById("banner-eliminar")?.classList.remove("hidden");
-    actualizarBannerCount();
+    if (!confirm("¿Estás seguro de borrar TODA la bitácora? Esta acción no se puede deshacer.")) return;
+    const snap = await getDocs(collection(db, "bitacora"));
+    const batch = [];
+    snap.forEach(doc => batch.push(deleteDoc(doc.ref)));
+    await Promise.all(batch);
+    toast("Bitácora limpiada.", "ok");
 };
-
-window.cancelarModoEliminar = function() {
-    elimState.activo = false;
-    elimState.seleccionados.clear();
-
-    const cards = document.getElementById("cards-container");
-    const wrap  = document.querySelector(".tabla-desktop");
-    if (cards) {
-        cards.classList.remove("modo-eliminar");
-        cards.querySelectorAll(".card-votante.seleccionado").forEach(el => el.classList.remove("seleccionado"));
-    }
-    if (wrap) {
-        wrap.classList.remove("modo-eliminar");
-        wrap.querySelectorAll("tr.seleccionado").forEach(el => el.classList.remove("seleccionado"));
-    }
-
-    const btnTrash = document.getElementById("btn-trash-flotante");
-    if (btnTrash) {
-        btnTrash.classList.remove("modo-activo");
-        btnTrash.title = "Eliminar registros";
-    }
-
-    document.getElementById("banner-eliminar")?.classList.add("hidden");
-    cerrarModal("modal-eliminar-confirm");
-};
-
-window.seleccionarTodosEliminar = function() {
-    const cards = document.querySelectorAll('.card-votante[data-cedula]');
-    const filas = document.querySelectorAll('#votantes-table-body tr[data-cedula]');
-    const todos = [...cards, ...filas];
-    const todosSeleccionados = todos.every(el => el.classList.contains('seleccionado'));
-    todos.forEach(el => {
-        const cedula = el.dataset.cedula;
-        if (!cedula) return;
-        if (todosSeleccionados) {
-            el.classList.remove("seleccionado");
-            elimState.seleccionados.delete(cedula);
-        } else {
-            el.classList.add("seleccionado");
-            elimState.seleccionados.add(cedula);
-        }
-    });
-    actualizarBannerCount();
-};
-
-function _toggleSeleccion(cedula) {
-    const card = document.querySelector(`.card-votante[data-cedula="${cedula}"]`);
-    const fila = document.querySelector(`#votantes-table-body tr[data-cedula="${cedula}"]`);
-    if (elimState.seleccionados.has(cedula)) {
-        elimState.seleccionados.delete(cedula);
-        card?.classList.remove("seleccionado");
-        fila?.classList.remove("seleccionado");
-    } else {
-        elimState.seleccionados.add(cedula);
-        card?.classList.add("seleccionado");
-        fila?.classList.add("seleccionado");
-    }
-    actualizarBannerCount();
-}
-
-function actualizarBannerCount() {
-    const n = elimState.seleccionados.size;
-    const span = document.getElementById("banner-eliminar-count");
-    if (span) span.textContent = n === 0 ? "Ninguno seleccionado" : `${n} seleccionado${n > 1 ? "s" : ""}`;
-    const btn = document.getElementById("btn-eliminar-seleccionados");
-    if (btn) {
-        btn.style.opacity        = n > 0 ? "1" : ".4";
-        btn.style.pointerEvents  = n > 0 ? "auto" : "none";
-    }
-}
-
-window.pedirConfirmacionEliminar = function() {
-    if (!elimState.activo || elimState.seleccionados.size === 0) return;
-    const n = elimState.seleccionados.size;
-    const txt = document.getElementById("modal-eliminar-texto");
-    if (txt) txt.textContent =
-        `¿Estás seguro que querés eliminar ${n} registro${n > 1 ? "s" : ""} de la planilla? Esta acción no se puede deshacer.`;
-    abrirModal("modal-eliminar-confirm");
-};
-
-window.confirmarEliminarSeleccionados = async function() {
-    if (!state.currentUser?.isAdmin || elimState.seleccionados.size === 0) return;
-    cerrarModal("modal-eliminar-confirm");
-
-    const cedulas = [...elimState.seleccionados];
-    let ok = 0, err = 0;
-
-    for (const cedula of cedulas) {
-        try {
-            await deleteDoc(doc(db, "padron_extra", cedula));
-            await deleteDoc(doc(db, "votos", cedula));
-            state.padron = state.padron.filter(p => p.cedula !== cedula);
-            delete state.votos[cedula];
-            ok++;
-        } catch (e) { console.error("Error eliminando", cedula, e); err++; }
-    }
-
-    await registrarBitacora("Eliminar Votantes",
-        `Admin eliminó ${ok} votante${ok > 1 ? "s" : ""}. Cédulas: ${cedulas.join(", ")}`);
-
-    cancelarModoEliminar();
-    actualizarDashboard();
-    renderTablaVotantes();
-
-    toast(err === 0
-        ? `✔ ${ok} registro${ok > 1 ? "s eliminados" : " eliminado"} correctamente.`
-        : `⚠ ${ok} eliminados, ${err} con error.`,
-        err === 0 ? "ok" : "warn");
-};
-
-// Delegación de eventos para modo eliminar (evita conflictos con botones)
-document.addEventListener("DOMContentLoaded", () => {
-    const cardsContainer = document.getElementById("cards-container");
-    const tablaBody = document.getElementById("votantes-table-body");
-
-    if (cardsContainer) {
-        cardsContainer.addEventListener("click", (e) => {
-            if (!elimState.activo) return;
-            let target = e.target.closest(".card-votante");
-            if (!target) return;
-            // Si el clic fue sobre un botón o dentro de un botón, no seleccionar
-            if (e.target.closest("button") || e.target.closest(".btn-accion") || e.target.closest(".btn-obs") || e.target.closest(".btn-secondary")) {
-                return;
-            }
-            const cedula = target.dataset.cedula;
-            if (cedula) _toggleSeleccion(cedula);
-        });
-    }
-
-    if (tablaBody) {
-        tablaBody.addEventListener("click", (e) => {
-            if (!elimState.activo) return;
-            let target = e.target.closest("tr");
-            if (!target) return;
-            if (e.target.closest("button") || e.target.closest(".btn-accion") || e.target.closest(".btn-obs") || e.target.closest(".btn-secondary")) {
-                return;
-            }
-            const cedula = target.dataset.cedula;
-            if (cedula) _toggleSeleccion(cedula);
-        });
-    }
-
-    // Botón flotante toggle
-    const btnTrash = document.getElementById("btn-trash-flotante");
-    if (btnTrash) {
-        btnTrash.addEventListener("click", toggleModoEliminar);
-    }
-});
 
 // ═══════════════════════════════════════════════════════════════
-//  FILTROS Y NAVEGACIÓN
+//  FILTROS Y NAVEGACIÓN (con barra inferior)
 // ═══════════════════════════════════════════════════════════════
 function cambiarFiltro(destino) {
     state.currentFilter = destino;
@@ -2434,7 +2302,6 @@ function switchTab(tab) {
     const admin        = document.getElementById("view-admin");
     const padronAnr    = document.getElementById("view-padron-anr");
     const fw           = document.getElementById("filter-wrapper");
-    const metrics      = document.getElementById("metrics-wrapper");
     const tabPlanilla  = document.getElementById("tab-planilla");
     const tabStats     = document.getElementById("tab-stats");
     const tabAdmin     = document.getElementById("tab-admin");
@@ -2449,7 +2316,6 @@ function switchTab(tab) {
     admin.style.display = "none";
     if (padronAnr) padronAnr.style.display = "none";
     if (fw)        fw.style.display        = "none";
-    if (metrics)   metrics.style.display   = "none";
     if (tabPlanilla)  tabPlanilla.classList.remove("active");
     if (tabStats)     tabStats.classList.remove("active");
     if (tabAdmin)     tabAdmin.classList.remove("active");
@@ -2458,7 +2324,6 @@ function switchTab(tab) {
     if (tab === "planilla") {
         planilla.style.display = "";
         if (fw)        fw.style.display      = "block";
-        if (metrics)   metrics.style.display = "grid";
         if (tabPlanilla) tabPlanilla.classList.add("active");
         state.currentFilter = "todos";
         renderTablaVotantes();
@@ -2466,7 +2331,6 @@ function switchTab(tab) {
         stats.style.display = "block";
         stats.classList.add("visible");
         if (tabStats) tabStats.classList.add("active");
-        // Reiniciar vista de estadísticas
         currentStatsView = "locales";
         currentLocalForMesas = null;
         renderStatsCharts();
@@ -2490,9 +2354,14 @@ function switchTab(tab) {
         if (lod) lod.style.display = "none";
         setTimeout(() => { if (inp) inp.focus(); }, 100);
     }
+
+    // Sincronizar barra inferior
+    document.querySelectorAll('.bottom-nav-item').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === tab);
+    });
 }
 
-// Exponer funciones globales necesarias
+// Exponer funciones globales
 window.exportarXLSX = exportarXLSX;
 window.exportarEstadisticasXLSX = exportarEstadisticasXLSX;
 window.accionVoto = accionVoto;
@@ -2510,9 +2379,12 @@ window.buscarPadronANR = buscarPadronANR;
 window.abrirCambiarPassword = abrirCambiarPassword;
 window.confirmarCambiarPassword = confirmarCambiarPassword;
 window.deleteUser = deleteUser;
-window.toggleModoEliminar = toggleModoEliminar;
-window.activarModoEliminar = activarModoEliminar;
-window.cancelarModoEliminar = cancelarModoEliminar;
-window.seleccionarTodosEliminar = seleccionarTodosEliminar;
+window.handleCheckboxChange = handleCheckboxChange;
+window.toggleTodosCheckbox = toggleTodosCheckbox;
+window.seleccionarTodosCheckbox = seleccionarTodosCheckbox;
+window.deseleccionarTodos = deseleccionarTodos;
 window.pedirConfirmacionEliminar = pedirConfirmacionEliminar;
 window.confirmarEliminarSeleccionados = confirmarEliminarSeleccionados;
+window.eliminarIndividual = eliminarIndividual;
+window.toggleMenu = toggleMenu;
+window.limpiarBitacora = limpiarBitacora;

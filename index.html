@@ -1000,7 +1000,132 @@
         }
         #btn-volver-locales {
             margin-left: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
+
+        /* ═══════════════════════════════════════
+           STATS - LOCAL SUMMARY CARDS
+           ═══════════════════════════════════════ */
+        .locales-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+        .local-card {
+            background: #fff;
+            border: 1px solid var(--color-border);
+            border-radius: var(--r-lg);
+            padding: 14px 16px;
+            box-shadow: var(--shadow-sm);
+            cursor: pointer;
+            transition: all var(--t-base);
+            position: relative;
+            overflow: hidden;
+            border-left: 5px solid var(--color-primary-accent);
+        }
+        .local-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--color-primary);
+        }
+        .local-card::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent 60%, var(--color-primary-light) 100%);
+            opacity: 0;
+            transition: opacity var(--t-base);
+            pointer-events: none;
+        }
+        .local-card:hover::after { opacity: .5; }
+        .local-card-name {
+            font-size: .72rem;
+            font-weight: 800;
+            color: var(--color-text-soft);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        .local-card-num {
+            font-size: 1.7rem;
+            font-weight: 900;
+            color: var(--color-primary);
+            line-height: 1;
+            letter-spacing: -1px;
+        }
+        .local-card-meta {
+            font-size: .72rem;
+            color: var(--color-gray);
+            font-weight: 600;
+            margin-top: 4px;
+        }
+        .local-card-bar {
+            margin-top: 10px;
+            height: 6px;
+            background: var(--color-bg-alt);
+            border-radius: 100px;
+            overflow: hidden;
+        }
+        .local-card-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--color-success), #22C55E);
+            border-radius: 100px;
+            transition: width .8s cubic-bezier(.4, 0, .2, 1);
+        }
+        .local-card-pct {
+            font-size: .7rem;
+            font-weight: 800;
+            color: var(--color-success);
+            margin-top: 5px;
+        }
+
+        /* ═══════════════════════════════════════
+           INFO BANNER (Padrón → Planilla)
+           ═══════════════════════════════════════ */
+        .info-banner {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 16px 18px;
+            background: linear-gradient(135deg, #FFF1F1 0%, #FFFAFA 100%);
+            border: 1px solid var(--color-primary-soft);
+            border-left: 5px solid var(--color-primary-accent);
+            border-radius: var(--r-lg);
+            box-shadow: var(--shadow-sm);
+        }
+        .info-banner-icon {
+            flex-shrink: 0;
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--color-primary-accent), var(--color-primary-hover));
+            border-radius: var(--r-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            box-shadow: var(--shadow-red);
+        }
+        .info-banner-body { flex: 1; }
+        .info-banner-title {
+            font-size: .92rem;
+            font-weight: 900;
+            color: var(--color-dark);
+            text-transform: uppercase;
+            letter-spacing: .3px;
+            margin-bottom: 4px;
+        }
+        .info-banner-text {
+            font-size: .82rem;
+            color: var(--color-text-soft);
+            line-height: 1.5;
+        }
+        .info-banner-text strong { color: var(--color-primary); }
     </style>
 </head>
 <body>
@@ -1159,15 +1284,28 @@
         <div id="pagination-controls" style="margin-top:12px;"></div>
     </div>
 
-    <!-- ESTADÍSTICAS (sin selector de local, con botón volver) -->
+    <!-- ESTADÍSTICAS (sin selector de local, con tarjetas-resumen + drill-down por mesa) -->
     <div id="view-stats" style="display:none;">
+        <!-- Resumen de Locales (tarjetas clickeables) -->
+        <div id="locales-summary" class="locales-summary"></div>
+
         <div class="stats-grid">
             <div class="chart-card">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-                    <h4 style="margin:0;display:flex;align-items:center;gap:8px;"><svg width="16" height="16" style="color:var(--color-primary-accent)"><use href="#icon-bar-chart"/></svg><span id="bar-chart-title">Participación por Locales</span></h4>
-                    <button id="btn-volver-locales" class="btn-secondary hidden" onclick="volverALocales()" style="font-size:.75rem;padding:6px 12px;">← Volver a locales</button>
+                    <h4 style="margin:0;display:flex;align-items:center;gap:8px;">
+                        <svg width="16" height="16" style="color:var(--color-primary-accent)"><use href="#icon-bar-chart"/></svg>
+                        <span id="bar-chart-title">Participación por Locales</span>
+                    </h4>
+                    <button id="btn-volver-locales" class="btn-secondary hidden" onclick="volverALocales()" style="font-size:.75rem;padding:6px 12px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                        Volver a locales
+                    </button>
                 </div>
                 <div class="chart-wrap"><canvas id="chart-mesa"></canvas></div>
+                <p id="chart-hint" style="text-align:center;font-size:.72rem;color:var(--color-gray);margin-top:10px;font-weight:600;">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;"><path d="M9 11.24V7.5a2.5 2.5 0 0 1 5 0v3.74"/><path d="M14 11.5v-3a2.5 2.5 0 0 1 5 0v6a6 6 0 0 1-12 0V9a2.5 2.5 0 0 1 5 0v2"/></svg>
+                    Toca una barra para ver el desglose por mesa
+                </p>
             </div>
             <div class="chart-card"><h4><svg width="16" height="16" style="color:var(--color-success)"><use href="#icon-check"/></svg> Distribución General</h4><div class="chart-wrap"><canvas id="chart-global"></canvas></div></div>
         </div>
@@ -1190,17 +1328,15 @@
             <div class="admin-card"><h3><svg class="icon"><use href="#icon-download"/></svg>Exportar Planilla Excel (Estadísticas)</h3><p style="font-size:.82rem;color:var(--color-text-soft);margin-bottom:14px;">Descargá Excel completo con planilla, estadísticas por local, mesa y resumen.</p><button onclick="exportarEstadisticasXLSX()" class="btn-primary">Descargar Excel Completo</button></div>
         </div>
 
-        <!-- NUEVA TARJETA: Registrar Votante Manual -->
-        <div class="admin-card"><h3><svg class="icon"><use href="#icon-useradd"/></svg>Registrar Votante Manualmente</h3>
-            <form id="register-votante-form">
-                <div class="form-group"><label>Nombre completo</label><input type="text" id="vot-fullname" required placeholder="Ej. María Gómez"></div>
-                <div class="form-group"><label>Cédula</label><input type="text" id="vot-cedula" required placeholder="Ej. 1234567" inputmode="numeric"></div>
-                <div class="form-group"><label>Local</label><input type="text" id="vot-local" placeholder="Ej. GIMNASIO MUNICIPAL"></div>
-                <div class="form-group"><label>Mesa</label><input type="text" id="vot-mesa" placeholder="Número de mesa"></div>
-                <div class="form-group"><label>Orden</label><input type="text" id="vot-orden" placeholder="Número de orden"></div>
-                <div class="form-group"><label>Domicilio</label><input type="text" id="vot-domicilio" placeholder="Opcional"></div>
-                <button type="submit" class="btn-primary">Registrar Votante</button>
-            </form>
+        <!-- BANNER INFORMATIVO: Carga desde Padrón ANR -->
+        <div class="info-banner" style="grid-column:1/-1;">
+            <div class="info-banner-icon">
+                <svg width="22" height="22"><use href="#icon-file-text"/></svg>
+            </div>
+            <div class="info-banner-body">
+                <div class="info-banner-title">Carga de Votantes desde el Padrón ANR</div>
+                <p class="info-banner-text">Toda incorporación de votantes se realiza desde la pestaña <strong>«Padrón ANR»</strong>. Consultá la cédula y presioná <strong>«Añadir a la planilla»</strong>; los datos (local, mesa, orden) se cargan automáticamente desde la fuente oficial.</p>
+            </div>
         </div>
 
         <div class="admin-card"><h3><svg class="icon"><use href="#icon-users"/></svg>Lista de Operadores</h3><div class="table-responsive"><table><thead><tr><th>Nombre</th><th>WhatsApp</th><th>Usuario</th><th>Local Asignado</th><th>Acción</th></tr></thead><tbody id="users-table-body"></tbody></table></div></div>
@@ -1231,5 +1367,6 @@
         });
     }
 </script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>

@@ -20,7 +20,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 
-    <!-- ═══════════════ SVG SPRITES ═══════════════ -->
+    <!-- SVG SPRITES -->
     <svg width="0" height="0" style="position:absolute" aria-hidden="true">
         <defs>
             <symbol id="i-shield" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 4 5v6c0 5 3.4 9.6 8 11 4.6-1.4 8-6 8-11V5l-8-3Zm0 10.99h6c-.45 3.39-2.72 6.41-6 7.43V13H6V6.39l6-2.24v8.84Z"/></symbol>
@@ -38,40 +38,30 @@
             <symbol id="i-arrow-back" viewBox="0 0 24 24"><path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z"/></symbol>
             <symbol id="i-wifi-off" viewBox="0 0 24 24"><path fill="currentColor" d="M21 6.27 19.86 4.5 4.5 19.86 5.64 21l16.36-16.36ZM1 9l2 2a14.94 14.94 0 0 1 4.61-2.93l-1.51-1.5A17.45 17.45 0 0 0 1 9Zm10-2.06 5.69 5.69A11 11 0 0 0 12 8c-.34 0-.67.02-1 .06ZM12 21l3-3-3-3-3 3 3 3Z"/></symbol>
             <symbol id="i-phone" viewBox="0 0 24 24"><path fill="currentColor" d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.02-.24c1.12.37 2.33.57 3.57.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.24.2 2.45.57 3.57a1 1 0 0 1-.25 1.02l-2.2 2.2Z"/></symbol>
-
-            <!-- TINGLADO / POLIDEPORTIVO -->
-            <symbol id="i-tinglado" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M2 11 12 4l10 7v1h-2v8h-3v-6H7v6H4v-8H2v-1Zm7 10v-5h6v5H9Z"/>
-            </symbol>
-            <!-- ESCUELA / COLEGIO -->
-            <symbol id="i-escuela" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M12 3 1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3Zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9ZM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72Z"/>
-            </symbol>
-            <!-- BIBLIOTECA / EDUCATIVO -->
-            <symbol id="i-biblioteca" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M4 5h3v14H4V5Zm5 0h3v14H9V5Zm5.5 0L19 17.5l-2.83 1.06L11.67 6 14.5 5Z"/>
-            </symbol>
-            <!-- URNA / BALLOT -->
-            <symbol id="i-urna" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M19 7h-3V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v3H5a1 1 0 0 0-1 1v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1ZM10 4h4v3h-4V4Zm5 12H9v-2h6v2Zm-3-4-3-3h2V7h2v2h2l-3 3Z"/>
-            </symbol>
-            <!-- GRID (otros) -->
+            <symbol id="i-tinglado" viewBox="0 0 24 24"><path fill="currentColor" d="M2 11 12 4l10 7v1h-2v8h-3v-6H7v6H4v-8H2v-1Zm7 10v-5h6v5H9Z"/></symbol>
+            <symbol id="i-escuela" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3 1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3Zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9ZM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72Z"/></symbol>
+            <symbol id="i-biblioteca" viewBox="0 0 24 24"><path fill="currentColor" d="M4 5h3v14H4V5Zm5 0h3v14H9V5Zm5.5 0L19 17.5l-2.83 1.06L11.67 6 14.5 5Z"/></symbol>
+            <symbol id="i-urna" viewBox="0 0 24 24"><path fill="currentColor" d="M19 7h-3V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v3H5a1 1 0 0 0-1 1v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8a1 1 0 0 0-1-1ZM10 4h4v3h-4V4Zm5 12H9v-2h6v2Zm-3-4-3-3h2V7h2v2h2l-3 3Z"/></symbol>
             <symbol id="i-grid" viewBox="0 0 24 24"><path fill="currentColor" d="M3 3h8v8H3V3Zm10 0h8v8h-8V3ZM3 13h8v8H3v-8Zm10 0h8v8h-8v-8Z"/></symbol>
-            <!-- HISTORIAL (reloj con flecha) -->
             <symbol id="i-history" viewBox="0 0 24 24"><path fill="currentColor" d="M13 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-7-7c1.66 0 3.2.56 4.4 1.5L14 9h7V2l-2.6 2.6A8.96 8.96 0 0 0 13 3Zm-1 5v5l4.28 2.54.72-1.21L13.5 12.25V8H12Z"/></symbol>
-            <!-- EDIT -->
             <symbol id="i-edit" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25Zm17.71-10.04a1 1 0 0 0 0-1.41l-2.51-2.51a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 2-1.66Z"/></symbol>
-            <!-- DELETE -->
             <symbol id="i-delete" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12ZM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4Z"/></symbol>
+            <symbol id="i-copy" viewBox="0 0 24 24"><path fill="currentColor" d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1Zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0 16H8V7h11v14Z"/></symbol>
+            <symbol id="i-share" viewBox="0 0 24 24"><path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11a3 3 0 1 0-.96-2.19c0 .24.04.47.09.7L8.04 9.81a3 3 0 1 0 0 4.38l7.12 4.16c-.05.21-.08.43-.08.65a2.92 2.92 0 1 0 2.92-2.92Z"/></symbol>
+            <symbol id="i-whatsapp" viewBox="0 0 24 24"><path fill="currentColor" d="M17.5 14.4c-.3-.1-1.8-.9-2-1s-.5-.1-.7.1-.8 1-1 1.2-.4.2-.6.1c-.9-.4-1.7-.9-2.4-1.7-.6-.7-1.1-1.5-1.5-2.3-.1-.2 0-.4.1-.5.1-.1.2-.3.4-.4l.3-.5c.1-.2.1-.3 0-.5l-.9-2.2c-.3-.7-.5-.6-.7-.6h-.6c-.2 0-.5.1-.8.4-.3.3-1 .9-1 2.3s1 2.7 1.1 2.8c.1.2 2 3.1 4.9 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.6-.1 1.8-.7 2-1.4.3-.7.3-1.3.2-1.4l-.6-.2ZM12 2.2A9.7 9.7 0 0 0 3.5 16.6L2 22l5.6-1.5A9.7 9.7 0 1 0 12 2.2Zm0 17.6a8.1 8.1 0 0 1-4.1-1.1l-.3-.2-3.3.9.9-3.2-.2-.3a8 8 0 1 1 6.9 4l.1-.1Z"/></symbol>
+            <symbol id="i-eye" viewBox="0 0 24 24"><path fill="currentColor" d="M12 4.5C7 4.5 2.7 7.6 1 12c1.7 4.4 6 7.5 11 7.5s9.3-3.1 11-7.5c-1.7-4.4-6-7.5-11-7.5Zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10Zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/></symbol>
+            <symbol id="i-warning" viewBox="0 0 24 24"><path fill="currentColor" d="M1 21h22L12 2 1 21Zm12-3h-2v-2h2v2Zm0-4h-2v-4h2v4Z"/></symbol>
+            <symbol id="i-trash-sweep" viewBox="0 0 24 24"><path fill="currentColor" d="M15 16h4v2h-4v-2Zm0-8h7v2h-7V8Zm0 4h6v2h-6v-2ZM3 18a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V8H3v10ZM14 5h-3l-1-1H6L5 5H2v2h12V5Z"/></symbol>
         </defs>
     </svg>
 </head>
 <body>
 
-<!-- ═══════════════ TOASTS ═══════════════ -->
 <div id="toast-container"></div>
 
 <!-- ═══════════════ MODALES ═══════════════ -->
+
+<!-- Modal: No Votó -->
 <div class="modal-overlay" id="modal-novoto">
     <div class="modal-box">
         <h3><span class="material-icons">cancel</span>Registrar No Votó</h3>
@@ -85,6 +75,7 @@
     </div>
 </div>
 
+<!-- Modal: Cambiar Contraseña -->
 <div class="modal-overlay" id="modal-chpass">
     <div class="modal-box">
         <h3><span class="material-icons">lock</span>Cambiar Contraseña</h3>
@@ -106,6 +97,7 @@
     </div>
 </div>
 
+<!-- Modal: Observación -->
 <div class="modal-overlay" id="modal-obs-confirm">
     <div class="modal-box">
         <h3><span class="material-icons">edit</span>Agregar Observación</h3>
@@ -118,19 +110,69 @@
     </div>
 </div>
 
+<!-- Modal: Confirmar Eliminación (planilla) -->
 <div class="modal-overlay" id="modal-eliminar-confirm">
     <div class="modal-box">
-        <h3 class="modal-danger-title"><span class="material-icons">delete_forever</span>Confirmar Eliminación</h3>
+        <div class="modal-icon-banner modal-icon-danger">
+            <svg class="svg-icon" aria-hidden="true"><use href="#i-warning"/></svg>
+        </div>
+        <h3 class="modal-danger-title">Confirmar Eliminación</h3>
         <p class="modal-hint" id="modal-eliminar-texto">¿Estás seguro que querés eliminar los registros seleccionados? Esta acción no se puede deshacer.</p>
         <div class="modal-actions">
             <button class="btn-secondary" onclick="closeModal('modal-eliminar-confirm')">Cancelar</button>
-            <button class="btn-primary" onclick="confirmarEliminarSeleccionados()">Eliminar</button>
+            <button class="btn-primary btn-danger-strong" onclick="confirmarEliminarSeleccionados()">
+                <span class="material-icons">delete_forever</span>Eliminar
+            </button>
         </div>
     </div>
 </div>
 
-<div class="modal-overlay" id="modal-historial">
+<!-- Modal: Confirmar Eliminar Operador (NUEVO) -->
+<div class="modal-overlay" id="modal-del-user">
     <div class="modal-box">
+        <div class="modal-icon-banner modal-icon-danger">
+            <svg class="svg-icon" aria-hidden="true"><use href="#i-delete"/></svg>
+        </div>
+        <h3 class="modal-danger-title">Eliminar Operador</h3>
+        <p class="modal-hint">Operador a eliminar: <strong id="del-user-label" style="color:var(--color-dark);"></strong></p>
+        <p class="modal-hint" style="background:var(--color-primary-softer);padding:10px 14px;border-radius:var(--r-md);border-left:3px solid var(--color-primary);">
+            <span class="material-icons" style="font-size:16px;color:var(--color-primary);vertical-align:middle;">info</span>
+            Esta acción es <strong>irreversible</strong>. El operador no podrá volver a iniciar sesión.
+        </p>
+        <input type="hidden" id="del-user-username">
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('modal-del-user')">Cancelar</button>
+            <button class="btn-primary btn-danger-strong" onclick="confirmarEliminarOperador()">
+                <span class="material-icons">delete_forever</span>Eliminar Operador
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Confirmar Limpiar Bitácora (NUEVO) -->
+<div class="modal-overlay" id="modal-clear-bit">
+    <div class="modal-box">
+        <div class="modal-icon-banner modal-icon-warn">
+            <svg class="svg-icon" aria-hidden="true"><use href="#i-trash-sweep"/></svg>
+        </div>
+        <h3 class="modal-danger-title">Limpiar Bitácora</h3>
+        <p class="modal-hint">Vas a borrar <strong>toda</strong> la actividad registrada en la bitácora del sistema.</p>
+        <p class="modal-hint" style="background:#FEF3C7;padding:10px 14px;border-radius:var(--r-md);border-left:3px solid #B45309;color:#78350F;">
+            <span class="material-icons" style="font-size:16px;vertical-align:middle;">warning</span>
+            Esta acción <strong>no se puede deshacer</strong>. Los registros del historial individual de cada votante se mantienen.
+        </p>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('modal-clear-bit')">Cancelar</button>
+            <button class="btn-primary btn-danger-strong" onclick="confirmarLimpiarBitacora()">
+                <span class="material-icons">delete_sweep</span>Limpiar Bitácora
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Historial -->
+<div class="modal-overlay" id="modal-historial">
+    <div class="modal-box modal-box-large">
         <h3><svg class="svg-icon" aria-hidden="true"><use href="#i-history"/></svg>Historial de Actividad</h3>
         <p class="modal-hint" id="modal-hist-nombre" style="font-weight:800;color:var(--color-dark);"></p>
         <div class="historial-list" id="modal-hist-list">
@@ -273,7 +315,6 @@
                 <span>Seleccioná un local para ver el detalle de mesas</span>
             </div>
             <div class="chart-wrap" id="chart-mesa-wrap"><canvas id="chart-mesa"></canvas></div>
-            <!-- Tabla bajo el gráfico eliminada (#mesa-tabla-wrap removido) -->
         </div>
         <div class="stats-grid">
             <div class="chart-card">
@@ -323,8 +364,6 @@
             </div>
         </div>
 
-        <!-- ⚠ Banner "Carga de Votantes desde el Padrón ANR" ELIMINADO -->
-
         <div class="admin-card">
             <h3><span class="material-icons">people</span>Lista de Operadores</h3>
             <div class="table-responsive">
@@ -342,7 +381,7 @@
                     <span class="material-icons" style="color:var(--color-primary-accent);">history</span>Bitácora de Actividad
                 </div>
                 <div>
-                    <button class="btn-secondary" onclick="limpiarBitacora()" style="font-size:.75rem;padding:6px 12px;">
+                    <button class="btn-secondary" onclick="pedirLimpiarBitacora()" style="font-size:.75rem;padding:6px 12px;">
                         <span class="material-icons">delete_sweep</span>Limpiar
                     </button>
                 </div>

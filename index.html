@@ -9,142 +9,61 @@
     <meta name="theme-color" content="#B91C1C">
     <title>Control Electoral</title>
     <link rel="manifest" href="manifest.json">
-    <!-- Material Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         /* ═══════════════ RESET BASE ═══════════════ */
-        *, *::before, *::after { box-sizing: border-box; }
-        html { -webkit-text-size-adjust: 100%; }
-        body { margin:0; padding:0; overscroll-behavior: none; background:#fff; }
-
+        *,*::before,*::after{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0;padding:0;overscroll-behavior:none;background:#fff}
         /* ═══════════════ TOAST ═══════════════ */
-        #toast-container {
-            position: fixed;
-            bottom: calc(env(safe-area-inset-bottom, 0px) + 80px);
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            z-index: 4000;
-            width: calc(100% - 32px);
-            max-width: 420px;
-            pointer-events: none;
-        }
-        .toast {
-            background: #ffffff;
-            border: 1px solid var(--color-border);
-            border-left: 5px solid var(--color-success);
-            color: var(--color-dark);
-            padding: 14px 18px;
-            border-radius: var(--r-md);
-            font-size: .9rem;
-            font-weight: 600;
-            animation: toastIn .35s cubic-bezier(.34, 1.56, .64, 1);
-            box-shadow: 0 14px 40px -8px rgba(0, 0, 0, .22), 0 5px 14px -4px rgba(0, 0, 0, .10);
-            pointer-events: all;
-            text-align: center;
-        }
-        .toast.error { border-left-color: var(--color-danger); }
-        .toast.warn  { border-left-color: var(--color-warn); }
-        .toast.offline { border-left-color: #B45309; }
-        @keyframes toastIn {
-            0% { opacity:0; transform: translateY(30px) scale(.9); }
-            60% { opacity:1; transform: translateY(-3px) scale(1.02); }
-            100% { opacity:1; transform: translateY(0) scale(1); }
-        }
-
+        #toast-container{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 80px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:4000;width:calc(100% - 32px);max-width:420px;pointer-events:none}
+        .toast{background:#fff;border:1px solid var(--color-border);border-left:5px solid var(--color-success);color:var(--color-dark);padding:14px 18px;border-radius:var(--r-md);font-size:.9rem;font-weight:600;animation:toastIn .35s cubic-bezier(.34,1.56,.64,1);box-shadow:0 14px 40px -8px rgba(0,0,0,.22),0 5px 14px -4px rgba(0,0,0,.10);pointer-events:all;text-align:center}
+        .toast.error{border-left-color:var(--color-danger)}.toast.warn{border-left-color:var(--color-warn)}.toast.offline{border-left-color:#B45309}
+        @keyframes toastIn{0%{opacity:0;transform:translateY(30px) scale(.9)}60%{opacity:1;transform:translateY(-3px) scale(1.02)}100%{opacity:1;transform:translateY(0) scale(1)}}
         /* ═══════════════ MODAL ═══════════════ */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(10, 10, 10, .65);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            z-index: 3000;
-            align-items: flex-end;
-            justify-content: center;
-            padding: 0;
-            animation: overlayIn .25s ease;
-        }
-        .modal-overlay.active { display: flex; }
-        @keyframes overlayIn { from { opacity:0; } to { opacity:1; } }
-        .modal-box {
-            background: #ffffff;
-            border: 1px solid var(--color-border);
-            border-top: 5px solid var(--color-primary-accent);
-            border-radius: var(--r-xl) var(--r-xl) 0 0;
-            padding: 26px 22px;
-            padding-bottom: calc(26px + env(safe-area-inset-bottom, 0px));
-            width: 100%;
-            max-width: 100%;
-            animation: slideUp .4s cubic-bezier(.34,1.56,.64,1);
-            box-shadow: 0 -25px 70px -10px rgba(0,0,0,.3);
-        }
-        .modal-box::before {
-            content: "";
-            display: block;
-            width: 40px;
-            height: 4px;
-            background: var(--color-border-strong);
-            border-radius: 2px;
-            margin: -16px auto 16px;
-        }
-        @media (min-width: 600px) {
-            .modal-overlay { align-items: center; padding: 20px; }
-            .modal-box {
-                border-radius: var(--r-xl);
-                max-width: 460px;
-                padding: 30px 28px;
-                box-shadow: 0 30px 70px -15px rgba(0,0,0,.4);
-            }
-            .modal-box::before { display: none; }
-        }
-        @keyframes slideUp {
-            from { opacity:0; transform: translateY(50px); }
-            to   { opacity:1; transform: translateY(0); }
-        }
-        .modal-box h3 { font-size:1.1rem;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px;color:var(--color-dark);display:flex;align-items:center;gap:10px; }
-        .modal-box .modal-sub  { font-size:.95rem;color:var(--color-dark);margin:0 0 6px;font-weight:700; }
-        .modal-box .modal-hint { font-size:.85rem;color:var(--color-text-soft);margin:0 0 18px;line-height:1.5; }
-        .modal-textarea { width:100%; background:var(--color-bg-soft); border:1.5px solid var(--color-border); color:var(--color-dark); padding:13px 15px; border-radius:var(--r-md); font-size:1rem; font-family:inherit; resize:none; min-height:100px; margin-bottom:20px; -webkit-appearance:none; transition:all var(--t-base); }
-        .modal-textarea:focus { outline:none; border-color:var(--color-primary); background:#fff; box-shadow:0 0 0 4px var(--color-primary-glow); }
-        .modal-actions { display:flex; gap:10px; }
-        .modal-actions button { flex:1; padding:13px 10px; font-size:.9rem; font-weight:800; border-radius:var(--r-md); }
-
+        .modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,10,10,.65);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:3000;align-items:flex-end;justify-content:center;padding:0;animation:overlayIn .25s ease}
+        .modal-overlay.active{display:flex}@keyframes overlayIn{from{opacity:0}to{opacity:1}}
+        .modal-box{background:#fff;border:1px solid var(--color-border);border-top:5px solid var(--color-primary-accent);border-radius:var(--r-xl) var(--r-xl) 0 0;padding:26px 22px;padding-bottom:calc(26px + env(safe-area-inset-bottom,0px));width:100%;max-width:100%;animation:slideUp .4s cubic-bezier(.34,1.56,.64,1);box-shadow:0 -25px 70px -10px rgba(0,0,0,.3)}
+        .modal-box::before{content:"";display:block;width:40px;height:4px;background:var(--color-border-strong);border-radius:2px;margin:-16px auto 16px}
+        @media(min-width:600px){.modal-overlay{align-items:center;padding:20px}.modal-box{border-radius:var(--r-xl);max-width:460px;padding:30px 28px;box-shadow:0 30px 70px -15px rgba(0,0,0,.4)}.modal-box::before{display:none}}
+        @keyframes slideUp{from{opacity:0;transform:translateY(50px)}to{opacity:1;transform:translateY(0)}}
+        .modal-box h3{font-size:1.1rem;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px;color:var(--color-dark);display:flex;align-items:center;gap:10px}
+        .modal-box .modal-sub{font-size:.95rem;color:var(--color-dark);margin:0 0 6px;font-weight:700}
+        .modal-box .modal-hint{font-size:.85rem;color:var(--color-text-soft);margin:0 0 18px;line-height:1.5}
+        .modal-textarea{width:100%;background:var(--color-bg-soft);border:1.5px solid var(--color-border);color:var(--color-dark);padding:13px 15px;border-radius:var(--r-md);font-size:1rem;font-family:inherit;resize:none;min-height:100px;margin-bottom:20px;-webkit-appearance:none;transition:all var(--t-base)}
+        .modal-textarea:focus{outline:none;border-color:var(--color-primary);background:#fff;box-shadow:0 0 0 4px var(--color-primary-glow)}
+        .modal-actions{display:flex;gap:10px}.modal-actions button{flex:1;padding:13px 10px;font-size:.9rem;font-weight:800;border-radius:var(--r-md)}
         /* ═══════════════ STATUS DOT ═══════════════ */
-        .status-dot { display:inline-block;width:9px;height:9px;border-radius:50%;background:#9CA3AF;margin-right:5px;vertical-align:middle;transition:all var(--t-base); }
-        .status-dot.online { background:var(--color-success); box-shadow:0 0 0 4px rgba(21,128,61,.2); animation:pulseDot 2s infinite; }
-        @keyframes pulseDot { 0%,100%{box-shadow:0 0 0 4px rgba(21,128,61,.2)} 50%{box-shadow:0 0 0 9px rgba(21,128,61,.05)} }
-        .status-label { font-size:.76rem;color:var(--color-text-soft);vertical-align:middle;font-weight:600; }
-
+        .status-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#9CA3AF;margin-right:5px;vertical-align:middle;transition:all var(--t-base)}
+        .status-dot.online{background:var(--color-success);box-shadow:0 0 0 4px rgba(21,128,61,.2);animation:pulseDot 2s infinite}
+        @keyframes pulseDot{0%,100%{box-shadow:0 0 0 4px rgba(21,128,61,.2)}50%{box-shadow:0 0 0 9px rgba(21,128,61,.05)}}
+        .status-label{font-size:.76rem;color:var(--color-text-soft);vertical-align:middle;font-weight:600}
         /* ═══════════════ BADGES ═══════════════ */
-        .badge { display:inline-block; padding:5px 12px; border-radius:100px; font-size:.7rem; font-weight:800; text-transform:uppercase; letter-spacing:.5px; min-width:80px; text-align:center; transition:all var(--t-base); }
-        .badge-voted   { background:var(--color-success-bg); color:var(--color-success); border:1.5px solid var(--color-success-soft); }
-        .badge-novoted { background:var(--color-primary-light); color:var(--color-primary-hover); border:1.5px solid var(--color-primary-soft); }
-        .badge-pending { background:var(--color-bg-alt); color:var(--color-gray); border:1.5px solid var(--color-border-strong); }
-
+        .badge{display:inline-block;padding:5px 12px;border-radius:100px;font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.5px;min-width:80px;text-align:center;transition:all var(--t-base)}
+        .badge-voted{background:var(--color-success-bg);color:var(--color-success);border:1.5px solid var(--color-success-soft)}
+        .badge-novoted{background:var(--color-primary-light);color:var(--color-primary-hover);border:1.5px solid var(--color-primary-soft)}
+        .badge-pending{background:var(--color-bg-alt);color:var(--color-gray);border:1.5px solid var(--color-border-strong)}
         /* ═══════════════ BOTONES ACCIÓN ═══════════════ */
-        .action-btns { display:flex; gap:8px; }
-        .btn-accion {
-            flex:1; padding:8px 4px; border-radius:var(--r-md); font-size:.78rem; font-weight:800; text-transform:uppercase; letter-spacing:.4px; cursor:pointer;
-            border:1.5px solid var(--color-border); background:#fff; color:var(--color-gray); transition:all var(--t-base);
-            display:flex; align-items:center; justify-content:center; gap:5px; -webkit-tap-highlight-color:transparent; touch-action:manipulation; min-height:38px;
-        }
-        .btn-accion:active { transform:scale(.93); }
-        .btn-accion:hover { border-color:var(--color-text-soft); color:var(--color-dark); transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.08); }
-        .btn-accion.sel-voto { background:linear-gradient(135deg, var(--color-success-bg), #BBF7D0); color:var(--color-success); border-color:var(--color-success-soft); box-shadow:0 5px 14px -4px rgba(21,128,61,.35); }
-        .btn-accion.sel-novoto { background:linear-gradient(135deg, var(--color-primary-light), var(--color-primary-soft)); color:var(--color-primary-hover); border-color:var(--color-primary-soft); box-shadow:0 5px 14px -4px rgba(185,28,28,.35); }
-
+        .action-btns{display:flex;gap:8px}
+        .btn-accion{flex:1;padding:8px 4px;border-radius:var(--r-md);font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;cursor:pointer;border:1.5px solid var(--color-border);background:#fff;color:var(--color-gray);transition:all var(--t-base);display:flex;align-items:center;justify-content:center;gap:5px;-webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:38px}
+        .btn-accion:active{transform:scale(.93)}.btn-accion:hover{border-color:var(--color-text-soft);color:var(--color-dark);transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,.08)}
+        .btn-accion.sel-voto{background:linear-gradient(135deg,var(--color-success-bg),#BBF7D0);color:var(--color-success);border-color:var(--color-success-soft);box-shadow:0 5px 14px -4px rgba(21,128,61,.35)}
+        .btn-accion.sel-novoto{background:linear-gradient(135deg,var(--color-primary-light),var(--color-primary-soft));color:var(--color-primary-hover);border-color:var(--color-primary-soft);box-shadow:0 5px 14px -4px rgba(185,28,28,.35)}
         /* ═══════════════ BOTÓN OBSERVACIÓN ═══════════════ */
-        .btn-obs { width:100%; margin-top:10px; padding:9px 12px; background:var(--color-bg-soft); border:1.5px dashed var(--color-border-strong); border-radius:var(--r-md); color:var(--color-gray); font-size:.8rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px; transition:all var(--t-base); -webkit-tap-highlight-color:transparent; touch-action:manipulation; min-height:38px; }
-        .btn-obs:hover { border-color:var(--color-primary); color:var(--color-primary); background:var(--color-primary-light); }
-        .btn-obs.has-obs { border-style:solid; border-color:var(--color-warn); color:#B45309; background:var(--color-warn-bg); font-weight:700; }
-        .btn-obs .obs-preview { flex:1; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-style:italic; }
+        .btn-obs{width:100%;margin-top:10px;padding:9px 12px;background:var(--color-bg-soft);border:1.5px dashed var(--color-border-strong);border-radius:var(--r-md);color:var(--color-gray);font-size:.8rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all var(--t-base);-webkit-tap-highlight-color:transparent;touch-action:manipulation;min-height:38px}
+        .btn-obs:hover{border-color:var(--color-primary);color:var(--color-primary);background:var(--color-primary-light)}
+        .btn-obs.has-obs{border-style:solid;border-color:var(--color-warn);color:#B45309;background:var(--color-warn-bg);font-weight:700}
+        .btn-obs .obs-preview{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-style:italic}
+        /* ═══════════════ MENÚ 3 PUNTOS ═══════════════ */
+        .menu-tres-puntos{position:relative;display:inline-block}
+        .menu-tres-puntos .btn-puntos{background:none;border:none;cursor:pointer;padding:6px;color:var(--color-gray);border-radius:var(--r-sm);font-size:1.4rem;line-height:1;transition:all var(--t-base)}
+        .menu-tres-puntos .btn-puntos:hover{background:var(--color-bg-alt);color:var(--color-dark)}
+        .menu-tres-puntos .dropdown{position:absolute;right:0;top:100%;background:#fff;border:1px solid var(--color-border);border-radius:var(--r-md);box-shadow:var(--shadow-md);min-width:160px;z-index:100;display:none;overflow:hidden}
+        .menu-tres-puntos .dropdown.show{display:block}
+        .menu-tres-puntos .dropdown a{display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:.82rem;color:var(--color-text);text-decoration:none;font-weight:600;transition:background var(--t-fast);cursor:pointer}
+        .menu-tres-puntos .dropdown a:hover{background:var(--color-bg-soft);color:var(--color-primary)}
+        .menu-tres-puntos .dropdown a .material-icons{font-size:18px}
     </style>
 </head>
 <body>
@@ -152,82 +71,56 @@
 <!-- TOASTS -->
 <div id="toast-container"></div>
 
-<!-- ═══════════════ MODAL: No Votó ═══════════════ -->
+<!-- ═════ MODALES ═════ -->
 <div class="modal-overlay" id="modal-novoto">
     <div class="modal-box">
         <h3><span class="material-icons">cancel</span>Registrar No Votó</h3>
         <p class="modal-sub" id="modal-novoto-name"></p>
         <p class="modal-hint">Podés dejar un motivo opcional o confirmar directamente.</p>
         <textarea class="modal-textarea" id="modal-obs-input" placeholder="Motivo (opcional): viaje, enfermedad, trabajo..."></textarea>
-        <div class="modal-actions">
-            <button class="btn-secondary" onclick="closeModal('modal-novoto')">Cancelar</button>
-            <button class="btn-primary" onclick="confirmNoVoto()">Confirmar No Votó</button>
-        </div>
+        <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('modal-novoto')">Cancelar</button><button class="btn-primary" onclick="confirmNoVoto()">Confirmar No Votó</button></div>
     </div>
 </div>
 
-<!-- ═══════════════ MODAL: Cambiar Contraseña ═══════════════ -->
 <div class="modal-overlay" id="modal-chpass">
     <div class="modal-box">
         <h3><span class="material-icons">lock</span>Cambiar Contraseña</h3>
         <input type="hidden" id="chpass-username">
         <p class="modal-hint">Operador: <strong id="chpass-user-label" style="color:var(--color-dark)"></strong></p>
-        <div class="form-group">
-            <label>Nueva contraseña</label>
-            <input type="password" id="chpass-nueva" placeholder="Mínimo 4 caracteres">
-        </div>
-        <div class="form-group">
-            <label>Confirmar contraseña</label>
-            <input type="password" id="chpass-confirmar" placeholder="Repetí la contraseña">
-        </div>
+        <div class="form-group"><label>Nueva contraseña</label><input type="password" id="chpass-nueva" placeholder="Mínimo 4 caracteres"></div>
+        <div class="form-group"><label>Confirmar contraseña</label><input type="password" id="chpass-confirmar" placeholder="Repetí la contraseña"></div>
         <div id="chpass-error" style="color:var(--color-primary);font-size:.82rem;margin-bottom:10px;"></div>
-        <div class="modal-actions">
-            <button class="btn-secondary" onclick="closeModal('modal-chpass')">Cancelar</button>
-            <button class="btn-primary" onclick="confirmarCambiarPassword()">Guardar</button>
-        </div>
+        <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('modal-chpass')">Cancelar</button><button class="btn-primary" onclick="confirmarCambiarPassword()">Guardar</button></div>
     </div>
 </div>
 
-<!-- ═══════════════ MODAL: Observación ═══════════════ -->
 <div class="modal-overlay" id="modal-obs-confirm">
     <div class="modal-box">
         <h3><span class="material-icons">edit</span>Agregar Observación</h3>
         <p class="modal-hint" id="modal-obs-nombre" style="color:var(--color-dark);font-size:.92rem;font-weight:800;"></p>
         <textarea class="modal-textarea" id="modal-obs-texto" placeholder="Escribí la observación para este votante..."></textarea>
-        <div class="modal-actions">
-            <button class="btn-secondary" onclick="cancelarObservacion()">Cancelar</button>
-            <button class="btn-primary" onclick="confirmarObservacion()">Confirmar</button>
-        </div>
+        <div class="modal-actions"><button class="btn-secondary" onclick="cancelarObservacion()">Cancelar</button><button class="btn-primary" onclick="confirmarObservacion()">Confirmar</button></div>
     </div>
 </div>
 
-<!-- ═══════════════ MODAL: Confirmar Eliminación ═══════════════ -->
 <div class="modal-overlay" id="modal-eliminar-confirm">
     <div class="modal-box">
         <h3 style="color:#B91C1C;"><span class="material-icons">delete_forever</span>Confirmar Eliminación</h3>
         <p class="modal-hint" id="modal-eliminar-texto">¿Estás seguro que querés eliminar los registros seleccionados? Esta acción no se puede deshacer.</p>
-        <div class="modal-actions">
-            <button class="btn-secondary" onclick="closeModal('modal-eliminar-confirm')">Cancelar</button>
-            <button class="btn-primary" onclick="confirmarEliminarSeleccionados()">Eliminar</button>
-        </div>
+        <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('modal-eliminar-confirm')">Cancelar</button><button class="btn-primary" onclick="confirmarEliminarSeleccionados()">Eliminar</button></div>
     </div>
 </div>
 
-<!-- ═══════════════ MODAL: Historial de Cambios ═══════════════ -->
 <div class="modal-overlay" id="modal-historial">
     <div class="modal-box">
         <h3><span class="material-icons">history</span>Historial de Cambios</h3>
         <p class="modal-hint" id="modal-hist-nombre" style="font-weight:800;color:var(--color-dark);"></p>
-        <div class="historial-list" id="modal-hist-list">
-            <div style="text-align:center;padding:20px;">Cargando...</div>
-        </div>
-        <div class="modal-actions">
-            <button class="btn-secondary" onclick="closeModal('modal-historial')">Cerrar</button>
-        </div>
+        <div class="historial-list" id="modal-hist-list"><div style="text-align:center;padding:20px;">Cargando...</div></div>
+        <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('modal-historial')">Cerrar</button></div>
     </div>
 </div>
 
-<!-- ══════════════ LOGIN ══════════════ -->
+<!-- ═════ LOGIN ═════ -->
 <section id="login-section" class="auth-container">
     <div class="login-card">
         <span class="material-icons" style="font-size:50px;color:var(--color-primary);margin-bottom:10px;">shield</span>
@@ -235,45 +128,28 @@
         <h2>MGTR. CAROLINA CABALLERO</h2>
         <div class="subtitle">Elecciones Internas — Lista 2 Opción 3</div>
         <form id="login-form">
-            <div class="form-group">
-                <label><span class="material-icons">person</span>Usuario</label>
-                <input type="text" id="username" required>
-            </div>
-            <div class="form-group">
-                <label><span class="material-icons">lock</span>Contraseña</label>
-                <input type="password" id="password" required>
-            </div>
+            <div class="form-group"><label><span class="material-icons">person</span>Usuario</label><input type="text" id="username" required></div>
+            <div class="form-group"><label><span class="material-icons">lock</span>Contraseña</label><input type="password" id="password" required></div>
             <button type="submit" class="btn-primary">Ingresar al Sistema</button>
             <div id="login-error" class="error-msg"></div>
         </form>
     </div>
 </section>
 
-<!-- ══════════════ APP ══════════════ -->
+<!-- ═════ APP ═════ -->
 <section id="app-section" class="app-container hidden">
 
     <header class="main-header">
         <div class="header-brand">
             <span class="material-icons" style="color:var(--color-primary-accent);">shield</span>
             <h2>Control de Gestión de Votantes</h2>
-            <span class="header-live">EN VIVO</span>
+            <span class="header-live"><span class="live-dot"></span>EN VIVO</span>
         </div>
         <div class="user-info">
-            <span>
-                <span class="status-dot" id="status-dot"></span>
-                <span class="status-label" id="status-label">conectando...</span>
-            </span>
-            <span id="offline-indicator" class="offline-badge hidden">
-                <span class="material-icons" style="font-size:14px;">wifi_off</span>Offline<span class="offline-count"></span>
-            </span>
-            <span>
-                <span class="material-icons" style="font-size:14px;">person</span>
-                <span id="user-prefix"></span><strong id="current-user-display">---</strong>
-                <span id="user-assignment" class="assign-chip hidden"></span>
-            </span>
-            <button id="logout-btn" class="btn-secondary">
-                <span class="material-icons">logout</span>Salir
-            </button>
+            <span><span class="status-dot" id="status-dot"></span><span class="status-label" id="status-label">conectando...</span></span>
+            <span id="offline-indicator" class="offline-badge hidden"><span class="material-icons" style="font-size:14px;">wifi_off</span>Offline<span class="offline-count"></span></span>
+            <span><span class="material-icons" style="font-size:14px;">person</span><span id="user-prefix"></span><strong id="current-user-display">---</strong><span id="user-assignment" class="assign-chip hidden"></span></span>
+            <button id="logout-btn" class="btn-secondary"><span class="material-icons">logout</span>Salir</button>
         </div>
     </header>
 
@@ -289,7 +165,7 @@
     </div>
 
     <!-- FILTROS + BÚSQUEDA -->
-    <div id="filter-wrapper" style="margin-bottom:12px;">
+    <div id="filter-wrapper">
         <div class="toolbar-filters">
             <div class="filter-group">
                 <button id="btn-filter-todos" class="filter-btn f-todos"><span class="material-icons">list</span><span>Todos</span></button>
@@ -305,21 +181,18 @@
     </div>
     <div id="search-hint"></div>
 
-    <!-- PLANILLA (sin dashboard) -->
+    <!-- PLANILLA -->
     <div id="view-planilla">
-        <!-- Barra de selección (checkboxes) -->
-        <div id="barra-seleccion" style="display:none;">
+        <div id="barra-seleccion">
             <span id="contador-seleccion">0 seleccionados</span>
             <div>
                 <button class="btn-secondary" onclick="seleccionarTodosCheckbox()">Todos</button>
                 <button class="btn-secondary" onclick="deseleccionarTodos()">Ninguno</button>
-                <button class="btn-primary" onclick="pedirConfirmacionEliminar()" style="background:var(--color-primary);">Eliminar seleccionados</button>
+                <button class="btn-primary" onclick="pedirConfirmacionEliminar()">Eliminar seleccionados</button>
             </div>
         </div>
 
-        <div class="cards-mobile" id="cards-container">
-            <div class="loading-wrap"><div class="spinner"></div><span class="loading-text">Cargando padrón...</span></div>
-        </div>
+        <div class="cards-mobile" id="cards-container"><div class="loading-wrap"><div class="spinner"></div><span class="loading-text">Cargando padrón...</span></div></div>
         <div class="tabla-desktop table-responsive">
             <table>
                 <thead>
@@ -338,9 +211,7 @@
                         <th></th>
                     </tr>
                 </thead>
-                <tbody id="votantes-table-body">
-                    <tr><td class="spinner-cell" colspan="12"><div class="spinner"></div></td></tr>
-                </tbody>
+                <tbody id="votantes-table-body"><tr><td class="spinner-cell" colspan="12"><div class="spinner"></div></td></tr></tbody>
             </table>
         </div>
         <div id="pagination-controls"></div>
@@ -353,26 +224,15 @@
             <h4>
                 <span id="bar-chart-icon-wrap"></span>
                 <span id="bar-chart-title">Tocá una tarjeta para ver votos por mesa</span>
-                <button id="btn-volver-locales" class="btn-secondary hidden" onclick="volverALocales()" style="font-size:.75rem;padding:6px 12px;">
-                    <span class="material-icons">arrow_back</span> Volver
-                </button>
+                <button id="btn-volver-locales" class="btn-secondary hidden" onclick="volverALocales()" style="font-size:.75rem;padding:6px 12px;"><span class="material-icons">arrow_back</span> Volver</button>
             </h4>
-            <div id="chart-hint" style="text-align:center;padding:28px 16px;color:var(--color-gray);">
-                <span class="material-icons" style="font-size:36px;opacity:.35;">bar_chart</span>
-                <span style="display:block;font-size:.82rem;font-weight:600;">Seleccioná un local de votación arriba para ver el conteo de votos por mesa</span>
-            </div>
+            <div id="chart-hint"><span class="material-icons" style="font-size:36px;opacity:.35;">bar_chart</span><span>Seleccioná un local para ver el detalle de mesas</span></div>
             <div class="chart-wrap" style="display:none;" id="chart-mesa-wrap"><canvas id="chart-mesa"></canvas></div>
             <div id="mesa-tabla-wrap"></div>
         </div>
         <div class="stats-grid">
-            <div class="chart-card">
-                <h4><span class="material-icons" style="color:var(--color-success);">check_circle</span> Distribución General</h4>
-                <div class="chart-wrap"><canvas id="chart-global"></canvas></div>
-            </div>
-            <div class="chart-card">
-                <h4><span class="material-icons" style="color:var(--color-warn);">schedule</span> Participación Horaria</h4>
-                <div class="chart-wrap"><canvas id="chart-hora"></canvas></div>
-            </div>
+            <div class="chart-card"><h4><span class="material-icons" style="color:var(--color-success);">check_circle</span> Distribución General</h4><div class="chart-wrap"><canvas id="chart-global"></canvas></div></div>
+            <div class="chart-card"><h4><span class="material-icons" style="color:var(--color-warn);">schedule</span> Participación Horaria</h4><div class="chart-wrap"><canvas id="chart-hora"></canvas></div></div>
         </div>
     </div>
 
@@ -382,22 +242,10 @@
             <div class="admin-card">
                 <h3><span class="material-icons">person_add</span>Nuevo Operador</h3>
                 <form id="register-user-form">
-                    <div class="form-group">
-                        <label>Nombre Completo</label>
-                        <input type="text" id="reg-fullname" required>
-                    </div>
-                    <div class="form-group">
-                        <label><span class="material-icons" style="font-size:16px;">phone</span> WhatsApp</label>
-                        <input type="tel" id="reg-phone" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Usuario</label>
-                        <input type="text" id="reg-username" required>
-                    </div>
-                    <div class="form-group">
-                        <label><span class="material-icons" style="font-size:16px;">lock</span> Contraseña</label>
-                        <input type="password" id="reg-password" required>
-                    </div>
+                    <div class="form-group"><label>Nombre Completo</label><input type="text" id="reg-fullname" required></div>
+                    <div class="form-group"><label><span class="material-icons" style="font-size:16px;">phone</span> WhatsApp</label><input type="tel" id="reg-phone" required></div>
+                    <div class="form-group"><label>Usuario</label><input type="text" id="reg-username" required></div>
+                    <div class="form-group"><label><span class="material-icons" style="font-size:16px;">lock</span> Contraseña</label><input type="password" id="reg-password" required></div>
                     <div class="form-group">
                         <label><span class="material-icons" style="font-size:16px;">shield</span> Local Asignado</label>
                         <input type="hidden" id="reg-local-value" name="reg-local">
@@ -412,77 +260,37 @@
                 <button onclick="exportarEstadisticasXLSX()" class="btn-primary">Descargar Excel Completo</button>
             </div>
         </div>
-
-        <div class="info-banner" style="grid-column:1/-1;">
-            <div class="info-banner-icon">
-                <span class="material-icons" style="font-size:28px;color:#fff;">description</span>
-            </div>
+        <div class="info-banner">
+            <div class="info-banner-icon"><span class="material-icons" style="font-size:28px;color:#fff;">description</span></div>
             <div class="info-banner-body">
                 <div class="info-banner-title">Carga de Votantes desde el Padrón ANR</div>
-                <p class="info-banner-text">Toda incorporación de votantes se realiza desde la pestaña <strong>«Padrón ANR»</strong>. Consultá la cédula y presioná <strong>«Añadir a la planilla»</strong>; los datos (local, mesa, orden) se cargan automáticamente desde la fuente oficial.</p>
+                <p class="info-banner-text">Toda incorporación se realiza desde <strong>«Padrón ANR»</strong>. Consultá la cédula y presioná <strong>«Añadir a la planilla»</strong>.</p>
             </div>
         </div>
-
         <div class="admin-card">
             <h3><span class="material-icons">people</span>Lista de Operadores</h3>
-            <div class="table-responsive">
-                <table>
-                    <thead><tr><th>Nombre</th><th>WhatsApp</th><th>Usuario</th><th>Local Asignado</th><th>Acción</th></tr></thead>
-                    <tbody id="users-table-body"></tbody>
-                </table>
-            </div>
+            <div class="table-responsive"><table><thead><tr><th>Nombre</th><th>WhatsApp</th><th>Usuario</th><th>Local Asignado</th><th>Acción</th></tr></thead><tbody id="users-table-body"></tbody></table></div>
         </div>
-
         <div class="bitacora-card">
             <div class="bitacora-header">
-                <div class="bitacora-title">
-                    <span class="bit-live-dot"></span>
-                    <span class="material-icons" style="color:var(--color-primary-accent);">history</span>Bitácora de Actividad
-                </div>
-                <div>
-                    <button class="btn-secondary" onclick="limpiarBitacora()" style="font-size:.75rem;padding:6px 12px;">
-                        <span class="material-icons">delete_sweep</span>Limpiar
-                    </button>
-                </div>
+                <div class="bitacora-title"><span class="bit-live-dot"></span><span class="material-icons" style="color:var(--color-primary-accent);">history</span>Bitácora de Actividad</div>
+                <div><button class="btn-secondary" onclick="limpiarBitacora()" style="font-size:.75rem;padding:6px 12px;"><span class="material-icons">delete_sweep</span>Limpiar</button></div>
             </div>
-            <div class="bitacora-table-wrap">
-                <table class="bitacora-table">
-                    <thead><tr><th>Hora</th><th>Operador</th><th>Acción</th><th>Detalle</th></tr></thead>
-                    <tbody id="bitacora-tbody"><tr><td colspan="4" style="text-align:center;padding:24px;"><div class="spinner"></div>Cargando bitácora...</td></tr></tbody>
-                </table>
-            </div>
+            <div class="bitacora-table-wrap"><table class="bitacora-table"><thead><tr><th>Hora</th><th>Operador</th><th>Acción</th><th>Detalle</th></tr></thead><tbody id="bitacora-tbody"><tr><td colspan="4" style="text-align:center;padding:24px;"><div class="spinner"></div>Cargando...</td></tr></tbody></table></div>
         </div>
     </div>
 
     <!-- PADRÓN ANR -->
     <div id="view-padron-anr" style="display:none;">
         <div style="background:#fff;border:1px solid var(--color-border);border-radius:var(--r-lg);padding:22px;max-width:580px;margin:0 auto;box-shadow:var(--shadow-md);">
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
-                <div style="background:linear-gradient(135deg,var(--color-primary-accent),var(--color-primary-hover));padding:10px;border-radius:var(--r-md);">
-                    <span class="material-icons" style="color:#fff;font-size:28px;">description</span>
-                </div>
-                <div>
-                    <h2 style="font-size:1.05rem;color:var(--color-dark);margin:0;">Consulta Padrón ANR</h2>
-                    <p style="font-size:.76rem;color:var(--color-gray);margin:3px 0 0;">Internas Municipales - Junio 2026</p>
-                </div>
-            </div>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;"><div style="background:linear-gradient(135deg,var(--color-primary-accent),var(--color-primary-hover));padding:10px;border-radius:var(--r-md);"><span class="material-icons" style="color:#fff;font-size:28px;">description</span></div><div><h2 style="font-size:1.05rem;color:var(--color-dark);margin:0;">Consulta Padrón ANR</h2><p style="font-size:.76rem;color:var(--color-gray);margin:3px 0 0;">Internas Municipales - Junio 2026</p></div></div>
             <div style="border-top:2px solid var(--color-primary-light);margin-bottom:18px;"></div>
-            <div style="display:flex;gap:10px;margin-bottom:16px;">
-                <div class="search-box-full" style="flex:1;">
-                    <span class="material-icons">search</span>
-                    <input type="text" id="padron-anr-input" placeholder="Número de cédula..." inputmode="numeric">
-                </div>
-                <button onclick="buscarPadronANR()" class="btn-primary" style="width:auto;padding:0 22px;">Consultar</button>
-            </div>
-            <div id="padron-anr-loading" style="display:none;text-align:center;padding:26px;">
-                <div class="spinner"></div>Consultando padrón ANR...
-            </div>
+            <div style="display:flex;gap:10px;margin-bottom:16px;"><div class="search-box-full" style="flex:1;"><span class="material-icons">search</span><input type="text" id="padron-anr-input" placeholder="Número de cédula..." inputmode="numeric"></div><button onclick="buscarPadronANR()" class="btn-primary" style="width:auto;padding:0 22px;">Consultar</button></div>
+            <div id="padron-anr-loading" style="display:none;text-align:center;padding:26px;"><div class="spinner"></div>Consultando padrón ANR...</div>
             <div id="padron-anr-error" style="display:none;background:var(--color-primary-light);border-radius:var(--r-md);padding:16px;text-align:center;"></div>
             <div id="padron-anr-resultado" style="display:none;">
                 <div style="background:#fff;border:1px solid var(--color-border);border-radius:var(--r-md);overflow:hidden;">
-                    <div style="background:linear-gradient(135deg,var(--color-primary-accent),var(--color-primary-hover));padding:11px 16px;">
-                        <span style="color:#fff;">Resultado de la Consulta</span>
-                    </div>
+                    <div style="background:linear-gradient(135deg,var(--color-primary-accent),var(--color-primary-hover));padding:11px 16px;"><span style="color:#fff;">Resultado de la Consulta</span></div>
                     <div>
                         <div class="padron-field"><span class="padron-label">Cédula</span><span id="pr-cedula" class="padron-value"></span></div>
                         <div class="padron-field"><span class="padron-label">Nombres</span><span id="pr-nombres" class="padron-value"></span></div>
@@ -495,34 +303,19 @@
                         <div class="padron-field" style="border:none;"><span class="padron-label">Orden</span><span id="pr-orden" class="padron-value"></span></div>
                     </div>
                 </div>
-                <div id="pr-btn-agregar-wrap" style="margin-top:14px;">
-                    <button id="pr-btn-agregar" onclick="agregarDesdePardon()" class="btn-primary">Añadir a la planilla</button>
-                </div>
+                <div id="pr-btn-agregar-wrap" style="margin-top:14px;"><button id="pr-btn-agregar" onclick="agregarDesdePardon()" class="btn-primary">Añadir a la planilla</button></div>
             </div>
             <p style="margin-top:16px;font-size:.72rem;color:var(--color-gray);text-align:center;">Fuente: <a href="https://www.anr.org.py/padron-2026/" target="_blank" style="color:var(--color-primary);">anr.org.py/padron-2026</a></p>
         </div>
     </div>
 
-    <!-- BARRA DE NAVEGACIÓN INFERIOR (móvil) -->
-    <nav class="bottom-nav" id="bottom-nav">
-        <button class="bottom-nav-item active" data-tab="planilla">
-            <span class="material-icons">list_alt</span>
-            <span>Planilla</span>
-        </button>
-        <button class="bottom-nav-item" data-tab="stats">
-            <span class="material-icons">bar_chart</span>
-            <span>Estadísticas</span>
-        </button>
-        <button class="bottom-nav-item" data-tab="padron-anr">
-            <span class="material-icons">description</span>
-            <span>Padrón</span>
-        </button>
-        <button class="bottom-nav-item hidden" data-tab="admin" id="bottom-tab-admin">
-            <span class="material-icons">admin_panel_settings</span>
-            <span>Admin</span>
-        </button>
+    <!-- BARRA DE NAVEGACIÓN INFERIOR -->
+    <nav class="bottom-nav">
+        <button class="bottom-nav-item active" data-tab="planilla"><span class="material-icons">list_alt</span><span>Planilla</span></button>
+        <button class="bottom-nav-item" data-tab="stats"><span class="material-icons">bar_chart</span><span>Estadísticas</span></button>
+        <button class="bottom-nav-item" data-tab="padron-anr"><span class="material-icons">description</span><span>Padrón</span></button>
+        <button class="bottom-nav-item hidden" data-tab="admin" id="bottom-tab-admin"><span class="material-icons">admin_panel_settings</span><span>Admin</span></button>
     </nav>
-
 </section>
 
 <script type="module" src="js/app.js"></script>

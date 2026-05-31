@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
-//  CONTROL ELECTORAL — app.js  v8.3  (ESTADÍSTICAS POR LOCAL/MESA CORREGIDO)
-//  Firebase Firestore + Offline Queue + Charts + PWA
+//  CONTROL ELECTORAL — app.js v8.4
+//  Modo eliminación delegado + offline queue con reintentos + gráficos mejorados
+//  Formulario manual de votantes + sticky dinámico + fechas robustas
 // ═══════════════════════════════════════════════════════════════
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -52,7 +53,8 @@ const state = {
     pagination:       { page: 1, perPage: 50 },
     charts:           { mesa: null, global: null, hora: null },
     notifiedThresholds: new Set(),
-    statsLocalFilter: "",
+    isRendering:      false,   // para indicador de carga
+    offlineRetryInterval: null,
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -68,24 +70,43 @@ async function sha256(texto) {
 }
 window.sha256 = sha256;
 
-// ── Fecha/hora Paraguay ─────────────────────────────────────────
-function ahoraParaguay() {
-    return new Date().toLocaleString("es-PY", {
-        timeZone: TZ_PY, day:"2-digit", month:"2-digit", year:"numeric",
-        hour:"2-digit", minute:"2-digit", hour12:false
-    });
+// ── Fecha/hora Paraguay robusta ─────────────────────────────────
+function formatearFechaParaguay(date) {
+    if (!date) return "---";
+    try {
+        return new Intl.DateTimeFormat("es-PY", {
+            timeZone: TZ_PY,
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false
+        }).format(date);
+    } catch(e) {
+        // fallback manual
+        const d = new Date(date);
+        const offset = -4 * 60; // UTC-4 aproximado
+        const local = new Date(d.getTime() + (offset - d.getTimezoneOffset()) * 60000);
+        return local.toLocaleString("es-PY", {
+            day:"2-digit", month:"2-digit", year:"numeric",
+            hour:"2-digit", minute:"2-digit", hour12:false
+        });
+    }
 }
+
+function ahoraParaguay() {
+    return formatearFechaParaguay(new Date());
+}
+
 function timestampAParaguay(ts) {
     if (!ts) return "---";
     const d = ts.toDate ? ts.toDate() : new Date(ts);
-    return d.toLocaleString("es-PY", {
-        timeZone: TZ_PY, day:"2-digit", month:"2-digit", year:"numeric",
-        hour:"2-digit", minute:"2-digit", hour12:false
-    });
+    return formatearFechaParaguay(d);
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  OFFLINE QUEUE
+//  OFFLINE QUEUE con reintentos automáticos
 // ═══════════════════════════════════════════════════════════════
 function getOfflineQueue() {
     try { return JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || "[]"); }
@@ -93,12 +114,12 @@ function getOfflineQueue() {
 }
 function saveOfflineQueue(q) {
     localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(q));
+    updateOfflineBadge();
 }
 function addOfflineAction(action) {
     const q = getOfflineQueue();
     q.push({ ...action, queuedAt: Date.now() });
     saveOfflineQueue(q);
-    updateOfflineBadge();
 }
 async function syncOfflineQueue() {
     const q = getOfflineQueue();
@@ -131,10 +152,33 @@ async function syncOfflineQueue() {
     }
     if (err > 0) toast(`⚠ ${err} acciones quedaron pendientes.`, "warn");
 }
+
+function iniciarReintentosOffline() {
+    if (state.offlineRetryInterval) clearInterval(state.offlineRetryInterval);
+    state.offlineRetryInterval = setInterval(() => {
+        if (navigator.onLine && getOfflineQueue().length > 0) {
+            syncOfflineQueue();
+        }
+    }, 30000);
+}
+
 function updateOfflineBadge() {
     const q = getOfflineQueue();
     const el = document.getElementById("offline-indicator");
-    if (el) el.classList.toggle("hidden", q.length === 0 && navigator.onLine);
+    if (el) {
+        if (q.length === 0 && navigator.onLine) {
+            el.classList.add("hidden");
+        } else {
+            el.classList.remove("hidden");
+            const countSpan = el.querySelector(".offline-count") || (() => {
+                const span = document.createElement("span");
+                span.className = "offline-count";
+                el.appendChild(span);
+                return span;
+            })();
+            countSpan.textContent = q.length ? ` (${q.length})` : "";
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -196,12 +240,42 @@ function renderBitacora(eventos) {
 document.addEventListener("DOMContentLoaded", () => {
     bindEvents();
     bindNetworkEvents();
+    iniciarReintentosOffline();
+    ajustarStickyFiltros();   // sticky dinámico
     checkSession();
 });
 
 function bindNetworkEvents() {
-    window.addEventListener("online",  () => { updateOfflineBadge(); syncOfflineQueue(); toast("Conexión restablecida", "ok"); });
-    window.addEventListener("offline", () => { updateOfflineBadge(); toast("Sin conexión. Modo offline activado.", "warn"); });
+    window.addEventListener("online",  () => {
+        setStatus(true);
+        updateOfflineBadge();
+        syncOfflineQueue();
+        toast("Conexión restablecida", "ok");
+    });
+    window.addEventListener("offline", () => {
+        setStatus(false);
+        updateOfflineBadge();
+        toast("Sin conexión. Modo offline activado.", "warn");
+    });
+}
+
+// Sticky dinámico para filtros en móvil
+function ajustarStickyFiltros() {
+    const filterWrapper = document.getElementById("filter-wrapper");
+    const header = document.querySelector(".main-header");
+    if (!filterWrapper || !header) return;
+    const updateTop = () => {
+        if (window.innerWidth < 768) {
+            const headerHeight = header.offsetHeight;
+            filterWrapper.style.top = `${headerHeight}px`;
+        } else {
+            filterWrapper.style.top = "";
+        }
+    };
+    updateTop();
+    window.addEventListener("resize", updateTop);
+    const observer = new ResizeObserver(updateTop);
+    observer.observe(header);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -329,6 +403,7 @@ function handleLogout() {
     if (state.unsubPresencia) { state.unsubPresencia(); state.unsubPresencia = null; }
     if (state.unsubBitacora)  { state.unsubBitacora();  state.unsubBitacora  = null; }
     if (state.presenceInterval) { clearInterval(state.presenceInterval); state.presenceInterval = null; }
+    if (state.offlineRetryInterval) { clearInterval(state.offlineRetryInterval); state.offlineRetryInterval = null; }
     state.currentUser = null;
     state.padron      = [];
     state.votos       = {};
@@ -552,9 +627,16 @@ window.cambiarPagina = function(nuevaPagina) {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  TABLA/TARJETAS VOTANTES
+//  TABLA/TARJETAS VOTANTES (con indicador de carga)
 // ═══════════════════════════════════════════════════════════════
-function renderTablaVotantes() {
+async function renderTablaVotantes() {
+    if (state.isRendering) return;
+    state.isRendering = true;
+    mostrarLoadingEnTabla(true);
+
+    // Pequeño delay para que el spinner se vea si la operación es rápida
+    await new Promise(r => setTimeout(r, 10));
+
     const searchHint = document.getElementById("search-hint");
     const q = state.searchQuery;
 
@@ -718,6 +800,21 @@ function renderTablaVotantes() {
     }
 
     renderPaginationControls(totalItems);
+    state.isRendering = false;
+    mostrarLoadingEnTabla(false);
+}
+
+function mostrarLoadingEnTabla(show) {
+    const cards = document.getElementById("cards-container");
+    const tbody = document.getElementById("votantes-table-body");
+    if (show) {
+        if (cards && cards.children.length === 0) {
+            cards.innerHTML = `<div class="loading-wrap"><div class="spinner"></div><span class="loading-text">Cargando...</span></div>`;
+        }
+        if (tbody && tbody.children.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="11" class="spinner-cell"><div class="spinner"></div></td></tr>`;
+        }
+    }
 }
 
 function construirCardsConSecciones(lista, mostrarSecciones) {
@@ -840,7 +937,7 @@ window.abrirHistorial = async function(cedula, nombre) {
         let html = "";
         snap.forEach(d => {
             const h = d.data();
-            const hora = h.hora_py || "---";
+            const hora = h.hora_py || timestampAParaguay(h.timestamp);
             html += `
                 <div class="historial-item">
                     <div class="historial-time">${hora}</div>
@@ -995,20 +1092,28 @@ window.actualizarObservacion = async function(cedula, texto, nombre) {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  ADMIN: VOTANTES
+//  ADMIN: VOTANTES (Registro manual)
 // ═══════════════════════════════════════════════════════════════
 async function handleRegistrarVotante(e) {
     e.preventDefault();
     const nombre    = document.getElementById("vot-fullname").value.trim();
-    const cedula    = document.getElementById("vot-cedula").value.trim();
+    const cedulaRaw = document.getElementById("vot-cedula").value.trim();
+    const cedula    = cedulaRaw.replace(/[\s\-]/g, "").replace(/^0+/, "");
     const domicilio = document.getElementById("vot-domicilio").value.trim() || "---";
+    const local     = document.getElementById("vot-local").value.trim();
+    const mesa      = document.getElementById("vot-mesa").value.trim();
+    const orden     = document.getElementById("vot-orden").value.trim();
 
+    if (!nombre || !cedula) {
+        toast("Completá nombre y cédula.", "error");
+        return;
+    }
     if (state.padron.some(v => v.cedula === cedula)) {
         toast(`Ya existe un votante con la cédula ${cedula}.`, "error");
         return;
     }
 
-    const nuevo = { id: "manual_" + Date.now(), nombre, cedula, domicilio };
+    const nuevo = { id: "manual_" + Date.now(), nombre, cedula, domicilio, local, mesa, orden };
     state.padron.push(nuevo);
 
     try {
@@ -1019,13 +1124,14 @@ async function handleRegistrarVotante(e) {
         });
         toast(`✔ ${nombre} registrado como votante.`);
         await registrarBitacora("Nuevo Votante", `Registró a ${nombre} (CI: ${cedula})`);
-    } catch {
-        toast("Registrado en sesión, pero error al sincronizar.", "warn");
+        document.getElementById("register-votante-form").reset();
+        cambiarFiltro("Pendiente");
+        actualizarDashboard();
+    } catch(err) {
+        console.error(err);
+        state.padron = state.padron.filter(p => p.cedula !== cedula);
+        toast("Error al guardar. Verificá la conexión.", "error");
     }
-
-    document.getElementById("register-votante-form").reset();
-    cambiarFiltro("Pendiente");
-    actualizarDashboard();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1127,177 +1233,54 @@ function renderTablaUsuarios() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  CARGAR LOCALES DESDE PADRÓN ANR (usando configuración fija)
+//  CARGAR LOCALES (desde configuración fija)
 // ═══════════════════════════════════════════════════════════════
-async function cargarLocalesDesdePadron() {
-    try {
-        const select = document.getElementById("reg-local");
-        const statsSelect = document.getElementById("chart-local-selector");
-
-        // Usar configuración fija de locales (normalizada)
-        const localesFijos = Object.keys(LOCALES_CONFIG);
-
-        if (select) {
-            select.innerHTML = '<option value="">Seleccionar local...</option>';
-            localesFijos.forEach(loc => {
-                const opt = document.createElement("option");
-                opt.value = loc;
-                opt.textContent = loc;
-                select.appendChild(opt);
-            });
-        }
-        if (statsSelect) {
-            statsSelect.innerHTML = '<option value="">Seleccionar local</option>';
-            localesFijos.forEach(loc => {
-                const opt = document.createElement("option");
-                opt.value = loc;
-                opt.textContent = loc;
-                statsSelect.appendChild(opt);
-            });
-        }
-    } catch (err) {
-        console.warn("Error al cargar locales:", err);
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  FILTROS
-// ═══════════════════════════════════════════════════════════════
-function cambiarFiltro(destino) {
-    state.currentFilter = destino;
-    state.searchAllStates = false;
-    state.pagination.page = 1;
-    renderTablaVotantes();
-    const cards = document.getElementById("cards-container");
-    if (cards && window.innerWidth < 768) {
-        cards.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-}
-window.cambiarFiltro = cambiarFiltro;
-
-// ═══════════════════════════════════════════════════════════════
-//  NAVEGACIÓN
-// ═══════════════════════════════════════════════════════════════
-function showLogin() {
-    document.getElementById("login-section").classList.remove("hidden");
-    document.getElementById("app-section").classList.add("hidden");
-}
-
-function showApp() {
-    document.getElementById("login-section").classList.add("hidden");
-    document.getElementById("app-section").classList.remove("hidden");
-}
-
-function switchTab(tab) {
-    if (tab === "admin" && !state.currentUser?.isAdmin) {
-        toast("Acceso denegado. Solo el Administrador.", "error"); return;
-    }
-    const planilla     = document.getElementById("view-planilla");
-    const stats        = document.getElementById("view-stats");
-    const admin        = document.getElementById("view-admin");
-    const padronAnr    = document.getElementById("view-padron-anr");
-    const fw           = document.getElementById("filter-wrapper");
-    const metrics      = document.getElementById("metrics-wrapper");
-    const tabPlanilla  = document.getElementById("tab-planilla");
-    const tabStats     = document.getElementById("tab-stats");
-    const tabAdmin     = document.getElementById("tab-admin");
-    const tabPadronAnr = document.getElementById("tab-padron-anr");
-
-    if (!planilla || !admin) return;
-
-    planilla.style.display = "none";
-    stats.classList.remove("visible");
-    stats.style.display = "none";
-    admin.classList.remove("visible");
-    admin.style.display = "none";
-    if (padronAnr) padronAnr.style.display = "none";
-    if (fw)        fw.style.display        = "none";
-    if (metrics)   metrics.style.display   = "none";
-    if (tabPlanilla)  tabPlanilla.classList.remove("active");
-    if (tabStats)     tabStats.classList.remove("active");
-    if (tabAdmin)     tabAdmin.classList.remove("active");
-    if (tabPadronAnr) tabPadronAnr.classList.remove("active");
-
-    if (tab === "planilla") {
-        planilla.style.display = "";
-        if (fw)        fw.style.display      = "block";
-        if (metrics)   metrics.style.display = "grid";
-        if (tabPlanilla) tabPlanilla.classList.add("active");
-        state.currentFilter = "todos";
-        renderTablaVotantes();
-    } else if (tab === "stats") {
-        stats.style.display = "block";
-        stats.classList.add("visible");
-        if (tabStats) tabStats.classList.add("active");
-        renderStatsCharts();
-    } else if (tab === "admin") {
-        admin.style.display = "flex";
-        admin.classList.add("visible");
-        if (tabAdmin) tabAdmin.classList.add("active");
-        cargarUsuarios();
-        escucharBitacora();
-        cargarLocalesDesdePadron();
-    } else if (tab === "padron-anr") {
-        if (padronAnr) padronAnr.style.display = "";
-        if (tabPadronAnr) tabPadronAnr.classList.add("active");
-        const inp = document.getElementById("padron-anr-input");
-        const err = document.getElementById("padron-anr-error");
-        const res = document.getElementById("padron-anr-resultado");
-        const lod = document.getElementById("padron-anr-loading");
-        if (inp) inp.value = "";
-        if (err) err.style.display = "none";
-        if (res) res.style.display = "none";
-        if (lod) lod.style.display = "none";
-        setTimeout(() => { if (inp) inp.focus(); }, 100);
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  ESTADÍSTICAS / CHARTS  (POR LOCAL / POR MESA) - CORREGIDO
-// ═══════════════════════════════════════════════════════════════
-
-// Configuración de locales y mesas fijas (sin acentos, normalizados)
 const LOCALES_CONFIG = {
     "GIMNASIO MUNICIPAL": { mesaMin: 1, mesaMax: 20 },
-    "COLEGIO NACIONAL SEBASTIAN DE YEGROS": { mesaMin: 21, mesaMax: 40 },   // reemplaza al antiguo Museo Histórico
+    "MUSEO HISTORICO": { mesaMin: 21, mesaMax: 40 },
     "ESC.CARLOS ANTONIO LOPEZ": { mesaMin: 41, mesaMax: 65 }
 };
 
-// Función para normalizar nombres de locales (sin acentos, mayúsculas)
 function normalizarLocal(nombre) {
     if (!nombre) return "";
     return nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
 }
 
-// Determina el local de un votante basado en su mesa o campo local
 function determinarLocal(votante) {
-    // Primero intentar con el campo 'local' normalizado
     if (votante.local) {
         const norm = normalizarLocal(votante.local);
         for (const local of Object.keys(LOCALES_CONFIG)) {
             if (normalizarLocal(local) === norm) return local;
         }
     }
-    // Si no, usar el rango de mesas
     const numMesa = parseInt(String(votante.mesa || "").replace(/\D/g, '')) || 0;
     for (const [local, config] of Object.entries(LOCALES_CONFIG)) {
-        if (numMesa >= config.mesaMin && numMesa <= config.mesaMax) {
-            return local;
-        }
+        if (numMesa >= config.mesaMin && numMesa <= config.mesaMax) return local;
     }
     return "OTRO";
 }
 
-function getLocalFromMesa(mesa) {
-    if (!mesa) return null;
-    const numMesa = parseInt(String(mesa).replace(/\D/g, '')) || 0;
-    for (const [local, config] of Object.entries(LOCALES_CONFIG)) {
-        if (numMesa >= config.mesaMin && numMesa <= config.mesaMax) {
-            return local;
-        }
+async function cargarLocalesDesdePadron() {
+    const select = document.getElementById("reg-local");
+    if (select) {
+        select.innerHTML = '<option value="">Seleccionar local...</option>';
+        Object.keys(LOCALES_CONFIG).forEach(loc => {
+            const opt = document.createElement("option");
+            opt.value = loc;
+            opt.textContent = loc;
+            select.appendChild(opt);
+        });
     }
-    return null;
+    // También poblar el selector de estadísticas (aunque se elimina del HTML, lo dejamos por compatibilidad)
+    const statsSelect = document.getElementById("chart-local-selector");
+    if (statsSelect) statsSelect.innerHTML = '<option value="">Seleccionar local</option>';
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  ESTADÍSTICAS (sin selector de locales, con clic en barras)
+// ═══════════════════════════════════════════════════════════════
+let currentStatsView = "locales"; // "locales" o "mesas"
+let currentLocalForMesas = null;
 
 const doughnutLabelsPlugin = {
     id: 'doughnutLabels',
@@ -1311,7 +1294,11 @@ const doughnutLabelsPlugin = {
             const value = dataset.data[i];
             if (!value) return;
             const pct = ((value / total) * 100).toFixed(1) + '%';
-            const { x, y } = arc.tooltipPosition();
+            // Calcular centro del arco de forma manual
+            const radius = (arc.outerRadius + arc.innerRadius) / 2;
+            const angle = (arc.startAngle + arc.endAngle) / 2;
+            const x = arc.x + radius * Math.cos(angle);
+            const y = arc.y + radius * Math.sin(angle);
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 11px Inter, -apple-system, sans-serif';
             ctx.textAlign = 'center';
@@ -1336,32 +1323,64 @@ function renderStatsCharts() {
         return;
     }
 
-    const localSelector = document.getElementById('chart-local-selector');
-    const localFilter = localSelector ? localSelector.value : '';
-    const titleEl = document.getElementById('bar-chart-title');
+    const titleEl = document.getElementById("bar-chart-title");
+    const btnVolver = document.getElementById("btn-volver-locales");
 
-    let labels = [], dataValues = [], datasetLabel = '', backgroundColors = [];
+    if (currentStatsView === "mesas" && currentLocalForMesas) {
+        // Vista de mesas para un local específico
+        if (titleEl) titleEl.textContent = `Participación por Mesa — ${currentLocalForMesas}`;
+        if (btnVolver) btnVolver.classList.remove("hidden");
 
-    if (!localFilter) {
+        const config = LOCALES_CONFIG[currentLocalForMesas];
+        if (config) {
+            const agrupado = {};
+            for (let m = config.mesaMin; m <= config.mesaMax; m++) agrupado[m] = 0;
+            state.padron.forEach(v => {
+                if (getVoto(v.cedula) !== "Votó") return;
+                const localVotante = determinarLocal(v);
+                if (localVotante !== currentLocalForMesas) return;
+                const numMesa = parseInt(String(v.mesa || "").replace(/\D/g, '')) || 0;
+                if (agrupado[numMesa] !== undefined) agrupado[numMesa]++;
+            });
+            const labels = Object.keys(agrupado).sort((a,b) => parseInt(a)-parseInt(b));
+            const dataValues = labels.map(l => agrupado[l]);
+
+            const ctxMesa = document.getElementById("chart-mesa");
+            if (ctxMesa) {
+                if (state.charts.mesa) state.charts.mesa.destroy();
+                state.charts.mesa = new Chart(ctxMesa, {
+                    type: "bar",
+                    data: {
+                        labels: labels,
+                        datasets: [{ label: "Votaron", data: dataValues, backgroundColor: "#B91C1C", borderRadius: 6 }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                    }
+                });
+            }
+        }
+    } else {
         // Vista general: Participación por Local (barras)
-        if (titleEl) titleEl.textContent = 'Participación por Locales';
+        currentStatsView = "locales";
+        if (titleEl) titleEl.textContent = "Participación por Locales";
+        if (btnVolver) btnVolver.classList.add("hidden");
+
         const agrupado = {};
-        Object.keys(LOCALES_CONFIG).forEach(local => {
-            agrupado[local] = { voted: 0, total: 0 };
-        });
+        Object.keys(LOCALES_CONFIG).forEach(local => { agrupado[local] = { voted: 0, total: 0 }; });
         agrupado["OTRO"] = { voted: 0, total: 0 };
 
         state.padron.forEach(v => {
             const localVotante = determinarLocal(v);
             agrupado[localVotante].total++;
-            if (getVoto(v.cedula) === "Votó") {
-                agrupado[localVotante].voted++;
-            }
+            if (getVoto(v.cedula) === "Votó") agrupado[localVotante].voted++;
         });
 
-        // Orden: primeros los definidos en LOCALES_CONFIG, luego OTRO
         const ordenLocal = Object.keys(LOCALES_CONFIG);
-        const localesOrdenados = Object.keys(agrupado).sort((a, b) => {
+        const localesOrdenados = Object.keys(agrupado).sort((a,b) => {
             const idxA = ordenLocal.indexOf(a);
             const idxB = ordenLocal.indexOf(b);
             if (idxA !== -1 && idxB !== -1) return idxA - idxB;
@@ -1369,94 +1388,54 @@ function renderStatsCharts() {
             if (idxB !== -1) return 1;
             return 0;
         });
-
-        labels = localesOrdenados;
-        dataValues = labels.map(l => agrupado[l].voted);
-        datasetLabel = "Votaron";
-        backgroundColors = labels.map(local => {
-            if (local === "OTRO") return '#9CA3AF';
-            if (local === "GIMNASIO MUNICIPAL") return '#B91C1C';
-            if (local === "COLEGIO NACIONAL SEBASTIAN DE YEGROS") return '#7F1D1D';
-            return '#DC2626';
-        });
-    } else {
-        // Vista por Mesa dentro del local seleccionado
-        if (titleEl) titleEl.textContent = `Participación por Mesa — ${localFilter}`;
-        const config = LOCALES_CONFIG[localFilter];
-        if (!config) {
-            console.warn(`Local "${localFilter}" no tiene configuración de mesas.`);
-            return;
-        }
-        const agrupado = {};
-        // Inicializar todas las mesas del rango con valor 0
-        for (let m = config.mesaMin; m <= config.mesaMax; m++) {
-            agrupado[m] = 0;
-        }
-
-        state.padron.forEach(v => {
-            if (getVoto(v.cedula) !== "Votó") return;
-            // Determinar si este votante pertenece al local seleccionado
-            const localVotante = determinarLocal(v);
-            if (localVotante !== localFilter) return;
-
-            const numMesa = parseInt(String(v.mesa || "").replace(/\D/g, '')) || 0;
-            if (agrupado[numMesa] !== undefined) {
-                agrupado[numMesa]++;
-            }
+        const labels = localesOrdenados;
+        const dataValues = labels.map(l => agrupado[l].voted);
+        const backgroundColors = labels.map(local => {
+            if (local === "OTRO") return "#9CA3AF";
+            if (local === "GIMNASIO MUNICIPAL") return "#B91C1C";
+            if (local === "MUSEO HISTORICO") return "#7F1D1D";
+            return "#DC2626";
         });
 
-        labels = Object.keys(agrupado).sort((a, b) => parseInt(a) - parseInt(b));
-        dataValues = labels.map(l => agrupado[l]);
-        datasetLabel = "Votaron";
-        backgroundColors = '#B91C1C';
+        const ctxMesa = document.getElementById("chart-mesa");
+        if (ctxMesa) {
+            if (state.charts.mesa) state.charts.mesa.destroy();
+            state.charts.mesa = new Chart(ctxMesa, {
+                type: "bar",
+                data: {
+                    labels: labels,
+                    datasets: [{ label: "Votaron", data: dataValues, backgroundColor: backgroundColors, borderRadius: 6 }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: (ctx) => `${ctx.raw} votos (${((ctx.raw / agrupado[ctx.label].total)*100).toFixed(1)}%)` } }
+                    },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+                    onClick: (e, activeEls) => {
+                        if (activeEls.length) {
+                            const index = activeEls[0].dataIndex;
+                            const localSeleccionado = labels[index];
+                            if (localSeleccionado !== "OTRO" && LOCALES_CONFIG[localSeleccionado]) {
+                                currentStatsView = "mesas";
+                                currentLocalForMesas = localSeleccionado;
+                                renderStatsCharts();
+                            }
+                        }
+                    }
+                }
+            });
+        }
     }
 
-    // Datos para gráfico de torta global
+    // Gráfico de torta global (siempre visible)
     const total = state.padron.length;
     const voted = state.padron.filter(v => getVoto(v.cedula) === "Votó").length;
     const noVoted = state.padron.filter(v => getVoto(v.cedula) === "No Votó").length;
     const pending = total - voted - noVoted;
 
-    // Datos para gráfico horario
-    const horas = {};
-    for (let h = 7; h <= 18; h++) horas[`${h}:00`] = 0;
-    Object.entries(state.votos).forEach(([cedula, v]) => {
-        if (v.voto !== "Votó" || !v.timestamp) return;
-        const d = v.timestamp.toDate ? v.timestamp.toDate() : new Date(v.timestamp);
-        const horaPY = new Date(d.toLocaleString("en-US", { timeZone: TZ_PY }));
-        const bucket = `${horaPY.getHours()}:00`;
-        if (horas[bucket] !== undefined) horas[bucket]++;
-    });
-
-    const commonOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { labels: { font: { size: 11, family: "'Inter',sans-serif" }, boxWidth: 12 } }
-        }
-    };
-
-    // Gráfico de barras (por local o por mesa)
-    const ctxMesa = document.getElementById("chart-mesa");
-    if (ctxMesa) {
-        if (state.charts.mesa) state.charts.mesa.destroy();
-        state.charts.mesa = new Chart(ctxMesa, {
-            type: "bar",
-            data: {
-                labels: labels,
-                datasets: [
-                    { label: datasetLabel, data: dataValues, backgroundColor: backgroundColors, borderRadius: 6 }
-                ]
-            },
-            options: {
-                ...commonOptions,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-            }
-        });
-    }
-
-    // Gráfico de torta global
     const ctxGlobal = document.getElementById("chart-global");
     if (ctxGlobal) {
         if (state.charts.global) state.charts.global.destroy();
@@ -1467,11 +1446,20 @@ function renderStatsCharts() {
                 labels: ["Votaron", "No Votaron", "Pendientes"],
                 datasets: [{ data: [voted, noVoted, pending], backgroundColor: ["#15803D", "#B91C1C", "#9CA3AF"], borderWidth: 0 }]
             },
-            options: commonOptions
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } }
         });
     }
 
-    // Gráfico de líneas horario
+    // Gráfico horario (líneas)
+    const horas = {};
+    for (let h = 7; h <= 18; h++) horas[`${h}:00`] = 0;
+    Object.entries(state.votos).forEach(([cedula, v]) => {
+        if (v.voto !== "Votó" || !v.timestamp) return;
+        const d = v.timestamp.toDate ? v.timestamp.toDate() : new Date(v.timestamp);
+        const horaPY = new Date(d.toLocaleString("en-US", { timeZone: TZ_PY }));
+        const bucket = `${horaPY.getHours()}:00`;
+        if (horas[bucket] !== undefined) horas[bucket]++;
+    });
     const ctxHora = document.getElementById("chart-hora");
     if (ctxHora) {
         if (state.charts.hora) state.charts.hora.destroy();
@@ -1490,13 +1478,20 @@ function renderStatsCharts() {
                 }]
             },
             options: {
-                ...commonOptions,
+                responsive: true,
+                maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
             }
         });
     }
 }
+
+window.volverALocales = function() {
+    currentStatsView = "locales";
+    currentLocalForMesas = null;
+    renderStatsCharts();
+};
 
 // ═══════════════════════════════════════════════════════════════
 //  MODALES
@@ -1747,8 +1742,6 @@ function bindEvents() {
     document.getElementById("register-user-form").addEventListener("submit",    handleRegistrarUsuario);
     document.getElementById("register-votante-form")?.addEventListener("submit", handleRegistrarVotante);
 
-    document.getElementById('chart-local-selector')?.addEventListener('change', renderStatsCharts);
-
     ["modal-novoto","modal-chpass","modal-obs-confirm","modal-historial"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener("click", function(e) {
@@ -1972,7 +1965,7 @@ function _marcarBtnAgregado(exito) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  MODO ELIMINACIÓN — Solo ADMIN
+//  MODO ELIMINACIÓN — Solo ADMIN (con delegación de eventos)
 // ═══════════════════════════════════════════════════════════════
 const elimState = {
     activo:        false,
@@ -1984,9 +1977,19 @@ function actualizarBotonTrash() {
     if (!btn) return;
     if (state.currentUser?.isAdmin) {
         btn.classList.remove("hidden");
+        btn.title = elimState.activo ? "Cancelar selección" : "Eliminar registros";
     } else {
         btn.classList.add("hidden");
         if (elimState.activo) cancelarModoEliminar();
+    }
+}
+
+function toggleModoEliminar() {
+    if (!state.currentUser?.isAdmin) return;
+    if (elimState.activo) {
+        cancelarModoEliminar();
+    } else {
+        activarModoEliminar();
     }
 }
 
@@ -1999,11 +2002,13 @@ window.activarModoEliminar = function() {
     document.querySelector(".tabla-desktop")?.classList.add("modo-eliminar");
 
     const btnTrash = document.getElementById("btn-trash-flotante");
-    if (btnTrash) btnTrash.classList.add("modo-activo");
+    if (btnTrash) {
+        btnTrash.classList.add("modo-activo");
+        btnTrash.title = "Cancelar selección";
+    }
 
     document.getElementById("banner-eliminar")?.classList.remove("hidden");
     actualizarBannerCount();
-    _bindEliminarListeners();
 };
 
 window.cancelarModoEliminar = function() {
@@ -2021,10 +2026,14 @@ window.cancelarModoEliminar = function() {
         wrap.querySelectorAll("tr.seleccionado").forEach(el => el.classList.remove("seleccionado"));
     }
 
-    document.getElementById("btn-trash-flotante")?.classList.remove("modo-activo");
+    const btnTrash = document.getElementById("btn-trash-flotante");
+    if (btnTrash) {
+        btnTrash.classList.remove("modo-activo");
+        btnTrash.title = "Eliminar registros";
+    }
+
     document.getElementById("banner-eliminar")?.classList.add("hidden");
     cerrarModal("modal-eliminar-confirm");
-    _unbindEliminarListeners();
 };
 
 window.seleccionarTodosEliminar = function() {
@@ -2046,25 +2055,16 @@ window.seleccionarTodosEliminar = function() {
     actualizarBannerCount();
 };
 
-function _toggleTarjeta(cedula) {
+function _toggleSeleccion(cedula) {
     const card = document.querySelector(`.card-votante[data-cedula="${cedula}"]`);
-    if (elimState.seleccionados.has(cedula)) {
-        elimState.seleccionados.delete(cedula);
-        card?.classList.remove("seleccionado");
-    } else {
-        elimState.seleccionados.add(cedula);
-        card?.classList.add("seleccionado");
-    }
-    actualizarBannerCount();
-}
-
-function _toggleFila(cedula) {
     const fila = document.querySelector(`#votantes-table-body tr[data-cedula="${cedula}"]`);
     if (elimState.seleccionados.has(cedula)) {
         elimState.seleccionados.delete(cedula);
+        card?.classList.remove("seleccionado");
         fila?.classList.remove("seleccionado");
     } else {
         elimState.seleccionados.add(cedula);
+        card?.classList.add("seleccionado");
         fila?.classList.add("seleccionado");
     }
     actualizarBannerCount();
@@ -2120,47 +2120,158 @@ window.confirmarEliminarSeleccionados = async function() {
         err === 0 ? "ok" : "warn");
 };
 
-function _onCardClickEliminar(e) {
-    if (!elimState.activo) return;
-    e.stopPropagation();
-    const cedula = this.dataset.cedula;
-    if (cedula) _toggleTarjeta(cedula);
-}
-
-function _onFilaClickEliminar(e) {
-    if (!elimState.activo) return;
-    e.stopPropagation();
-    const cedula = this.dataset.cedula;
-    if (cedula) _toggleFila(cedula);
-}
-
-function _bindEliminarListeners() {
-    setTimeout(() => {
-        document.querySelectorAll(".card-votante[data-cedula]")
-            .forEach(c => c.addEventListener("click", _onCardClickEliminar));
-        document.querySelectorAll("#votantes-table-body tr[data-cedula]")
-            .forEach(r => r.addEventListener("click", _onFilaClickEliminar));
-    }, 80);
-}
-
-function _unbindEliminarListeners() {
-    document.querySelectorAll(".card-votante[data-cedula]")
-        .forEach(c => c.removeEventListener("click", _onCardClickEliminar));
-    document.querySelectorAll("#votantes-table-body tr[data-cedula]")
-        .forEach(r => r.removeEventListener("click", _onFilaClickEliminar));
-}
-
+// Delegación de eventos para modo eliminar (evita conflictos con botones)
 document.addEventListener("DOMContentLoaded", () => {
-    setTimeout(() => {
-        const obs = new MutationObserver(() => {
-            if (elimState.activo) {
-                _unbindEliminarListeners();
-                _bindEliminarListeners();
+    const cardsContainer = document.getElementById("cards-container");
+    const tablaBody = document.getElementById("votantes-table-body");
+
+    if (cardsContainer) {
+        cardsContainer.addEventListener("click", (e) => {
+            if (!elimState.activo) return;
+            let target = e.target.closest(".card-votante");
+            if (!target) return;
+            // Si el clic fue sobre un botón o dentro de un botón, no seleccionar
+            if (e.target.closest("button") || e.target.closest(".btn-accion") || e.target.closest(".btn-obs") || e.target.closest(".btn-secondary")) {
+                return;
             }
+            const cedula = target.dataset.cedula;
+            if (cedula) _toggleSeleccion(cedula);
         });
-        const cards = document.getElementById("cards-container");
-        const tbody = document.getElementById("votantes-table-body");
-        if (cards) obs.observe(cards, { childList: true });
-        if (tbody) obs.observe(tbody, { childList: true });
-    }, 600);
+    }
+
+    if (tablaBody) {
+        tablaBody.addEventListener("click", (e) => {
+            if (!elimState.activo) return;
+            let target = e.target.closest("tr");
+            if (!target) return;
+            if (e.target.closest("button") || e.target.closest(".btn-accion") || e.target.closest(".btn-obs") || e.target.closest(".btn-secondary")) {
+                return;
+            }
+            const cedula = target.dataset.cedula;
+            if (cedula) _toggleSeleccion(cedula);
+        });
+    }
+
+    // Botón flotante toggle
+    const btnTrash = document.getElementById("btn-trash-flotante");
+    if (btnTrash) {
+        btnTrash.addEventListener("click", toggleModoEliminar);
+    }
 });
+
+// ═══════════════════════════════════════════════════════════════
+//  FILTROS Y NAVEGACIÓN
+// ═══════════════════════════════════════════════════════════════
+function cambiarFiltro(destino) {
+    state.currentFilter = destino;
+    state.searchAllStates = false;
+    state.pagination.page = 1;
+    renderTablaVotantes();
+    const cards = document.getElementById("cards-container");
+    if (cards && window.innerWidth < 768) {
+        cards.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+}
+window.cambiarFiltro = cambiarFiltro;
+
+function showLogin() {
+    document.getElementById("login-section").classList.remove("hidden");
+    document.getElementById("app-section").classList.add("hidden");
+}
+
+function showApp() {
+    document.getElementById("login-section").classList.add("hidden");
+    document.getElementById("app-section").classList.remove("hidden");
+}
+
+function switchTab(tab) {
+    if (tab === "admin" && !state.currentUser?.isAdmin) {
+        toast("Acceso denegado. Solo el Administrador.", "error"); return;
+    }
+    const planilla     = document.getElementById("view-planilla");
+    const stats        = document.getElementById("view-stats");
+    const admin        = document.getElementById("view-admin");
+    const padronAnr    = document.getElementById("view-padron-anr");
+    const fw           = document.getElementById("filter-wrapper");
+    const metrics      = document.getElementById("metrics-wrapper");
+    const tabPlanilla  = document.getElementById("tab-planilla");
+    const tabStats     = document.getElementById("tab-stats");
+    const tabAdmin     = document.getElementById("tab-admin");
+    const tabPadronAnr = document.getElementById("tab-padron-anr");
+
+    if (!planilla || !admin) return;
+
+    planilla.style.display = "none";
+    stats.classList.remove("visible");
+    stats.style.display = "none";
+    admin.classList.remove("visible");
+    admin.style.display = "none";
+    if (padronAnr) padronAnr.style.display = "none";
+    if (fw)        fw.style.display        = "none";
+    if (metrics)   metrics.style.display   = "none";
+    if (tabPlanilla)  tabPlanilla.classList.remove("active");
+    if (tabStats)     tabStats.classList.remove("active");
+    if (tabAdmin)     tabAdmin.classList.remove("active");
+    if (tabPadronAnr) tabPadronAnr.classList.remove("active");
+
+    if (tab === "planilla") {
+        planilla.style.display = "";
+        if (fw)        fw.style.display      = "block";
+        if (metrics)   metrics.style.display = "grid";
+        if (tabPlanilla) tabPlanilla.classList.add("active");
+        state.currentFilter = "todos";
+        renderTablaVotantes();
+    } else if (tab === "stats") {
+        stats.style.display = "block";
+        stats.classList.add("visible");
+        if (tabStats) tabStats.classList.add("active");
+        // Reiniciar vista de estadísticas
+        currentStatsView = "locales";
+        currentLocalForMesas = null;
+        renderStatsCharts();
+    } else if (tab === "admin") {
+        admin.style.display = "flex";
+        admin.classList.add("visible");
+        if (tabAdmin) tabAdmin.classList.add("active");
+        cargarUsuarios();
+        escucharBitacora();
+        cargarLocalesDesdePadron();
+    } else if (tab === "padron-anr") {
+        if (padronAnr) padronAnr.style.display = "";
+        if (tabPadronAnr) tabPadronAnr.classList.add("active");
+        const inp = document.getElementById("padron-anr-input");
+        const err = document.getElementById("padron-anr-error");
+        const res = document.getElementById("padron-anr-resultado");
+        const lod = document.getElementById("padron-anr-loading");
+        if (inp) inp.value = "";
+        if (err) err.style.display = "none";
+        if (res) res.style.display = "none";
+        if (lod) lod.style.display = "none";
+        setTimeout(() => { if (inp) inp.focus(); }, 100);
+    }
+}
+
+// Exponer funciones globales necesarias
+window.exportarXLSX = exportarXLSX;
+window.exportarEstadisticasXLSX = exportarEstadisticasXLSX;
+window.accionVoto = accionVoto;
+window.abrirModalObservacion = abrirModalObservacion;
+window.abrirHistorial = abrirHistorial;
+window.activarBusquedaGlobal = activarBusquedaGlobal;
+window.desactivarBusquedaGlobal = desactivarBusquedaGlobal;
+window.confirmNoVoto = confirmNoVoto;
+window.confirmarObservacion = confirmarObservacion;
+window.cancelarObservacion = cancelarObservacion;
+window.cambiarFiltro = cambiarFiltro;
+window.volverALocales = volverALocales;
+window.agregarDesdePardon = agregarDesdePardon;
+window.buscarPadronANR = buscarPadronANR;
+window.abrirCambiarPassword = abrirCambiarPassword;
+window.confirmarCambiarPassword = confirmarCambiarPassword;
+window.deleteUser = deleteUser;
+window.toggleModoEliminar = toggleModoEliminar;
+window.activarModoEliminar = activarModoEliminar;
+window.cancelarModoEliminar = cancelarModoEliminar;
+window.seleccionarTodosEliminar = seleccionarTodosEliminar;
+window.pedirConfirmacionEliminar = pedirConfirmacionEliminar;
+window.confirmarEliminarSeleccionados = confirmarEliminarSeleccionados;

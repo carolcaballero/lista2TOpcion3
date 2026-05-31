@@ -1,8 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
-//  CONTROL ELECTORAL — app.js v9.0
-//  Selección con checkboxes, menú contextual (3 puntos),
-//  barra inferior, mesas completas, limpiar bitácora,
-//  Material Design Icons, sin dashboard en planilla
+//  CONTROL ELECTORAL — app.js v10.0
+//  Menú 3 puntos corregido, checkboxes, barra inferior,
+//  limpiar bitácora, mesas completas, Material Icons
 // ═══════════════════════════════════════════════════════════════
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -246,6 +245,20 @@ document.addEventListener("DOMContentLoaded", () => {
     iniciarReintentosOffline();
     ajustarStickyFiltros();
     checkSession();
+
+    // Cerrar menú al hacer clic fuera
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.menu-tres-puntos')) {
+            document.querySelectorAll('.menu-tres-puntos .dropdown.show').forEach(d => d.classList.remove('show'));
+        }
+    });
+
+    // Cerrar menú con Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.menu-tres-puntos .dropdown.show').forEach(d => d.classList.remove('show'));
+        }
+    });
 });
 
 function bindNetworkEvents() {
@@ -507,11 +520,10 @@ const getObs  = c => state.votos[c]?.observaciones || "";
 const getLog  = c => state.votos[c]?.modificado_por || "---";
 
 // ═══════════════════════════════════════════════════════════════
-//  DASHBOARD (métricas internas, ya no se muestran en planilla)
+//  DASHBOARD (métricas internas)
 // ═══════════════════════════════════════════════════════════════
 function actualizarDashboard() {
-    // Solo se usa para actualizar métricas internas y gráficos en estadísticas
-    renderTablaVotantes(); // actualiza la planilla si está visible
+    renderTablaVotantes();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -729,25 +741,23 @@ async function renderTablaVotantes() {
                     <td>
                         <div class="action-btns">
                             <button class="btn-accion ${voto==='Votó'?'sel-voto':''}" onclick="accionVoto('${v.cedula}','Votó')" title="Votó">
-                                <span class="material-icons" style="font-size:16px;">check_circle</span>
+                                <span class="material-icons" style="font-size:18px;">check_circle</span>
                             </button>
                             <button class="btn-accion ${voto==='No Votó'?'sel-novoto':''}" onclick="accionVoto('${v.cedula}','No Votó')" title="No Votó">
-                                <span class="material-icons" style="font-size:16px;">cancel</span>
+                                <span class="material-icons" style="font-size:18px;">cancel</span>
                             </button>
                         </div>
                     </td>
                     <td>
-                        <button class="btn-obs ${obs ? 'has-obs' : ''}"
-                            style="min-width:130px;"
-                            onclick="abrirModalObservacion('${v.cedula}', ${jsEscape(v.nombre)})">
-                            <span class="material-icons" style="font-size:14px;">edit</span>
+                        <button class="btn-obs ${obs ? 'has-obs' : ''}" onclick="abrirModalObservacion('${v.cedula}', ${jsEscape(v.nombre)})">
+                            <span class="material-icons" style="font-size:16px;">edit</span>
                             <span class="obs-preview">${obs ? escHtml(obs) : "Agregar obs..."}</span>
                         </button>
                     </td>
                     <td><span class="log-span">${escHtml(log)}</span></td>
                     <td>
                         <div class="menu-tres-puntos">
-                            <button class="btn-puntos" onclick="event.stopPropagation(); toggleMenu(event, '${v.cedula}')">⋯</button>
+                            <button class="btn-puntos" onclick="toggleMenu(event, '${v.cedula}')">⋯</button>
                             <div class="dropdown" id="menu-${v.cedula}">
                                 <a href="#" onclick="event.preventDefault(); abrirHistorial('${v.cedula}', ${jsEscape(v.nombre)})"><span class="material-icons">history</span> Historial</a>
                                 <a href="#" onclick="event.preventDefault(); abrirModalObservacion('${v.cedula}', ${jsEscape(v.nombre)})"><span class="material-icons">edit</span> Observación</a>
@@ -844,8 +854,8 @@ function construirTarjeta(v, idx) {
                     </div>
                     <div class="card-nombre" title="${escHtml(v.nombre)}">${escHtml(v.nombre)}</div>
                     <div class="card-cedula">CI: ${escHtml(v.cedula)}</div>
-                    ${v.local  ? `<div class="card-domicilio" style="font-size:.74rem;opacity:.85;">📍 ${escHtml(v.local)}</div>` : ""}
-                    ${v.mesa   ? `<div class="card-domicilio" style="font-size:.74rem;opacity:.85;">🗳️ Mesa <strong>${escHtml(v.mesa)}</strong>${v.orden ? " · Orden " + escHtml(v.orden) : ""}</div>` : ""}
+                    ${v.local  ? `<div class="card-domicilio" style="font-size:.74rem;">📍 ${escHtml(v.local)}</div>` : ""}
+                    ${v.mesa   ? `<div class="card-domicilio" style="font-size:.74rem;">🗳️ Mesa <strong>${escHtml(v.mesa)}</strong>${v.orden ? " · Orden " + escHtml(v.orden) : ""}</div>` : ""}
                 </div>
                 <span class="${badgeClass}">${badgeLabel}</span>
             </div>
@@ -865,7 +875,7 @@ function construirTarjeta(v, idx) {
             </button>
             ${log !== "---" ? `<div class="card-log">${escHtml(log)}</div>` : ""}
             <div class="menu-tres-puntos" style="margin-top:8px;text-align:right;">
-                <button class="btn-puntos" onclick="event.stopPropagation(); toggleMenu(event, '${v.cedula}')">⋯</button>
+                <button class="btn-puntos" onclick="toggleMenu(event, '${v.cedula}')">⋯</button>
                 <div class="dropdown" id="menu-${v.cedula}">
                     <a href="#" onclick="event.preventDefault(); abrirHistorial('${v.cedula}', ${jsEscape(v.nombre)})"><span class="material-icons">history</span> Historial</a>
                     <a href="#" onclick="event.preventDefault(); abrirModalObservacion('${v.cedula}', ${jsEscape(v.nombre)})"><span class="material-icons">edit</span> Observación</a>
@@ -883,7 +893,6 @@ window.handleCheckboxChange = function(checkbox) {
     if (checkbox.checked) selectedCedulas.add(cedula);
     else selectedCedulas.delete(cedula);
     actualizarBarraSeleccion();
-    // Sincronizar checkbox maestro
     const master = document.getElementById("checkbox-todos");
     if (master) {
         const allCheckboxes = document.querySelectorAll('.sel-checkbox');
@@ -931,18 +940,20 @@ function actualizarBarraSeleccion() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  MENÚ DE 3 PUNTOS
+//  MENÚ DE 3 PUNTOS (CORREGIDO)
 // ═══════════════════════════════════════════════════════════════
 window.toggleMenu = function(event, cedula) {
     event.stopPropagation();
-    document.querySelectorAll('.menu-tres-puntos .dropdown').forEach(d => d.classList.remove('show'));
+    event.preventDefault();
+
+    // Cerrar todos los demás menús
+    document.querySelectorAll('.menu-tres-puntos .dropdown.show').forEach(d => {
+        if (d.id !== `menu-${cedula}`) d.classList.remove('show');
+    });
+
     const menu = document.getElementById(`menu-${cedula}`);
     if (menu) menu.classList.toggle('show');
 };
-
-document.addEventListener('click', () => {
-    document.querySelectorAll('.menu-tres-puntos .dropdown').forEach(d => d.classList.remove('show'));
-});
 
 // ═══════════════════════════════════════════════════════════════
 //  ELIMINACIÓN INDIVIDUAL (desde menú)
@@ -1017,7 +1028,7 @@ window.confirmarEliminarSeleccionados = async function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  HISTORIAL DE CAMBIOS (sin cambios)
+//  HISTORIAL DE CAMBIOS
 // ═══════════════════════════════════════════════════════════════
 window.abrirHistorial = async function(cedula, nombre) {
     document.getElementById("modal-hist-nombre").textContent = `${nombre} (CI: ${cedula})`;
@@ -1052,7 +1063,7 @@ window.abrirHistorial = async function(cedula, nombre) {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  ACCIONES DE VOTO (sin cambios)
+//  ACCIONES DE VOTO
 // ═══════════════════════════════════════════════════════════════
 window.accionVoto = function(cedula, accion) {
     const actual = getVoto(cedula);
@@ -1132,7 +1143,7 @@ async function guardarVoto(cedula, voto, observaciones, accionBit, detalleBit, e
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  OBSERVACIONES — modal (sin cambios)
+//  OBSERVACIONES — modal
 // ═══════════════════════════════════════════════════════════════
 let _obsPendiente = null;
 
@@ -1190,7 +1201,7 @@ window.actualizarObservacion = async function(cedula, texto, nombre) {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  ADMIN: OPERADORES (sin cambios, salvo iconos)
+//  ADMIN: OPERADORES
 // ═══════════════════════════════════════════════════════════════
 async function cargarUsuarios() {
     try {
@@ -1207,22 +1218,10 @@ async function handleRegistrarUsuario(e) {
     const phone    = document.getElementById("reg-phone").value.trim();
     const username = document.getElementById("reg-username").value.trim().toLowerCase();
     const password = document.getElementById("reg-password").value;
-    const local    = (document.getElementById("reg-local-value")?.value || document.getElementById("reg-local")?.value || "").trim();
+    const local    = (document.getElementById("reg-local-value")?.value || "").trim();
 
-    if (!local) {
-        toast("Seleccioná un local para el operador.", "error");
-        const picker = document.getElementById("reg-local-picker");
-        if (picker) {
-            picker.style.outline = "2px solid var(--color-primary)";
-            picker.style.borderRadius = "var(--r-md)";
-            setTimeout(() => { picker.style.outline = ""; }, 2000);
-        }
-        return;
-    }
-    if (username === ADMIN_USER_ID) {
-        toast("Ese nombre de usuario está reservado.", "error");
-        return;
-    }
+    if (!local) { toast("Seleccioná un local para el operador.", "error"); return; }
+    if (username === ADMIN_USER_ID) { toast("Ese nombre de usuario está reservado.", "error"); return; }
 
     try {
         const existe = await getDoc(doc(db, "usuarios", username));
@@ -1230,21 +1229,11 @@ async function handleRegistrarUsuario(e) {
         const passwordHash = await sha256(password);
         await setDoc(doc(db, "usuarios", username), { username, fullname, phone, passwordHash, isAdmin: false, local });
         toast(`✔ Operador "${fullname}" creado correctamente.`);
-        await registrarBitacora("Nuevo Operador", `Creó operador ${fullname} (usuario: ${username})${local ? " · Local: "+local : ""}`);
+        await registrarBitacora("Nuevo Operador", `Creó operador ${fullname} (${username})`);
         document.getElementById("register-user-form").reset();
-        const lp = document.getElementById("reg-local-picker");
-        if (lp) lp.querySelectorAll(".local-picker-btn").forEach(b => {
-            b.classList.remove("selected");
-            b.style.background = "";
-            b.style.borderColor = "";
-        });
-        const lv = document.getElementById("reg-local-value");
-        if (lv) lv.value = "";
+        cargarLocalesDesdePadron();
         cargarUsuarios();
-    } catch (err) {
-        console.error(err);
-        toast("Error al crear el usuario.", "error");
-    }
+    } catch (err) { console.error(err); toast("Error al crear el usuario.", "error"); }
 }
 
 window.deleteUser = async function(username) {
@@ -1253,19 +1242,16 @@ window.deleteUser = async function(username) {
     try {
         await deleteDoc(doc(db, "usuarios", username));
         toast(`Operador "${username}" eliminado.`, "warn");
-        await registrarBitacora("Eliminar Operador",
-            `Eliminó operador ${u?.fullname || username} (usuario: ${username})`);
+        await registrarBitacora("Eliminar Operador", `Eliminó operador ${u?.fullname || username}`);
         cargarUsuarios();
-    } catch {
-        toast("Error al eliminar el operador.", "error");
-    }
+    } catch { toast("Error al eliminar el operador.", "error"); }
 };
 
 function renderTablaUsuarios() {
     const tbody = document.getElementById("users-table-body");
     tbody.innerHTML = "";
     if (!state.usuarios.length) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--color-gray);padding:20px;">No hay operadores registrados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No hay operadores registrados.</td></tr>`;
         return;
     }
     state.usuarios.forEach(u => {
@@ -1276,60 +1262,29 @@ function renderTablaUsuarios() {
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td>${escHtml(u.fullname)}</td>
-            <td>
-                ${waLink
-                    ? `<a href="${waLink}" target="_blank" rel="noopener" class="wa-link">
-                           <span class="material-icons" style="font-size:16px;">phone</span> ${escHtml(u.phone)}
-                       </a>`
-                    : escHtml(u.phone || "---")
-                }
-            </td>
+            <td>${waLink ? `<a href="${waLink}" target="_blank" class="wa-link"><span class="material-icons" style="font-size:16px;">phone</span> ${escHtml(u.phone)}</a>` : escHtml(u.phone || "---")}</td>
             <td><code>${escHtml(u.username)}</code></td>
             <td>${escHtml(u.local || "—")}</td>
-            <td style="white-space:nowrap">
-                <div style="display:flex;gap:6px;align-items:center;">
-                    <button class="btn-secondary" onclick="abrirCambiarPassword('${escHtml(u.username)}')"
-                        style="padding:7px 11px;font-size:.75rem;font-weight:800;display:flex;align-items:center;gap:4px;">
-                        <span class="material-icons" style="font-size:14px;">lock</span> Clave
-                    </button>
-                    <button class="btn-icon-danger" onclick="deleteUser('${escHtml(u.username)}')" title="Eliminar operador"
-                        style="padding:7px 10px;font-size:.75rem;font-weight:800;display:flex;align-items:center;gap:4px;width:auto;height:auto;border-radius:var(--r-md);">
-                        <span class="material-icons" style="font-size:14px;">delete</span> Eliminar
-                    </button>
-                </div>
+            <td>
+                <button class="btn-secondary" onclick="abrirCambiarPassword('${escHtml(u.username)}')"><span class="material-icons">lock</span> Clave</button>
+                <button class="btn-icon-danger" onclick="deleteUser('${escHtml(u.username)}')"><span class="material-icons">delete</span> Eliminar</button>
             </td>`;
         tbody.appendChild(tr);
     });
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  LOCALES CONFIG (sin cambios)
+//  LOCALES CONFIG (Gimnasio con ícono stadium)
 // ═══════════════════════════════════════════════════════════════
 const LOCALES_CONFIG = {
-    "GIMNASIO MUNICIPAL":                   { mesaMin: 1,  mesaMax: 20, color: "#B91C1C", colorSoft: "#FCA5A5", icon: "fitness_center" },
+    "GIMNASIO MUNICIPAL":                   { mesaMin: 1,  mesaMax: 20, color: "#B91C1C", colorSoft: "#FCA5A5", icon: "stadium" },
     "COLEGIO NACIONAL SEBASTIAN DE YEGROS": { mesaMin: 21, mesaMax: 40, color: "#1E40AF", colorSoft: "#93C5FD", icon: "school" },
     "ESC.CARLOS ANTONIO LOPEZ":             { mesaMin: 41, mesaMax: 65, color: "#15803D", colorSoft: "#86EFAC", icon: "local_library" }
 };
 
-function getColorLocal(local) {
-    return (LOCALES_CONFIG[local] && LOCALES_CONFIG[local].color) || "#9CA3AF";
-}
-function getColorLocalSoft(local) {
-    return (LOCALES_CONFIG[local] && LOCALES_CONFIG[local].colorSoft) || "#D1D5DB";
-}
-
-function normalizarLocal(nombre) {
-    if (!nombre) return "";
-    return nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
-}
-
+function getColorLocal(local) { return (LOCALES_CONFIG[local] && LOCALES_CONFIG[local].color) || "#9CA3AF"; }
+function getColorLocalSoft(local) { return (LOCALES_CONFIG[local] && LOCALES_CONFIG[local].colorSoft) || "#D1D5DB"; }
 function determinarLocal(votante) {
-    if (votante.local) {
-        const norm = normalizarLocal(votante.local);
-        for (const local of Object.keys(LOCALES_CONFIG)) {
-            if (normalizarLocal(local) === norm) return local;
-        }
-    }
     const numMesa = parseInt(String(votante.mesa || "").replace(/\D/g, '')) || 0;
     for (const [local, config] of Object.entries(LOCALES_CONFIG)) {
         if (numMesa >= config.mesaMin && numMesa <= config.mesaMax) return local;
@@ -1338,10 +1293,10 @@ function determinarLocal(votante) {
 }
 
 async function cargarLocalesDesdePadron() {
-    const localPickerWrap = document.getElementById("reg-local-picker");
-    const localHidden = document.getElementById("reg-local-value");
-    if (localPickerWrap) {
-        localPickerWrap.innerHTML = "";
+    const picker = document.getElementById("reg-local-picker");
+    const hidden = document.getElementById("reg-local-value");
+    if (picker) {
+        picker.innerHTML = "";
         Object.entries(LOCALES_CONFIG).forEach(([loc, conf]) => {
             const btn = document.createElement("button");
             btn.type = "button";
@@ -1349,35 +1304,22 @@ async function cargarLocalesDesdePadron() {
             btn.dataset.local = loc;
             btn.style.setProperty("--lc", conf.color);
             btn.style.setProperty("--ls", conf.colorSoft);
-            btn.innerHTML = `
-                <span class="material-icons" style="color:${conf.color}; font-size:18px;">${conf.icon}</span>
-                <span>${loc}</span>
-                <span class="lp-mesas" style="color:${conf.color}">M${conf.mesaMin}–${conf.mesaMax}</span>`;
-            btn.addEventListener("click", () => {
-                localPickerWrap.querySelectorAll(".local-picker-btn").forEach(b => b.classList.remove("selected"));
+            btn.innerHTML = `<span class="material-icons" style="color:${conf.color};">${conf.icon}</span><span>${loc}</span><span class="lp-mesas">M${conf.mesaMin}–${conf.mesaMax}</span>`;
+            btn.onclick = () => {
+                picker.querySelectorAll(".local-picker-btn").forEach(b => b.classList.remove("selected"));
                 btn.classList.add("selected");
                 btn.style.background = conf.color + "18";
                 btn.style.borderColor = conf.color;
-                if (localHidden) localHidden.value = loc;
-            });
-            localPickerWrap.appendChild(btn);
-        });
-        if (localHidden) localHidden.value = "";
-    }
-    const select = document.getElementById("reg-local");
-    if (select) {
-        select.innerHTML = '<option value="">Seleccionar local...</option>';
-        Object.keys(LOCALES_CONFIG).forEach(loc => {
-            const opt = document.createElement("option");
-            opt.value = loc;
-            opt.textContent = loc;
-            select.appendChild(opt);
+                if (hidden) hidden.value = loc;
+            };
+            picker.appendChild(btn);
         });
     }
+    if (hidden) hidden.value = "";
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ESTADÍSTICAS (con mesas completas)
+//  ESTADÍSTICAS (mesas completas)
 // ═══════════════════════════════════════════════════════════════
 let currentStatsView = "locales";
 let currentLocalForMesas = null;
@@ -1435,34 +1377,18 @@ function renderLocalesSummary() {
         card.className = "local-card";
         card.style.borderLeftColor = color;
         card.innerHTML = `
-            <div class="local-card-name" style="color:${color}">
-                <span class="material-icons" style="font-size:18px;">${icon}</span>
-                ${local}
-            </div>
-            <div class="local-card-num" style="color:${color}">${voted}<span style="font-size:.85rem;color:var(--color-gray);font-weight:700;"> / ${total}</span></div>
+            <div class="local-card-name" style="color:${color}"><span class="material-icons">${icon}</span>${local}</div>
+            <div class="local-card-num" style="color:${color}">${voted}<span style="font-size:.85rem;color:var(--color-gray);"> / ${total}</span></div>
             <div class="local-card-meta">${conf ? `Mesas ${conf.mesaMin}–${conf.mesaMax}` : "Sin asignar"}</div>
-            <div class="local-card-bar"><div class="local-card-bar-fill" style="width:${pct}%;background:linear-gradient(90deg, ${color}, ${colorSoft})"></div></div>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:5px;">
-                <div class="local-card-pct" style="color:${color}">${pct}% de participación</div>
-                ${local !== "OTRO" ? `<span style="font-size:.65rem;font-weight:800;color:${color};opacity:.7;display:flex;align-items:center;gap:2px;">Ver mesas <span class="material-icons" style="font-size:14px;">chevron_right</span></span>` : ""}
-            </div>
+            <div class="local-card-bar"><div class="local-card-bar-fill" style="width:${pct}%;background:linear-gradient(90deg,${color},${colorSoft})"></div></div>
+            <div class="local-card-pct" style="color:${color}">${pct}% de participación</div>
         `;
         if (local !== "OTRO") {
             card.addEventListener("click", () => {
-                document.querySelectorAll(".local-card").forEach(c => {
-                    c.style.boxShadow = "";
-                    c.style.outline = "";
-                    c.style.transform = "";
-                });
-                card.style.boxShadow = `0 0 0 3px ${color}55, var(--shadow-md)`;
-                card.style.transform = "translateY(-2px)";
                 currentStatsView = "mesas";
                 currentLocalForMesas = local;
                 renderStatsCharts();
-                document.getElementById("panel-mesas-wrap")?.scrollIntoView({ behavior: "smooth", block: "start" });
             });
-        } else {
-            card.style.cursor = "default";
         }
         container.appendChild(card);
     });
@@ -1471,72 +1397,42 @@ function renderLocalesSummary() {
 function renderStatsCharts() {
     renderLocalesSummary();
 
-    if (!state.padron.length) {
-        ["chart-mesa", "chart-global", "chart-hora"].forEach(id => {
-            const canvas = document.getElementById(id);
-            if (canvas) {
-                const ctx = canvas.getContext("2d");
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-            }
-        });
-        return;
-    }
+    if (!state.padron.length) return;
 
     const titleEl   = document.getElementById("bar-chart-title");
     const btnVolver = document.getElementById("btn-volver-locales");
     const hintEl    = document.getElementById("chart-hint");
-    const iconWrap  = document.getElementById("bar-chart-icon-wrap");
     const mesaWrap  = document.getElementById("chart-mesa-wrap");
 
     if (currentStatsView === "mesas" && currentLocalForMesas) {
-        const conf       = LOCALES_CONFIG[currentLocalForMesas];
+        const conf = LOCALES_CONFIG[currentLocalForMesas];
         const colorLocal = getColorLocal(currentLocalForMesas);
-        const colorSoftL = getColorLocalSoft(currentLocalForMesas);
-
-        if (titleEl) {
-            titleEl.textContent = `Votos por mesa — ${currentLocalForMesas}`;
-            titleEl.style.color = colorLocal;
-        }
+        if (titleEl) titleEl.textContent = `Votos por mesa — ${currentLocalForMesas}`;
         if (btnVolver) btnVolver.classList.remove("hidden");
-        if (hintEl)    hintEl.style.display = "none";
-        if (mesaWrap)  mesaWrap.style.display = "";
-
-        if (iconWrap && conf) {
-            iconWrap.innerHTML = `<span class="material-icons" style="color:${colorLocal}; font-size:20px;">${conf.icon}</span>`;
-        }
+        if (hintEl) hintEl.style.display = "none";
+        if (mesaWrap) mesaWrap.style.display = "";
 
         if (conf) {
-            // Todas las mesas, incluso vacías
             const mesas = {};
-            for (let m = conf.mesaMin; m <= conf.mesaMax; m++) {
-                mesas[m] = { voted: 0, noVoted: 0, pending: 0, total: 0 };
-            }
+            for (let m = conf.mesaMin; m <= conf.mesaMax; m++) mesas[m] = { voted:0, noVoted:0, pending:0, total:0 };
             state.padron.forEach(v => {
                 if (determinarLocal(v) !== currentLocalForMesas) return;
                 const numMesa = parseInt(String(v.mesa || "").replace(/\D/g, '')) || 0;
                 if (mesas[numMesa] === undefined) return;
                 mesas[numMesa].total++;
                 const estado = getVoto(v.cedula);
-                if (estado === "Votó")         mesas[numMesa].voted++;
+                if (estado === "Votó") mesas[numMesa].voted++;
                 else if (estado === "No Votó") mesas[numMesa].noVoted++;
-                else                           mesas[numMesa].pending++;
+                else mesas[numMesa].pending++;
             });
 
-            // Convertir a array con todas las mesas
             const mesasActivas = Object.entries(mesas).map(([m, d]) => ({ mesa: m, ...d }));
-            const labels    = mesasActivas.map(d => `M${d.mesa}`);
+            const labels = mesasActivas.map(d => `M${d.mesa}`);
             const dataVoted = mesasActivas.map(d => d.voted);
-            const totals    = mesasActivas.map(d => d.total);
 
             const ctxMesa = document.getElementById("chart-mesa");
             if (ctxMesa) {
                 if (state.charts.mesa) state.charts.mesa.destroy();
-
-                const ctx2d = ctxMesa.getContext("2d");
-                const grad = ctx2d.createLinearGradient(0, 0, 0, 280);
-                grad.addColorStop(0, colorLocal);
-                grad.addColorStop(1, colorSoftL + "99");
-
                 state.charts.mesa = new Chart(ctxMesa, {
                     type: "bar",
                     data: {
@@ -1544,87 +1440,37 @@ function renderStatsCharts() {
                         datasets: [{
                             label: "Votaron",
                             data: dataVoted,
-                            backgroundColor: grad,
+                            backgroundColor: colorLocal + "cc",
                             borderColor: colorLocal,
                             borderWidth: 1.5,
                             borderRadius: 5,
-                            borderSkipped: false,
-                            maxBarThickness: 48
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                backgroundColor: "#fff",
-                                titleColor: colorLocal,
-                                bodyColor: "#374151",
-                                borderColor: colorLocal,
-                                borderWidth: 1.5,
-                                padding: 10,
-                                callbacks: {
-                                    title: (items) => `Mesa ${items[0]?.label?.replace('M', '') || ''}`,
-                                    label: (ctx) => {
-                                        const i   = ctx.dataIndex;
-                                        const v   = dataVoted[i];
-                                        const t   = totals[i];
-                                        const pct = t ? ((v / t) * 100).toFixed(1) : "0.0";
-                                        return [`Votaron: ${v}`, `Inscriptos: ${t}  (${pct}%)`];
-                                    }
-                                }
-                            }
-                        },
+                        plugins: { legend: { display: false } },
                         scales: {
-                            x: {
-                                grid: { display: false },
-                                ticks: { font: { size: 11, weight: '700' }, color: '#374151' }
-                            },
-                            y: {
-                                beginAtZero: true,
-                                grid: { color: '#F3F4F6' },
-                                ticks: { stepSize: 1, precision: 0, font: { size: 10 }, color: '#9CA3AF' },
-                                title: {
-                                    display: true,
-                                    text: 'Votos emitidos',
-                                    font: { size: 11, weight: '700' },
-                                    color: '#6B7280'
-                                }
-                            }
+                            x: { grid: { display: false } },
+                            y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
                         }
                     }
                 });
             }
-
             _renderTablaMesas(mesasActivas, colorLocal);
         }
     } else {
-        currentStatsView = "locales";
-        if (titleEl) {
-            titleEl.textContent = "Tocá una tarjeta para ver votos por mesa";
-            titleEl.style.color = "";
-        }
+        if (titleEl) titleEl.textContent = "Tocá una tarjeta para ver votos por mesa";
         if (btnVolver) btnVolver.classList.add("hidden");
-        if (hintEl)    hintEl.style.display = "";
-        if (mesaWrap)  mesaWrap.style.display = "none";
-        if (iconWrap)  iconWrap.innerHTML = "";
-
-        const ctxMesa = document.getElementById("chart-mesa");
-        if (ctxMesa) {
-            if (state.charts.mesa) { state.charts.mesa.destroy(); state.charts.mesa = null; }
-        }
-
-        const tablaWrap = document.getElementById("mesa-tabla-wrap");
-        if (tablaWrap) tablaWrap.innerHTML = "";
+        if (hintEl) hintEl.style.display = "";
+        if (mesaWrap) mesaWrap.style.display = "none";
     }
 
     // Gráfico global
-    const total   = state.padron.length;
-    const voted   = state.padron.filter(v => getVoto(v.cedula) === "Votó").length;
-    const noVoted = state.padron.filter(v => getVoto(v.cedula) === "No Votó").length;
+    const total = state.padron.length;
+    const voted = state.padron.filter(v => getVoto(v.cedula)==="Votó").length;
+    const noVoted = state.padron.filter(v => getVoto(v.cedula)==="No Votó").length;
     const pending = total - voted - noVoted;
-
     const ctxGlobal = document.getElementById("chart-global");
     if (ctxGlobal) {
         if (state.charts.global) state.charts.global.destroy();
@@ -1632,88 +1478,10 @@ function renderStatsCharts() {
             type: "doughnut",
             plugins: [doughnutLabelsPlugin],
             data: {
-                labels: ["Votaron", "No Votaron", "Pendientes"],
-                datasets: [{
-                    data: [voted, noVoted, pending],
-                    backgroundColor: ["#15803D", "#B91C1C", "#9CA3AF"],
-                    borderColor: "#fff",
-                    borderWidth: 3,
-                    hoverOffset: 8
-                }]
+                labels: ["Votaron","No Votaron","Pendientes"],
+                datasets: [{ data: [voted, noVoted, pending], backgroundColor: ["#15803D","#B91C1C","#9CA3AF"], borderColor: "#fff", borderWidth: 3 }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '62%',
-                plugins: {
-                    legend: {
-                        position: "bottom",
-                        labels: { boxWidth: 12, font: { size: 11, weight: '700' }, padding: 14 }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: (ctx) => {
-                                const t = total || 1;
-                                return `${ctx.label}: ${ctx.raw} (${((ctx.raw/t)*100).toFixed(1)}%)`;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    // Gráfico horario
-    const horas = {};
-    for (let h = 7; h <= 17; h++) horas[`${h}:00`] = 0;
-    Object.entries(state.votos).forEach(([, v]) => {
-        if (v.voto !== "Votó" || !v.timestamp) return;
-        const d = v.timestamp.toDate ? v.timestamp.toDate() : new Date(v.timestamp);
-        const horaPY = new Date(d.toLocaleString("en-US", { timeZone: TZ_PY }));
-        const bucket = `${horaPY.getHours()}:00`;
-        if (horas[bucket] !== undefined) horas[bucket]++;
-    });
-    const ctxHora = document.getElementById("chart-hora");
-    if (ctxHora) {
-        if (state.charts.hora) state.charts.hora.destroy();
-        const ctx2dH = ctxHora.getContext("2d");
-        const grad = ctx2dH.createLinearGradient(0, 0, 0, 220);
-        grad.addColorStop(0, "rgba(185,28,28,0.38)");
-        grad.addColorStop(1, "rgba(185,28,28,0.02)");
-
-        state.charts.hora = new Chart(ctxHora, {
-            type: "line",
-            data: {
-                labels: Object.keys(horas),
-                datasets: [{
-                    label: "Votos por hora",
-                    data: Object.values(horas),
-                    borderColor: "#B91C1C",
-                    backgroundColor: grad,
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 5,
-                    pointHoverRadius: 8,
-                    pointBackgroundColor: "#B91C1C",
-                    pointBorderColor: "#fff",
-                    pointBorderWidth: 2,
-                    borderWidth: 2.5
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: { label: (ctx) => `${ctx.raw} voto${ctx.raw === 1 ? '' : 's'} a las ${ctx.label}` }
-                    }
-                },
-                scales: {
-                    x: { ticks: { font: { size: 10, weight: '600' } } },
-                    y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
-                }
-            }
+            options: { responsive: true, maintainAspectRatio: false }
         });
     }
 }
@@ -1721,76 +1489,13 @@ function renderStatsCharts() {
 function _renderTablaMesas(mesasActivas, colorLocal) {
     const tablaWrap = document.getElementById("mesa-tabla-wrap");
     if (!tablaWrap) return;
-
-    if (!mesasActivas.length) {
-        tablaWrap.innerHTML = `<p style="text-align:center;color:var(--color-gray);font-size:.85rem;padding:16px;">Sin datos de mesas para este local.</p>`;
-        return;
-    }
-
-    let totalVoted = 0, totalNoVoted = 0, totalPend = 0, totalTotal = 0;
-    mesasActivas.forEach(d => {
-        totalVoted  += d.voted;
-        totalNoVoted += d.noVoted;
-        totalPend   += d.pending;
-        totalTotal  += d.total;
-    });
-
+    let totalV = 0, totalNV = 0, totalP = 0, totalT = 0;
+    mesasActivas.forEach(d => { totalV += d.voted; totalNV += d.noVoted; totalP += d.pending; totalT += d.total; });
     const rows = mesasActivas.map(d => {
-        const pct = d.total ? ((d.voted / d.total) * 100).toFixed(1) : "0.0";
-        const pctNum = parseFloat(pct);
-        const barColor = pctNum >= 70 ? "#15803D" : pctNum >= 40 ? colorLocal : "#9CA3AF";
-        return `
-        <tr>
-            <td><strong style="color:${colorLocal}">M${d.mesa}</strong></td>
-            <td style="text-align:center;">${d.total}</td>
-            <td style="text-align:center;"><span style="color:#15803D;font-weight:800;">${d.voted}</span></td>
-            <td style="text-align:center;"><span style="color:#B91C1C;font-weight:700;">${d.noVoted}</span></td>
-            <td style="text-align:center;"><span style="color:#6B7280;">${d.pending}</span></td>
-            <td style="min-width:110px;">
-                <div style="display:flex;align-items:center;gap:6px;">
-                    <div style="flex:1;height:6px;background:#F3F4F6;border-radius:100px;overflow:hidden;">
-                        <div style="height:100%;width:${pct}%;background:${barColor};border-radius:100px;transition:width .6s ease;"></div>
-                    </div>
-                    <span style="font-size:.75rem;font-weight:800;color:${barColor};min-width:36px;text-align:right;">${pct}%</span>
-                </div>
-            </td>
-        </tr>`;
+        const pct = d.total ? ((d.voted/d.total)*100).toFixed(1) : "0.0";
+        return `<tr><td><strong>M${d.mesa}</strong></td><td>${d.total}</td><td style="color:#15803D;">${d.voted}</td><td style="color:#B91C1C;">${d.noVoted}</td><td>${d.pending}</td><td>${pct}%</td></tr>`;
     }).join("");
-
-    const totalPct = totalTotal ? ((totalVoted / totalTotal) * 100).toFixed(1) : "0.0";
-
-    tablaWrap.innerHTML = `
-        <div style="margin-top:18px;background:#fff;border:1px solid var(--color-border);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow-sm);">
-            <div style="padding:10px 16px;background:linear-gradient(135deg,${colorLocal},${colorLocal}cc);display:flex;align-items:center;gap:8px;">
-                <span class="material-icons" style="color:#fff; font-size:18px;">list</span>
-                <span style="color:#fff;font-size:.78rem;font-weight:800;text-transform:uppercase;letter-spacing:.5px;">Detalle por Mesa — ${currentLocalForMesas}</span>
-            </div>
-            <div style="overflow-x:auto;">
-                <table style="white-space:nowrap;">
-                    <thead>
-                        <tr>
-                            <th>Mesa</th>
-                            <th style="text-align:center;">Inscriptos</th>
-                            <th style="text-align:center;">Votaron</th>
-                            <th style="text-align:center;">No Votaron</th>
-                            <th style="text-align:center;">Pendientes</th>
-                            <th>Participación</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${rows}
-                        <tr style="background:${colorLocal}0d;border-top:2px solid ${colorLocal}44;">
-                            <td><strong style="color:${colorLocal}">TOTAL</strong></td>
-                            <td style="text-align:center;"><strong>${totalTotal}</strong></td>
-                            <td style="text-align:center;"><strong style="color:#15803D;">${totalVoted}</strong></td>
-                            <td style="text-align:center;"><strong style="color:#B91C1C;">${totalNoVoted}</strong></td>
-                            <td style="text-align:center;"><strong style="color:#6B7280;">${totalPend}</strong></td>
-                            <td><strong style="color:${colorLocal}">${totalPct}%</strong></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>`;
+    tablaWrap.innerHTML = `<table><thead><tr><th>Mesa</th><th>Insc.</th><th>Votaron</th><th>No Vot.</th><th>Pend.</th><th>%</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 window.volverALocales = function() {
@@ -1800,579 +1505,279 @@ window.volverALocales = function() {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  MODALES (sin cambios)
+//  MODALES
 // ═══════════════════════════════════════════════════════════════
-function abrirModal(id) {
-    const el = document.getElementById(id);
-    if (el) el.classList.add("active");
-}
-function cerrarModal(id) {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove("active");
-    state.pendingNoVoto = null;
-}
+function abrirModal(id) { document.getElementById(id)?.classList.add("active"); }
+function cerrarModal(id) { document.getElementById(id)?.classList.remove("active"); state.pendingNoVoto = null; }
 window.closeModal = cerrarModal;
 
 // ═══════════════════════════════════════════════════════════════
-//  TOASTS (sin cambios)
+//  TOASTS
 // ═══════════════════════════════════════════════════════════════
 function toast(msg, tipo = "ok") {
     const el = document.createElement("div");
-    el.className  = tipo === "error" ? "toast error" : tipo === "warn" ? "toast warn" : tipo === "offline" ? "toast offline" : "toast";
+    el.className = tipo === "error" ? "toast error" : tipo === "warn" ? "toast warn" : tipo === "offline" ? "toast offline" : "toast";
     el.textContent = msg;
     document.getElementById("toast-container").appendChild(el);
     setTimeout(() => {
-        el.style.opacity = "0";
-        el.style.transform = "translateY(20px)";
-        el.style.transition = "all .3s ease";
+        el.style.opacity = "0"; el.style.transform = "translateY(20px)"; el.style.transition = "all .3s ease";
         setTimeout(() => el.remove(), 320);
     }, 3200);
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  STATUS DOT (sin cambios)
+//  STATUS DOT
 // ═══════════════════════════════════════════════════════════════
 function setStatus(online) {
-    const dot   = document.getElementById("status-dot");
-    const label = document.getElementById("status-label");
-    if (dot)   dot.className     = "status-dot" + (online ? " online" : "");
+    const dot = document.getElementById("status-dot"), label = document.getElementById("status-label");
+    if (dot) dot.className = "status-dot" + (online ? " online" : "");
     if (label) label.textContent = online ? "en línea" : "sin conexión";
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  UTILIDADES (sin cambios)
+//  UTILIDADES
 // ═══════════════════════════════════════════════════════════════
-function escHtml(str) {
-    return String(str ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-}
-
-function jsEscape(str) {
-    return JSON.stringify(String(str ?? "")).replace(/"/g, "&quot;");
-}
-
-function debounce(fn, ms = 300) {
-    let t;
-    return (...args) => {
-        clearTimeout(t);
-        t = setTimeout(() => fn.apply(this, args), ms);
-    };
-}
+function escHtml(str) { return String(str ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
+function jsEscape(str) { return JSON.stringify(String(str ?? "")).replace(/"/g,"&quot;"); }
+function debounce(fn, ms=300) { let t; return (...args)=>{ clearTimeout(t); t = setTimeout(()=>fn.apply(this,args), ms); }; }
 
 // ═══════════════════════════════════════════════════════════════
-//  EXPORTAR XLSX (sin cambios)
+//  EXPORTAR XLSX
 // ═══════════════════════════════════════════════════════════════
 window.exportarXLSX = function() {
     const filas = [["N°","Nombre","Cédula","Domicilio","Local","Mesa","Orden","Estado","Operador","Observación"]];
-    state.padron.forEach((v, i) => {
-        filas.push([
-            i+1,
-            v.nombre,
-            v.cedula,
-            v.domicilio || "",
-            v.local || "",
-            v.mesa || "",
-            v.orden || "",
-            getVoto(v.cedula),
-            getLog(v.cedula),
-            getObs(v.cedula)
-        ]);
-    });
-
+    state.padron.forEach((v,i)=> filas.push([i+1,v.nombre,v.cedula,v.domicilio||"",v.local||"",v.mesa||"",v.orden||"",getVoto(v.cedula),getLog(v.cedula),getObs(v.cedula)]));
     const ws = XLSX.utils.aoa_to_sheet(filas);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Planilla");
-
-    const fecha = new Date().toLocaleString("es-PY", {
-        timeZone:"America/Asuncion",
-        day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"
-    }).replace(/[\/:, ]/g,"-").replace(/--/g,"-");
-
-    XLSX.writeFile(wb, `planilla-electoral-${fecha}.xlsx`);
-    toast("✔ Planilla exportada correctamente (XLSX).", "ok");
-    registrarBitacora("Exportar XLSX", `Exportó la planilla (${state.padron.length} registros)`);
+    XLSX.writeFile(wb, `planilla-electoral-${Date.now()}.xlsx`);
+    toast("✔ Planilla exportada.", "ok");
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  EXPORTAR ESTADÍSTICAS XLSX (sin cambios)
-// ═══════════════════════════════════════════════════════════════
-window.exportarEstadisticasXLSX = function() {
-    const wb = XLSX.utils.book_new();
-
-    const filasPlanilla = [["N°","Nombre","Cédula","Domicilio","Local","Mesa","Orden","Estado","Operador","Observación"]];
-    state.padron.forEach((v, i) => {
-        filasPlanilla.push([
-            i+1, v.nombre, v.cedula, v.domicilio||"", v.local||"", v.mesa||"", v.orden||"",
-            getVoto(v.cedula), getLog(v.cedula), getObs(v.cedula)
-        ]);
-    });
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasPlanilla), "Planilla");
-
-    const locales = {};
-    state.padron.forEach(v => {
-        const loc = v.local || "Sin local";
-        if (!locales[loc]) locales[loc] = { total:0, voted:0, novoted:0, pending:0 };
-        locales[loc].total++;
-        const voto = getVoto(v.cedula);
-        if (voto === "Votó") locales[loc].voted++;
-        else if (voto === "No Votó") locales[loc].novoted++;
-        else locales[loc].pending++;
-    });
-    const filasLocal = [["Local","Total","Votaron","No Votaron","Pendientes","% Participación"]];
-    Object.entries(locales).sort((a,b) => b[1].voted - a[1].voted).forEach(([loc, d]) => {
-        const pct = d.total ? ((d.voted/d.total)*100).toFixed(1) + "%" : "0%";
-        filasLocal.push([loc, d.total, d.voted, d.novoted, d.pending, pct]);
-    });
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasLocal), "Por Local");
-
-    const mesas = {};
-    state.padron.forEach(v => {
-        if (!v.mesa) return;
-        const key = v.local ? `${v.mesa} | ${v.local}` : v.mesa;
-        if (!mesas[key]) mesas[key] = { total:0, voted:0, novoted:0, pending:0, mesa:v.mesa, local:v.local||"" };
-        mesas[key].total++;
-        const voto = getVoto(v.cedula);
-        if (voto === "Votó") mesas[key].voted++;
-        else if (voto === "No Votó") mesas[key].novoted++;
-        else mesas[key].pending++;
-    });
-    const filasMesa = [["Mesa","Local","Total","Votaron","No Votaron","Pendientes","% Participación"]];
-    Object.entries(mesas).sort((a,b) => b[1].voted - a[1].voted).forEach(([key, d]) => {
-        const pct = d.total ? ((d.voted/d.total)*100).toFixed(1) + "%" : "0%";
-        filasMesa.push([d.mesa, d.local, d.total, d.voted, d.novoted, d.pending, pct]);
-    });
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasMesa), "Por Mesa");
-
-    const total = state.padron.length;
-    const voted = state.padron.filter(v => getVoto(v.cedula)==="Votó").length;
-    const noVoted = state.padron.filter(v => getVoto(v.cedula)==="No Votó").length;
-    const pending = total - voted - noVoted;
-    const filasResumen = [
-        ["Métrica","Valor","%"],
-        ["Total Votantes", total, "100%"],
-        ["Votaron", voted, total ? ((voted/total)*100).toFixed(1)+"%" : "0%"],
-        ["No Votaron", noVoted, total ? ((noVoted/total)*100).toFixed(1)+"%" : "0%"],
-        ["Pendientes", pending, total ? ((pending/total)*100).toFixed(1)+"%" : "0%"]
-    ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(filasResumen), "Resumen General");
-
-    const fecha = new Date().toLocaleString("es-PY", {
-        timeZone:"America/Asuncion",
-        day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"
-    }).replace(/[\/:, ]/g,"-").replace(/--/g,"-");
-
-    XLSX.writeFile(wb, `estadisticas-electoral-${fecha}.xlsx`);
-    toast("✔ Excel de estadísticas descargado.", "ok");
-    registrarBitacora("Exportar Estadísticas", `Exportó Excel completo con ${state.padron.length} registros`);
-};
-
-// ═══════════════════════════════════════════════════════════════
-//  CAMBIAR CONTRASEÑA (sin cambios)
+//  CAMBIAR CONTRASEÑA
 // ═══════════════════════════════════════════════════════════════
 window.abrirCambiarPassword = function(username) {
     const u = state.usuarios.find(x => x.username === username);
-    document.getElementById("chpass-username").value    = username;
-    document.getElementById("chpass-nueva").value       = "";
-    document.getElementById("chpass-confirmar").value   = "";
+    document.getElementById("chpass-username").value = username;
+    document.getElementById("chpass-nueva").value = "";
+    document.getElementById("chpass-confirmar").value = "";
     document.getElementById("chpass-error").textContent = "";
     const lbl = document.getElementById("chpass-user-label");
     if (lbl) lbl.textContent = u?.fullname ? `${u.fullname} (${username})` : username;
     abrirModal("modal-chpass");
 };
-
 window.confirmarCambiarPassword = async function() {
-    const username  = document.getElementById("chpass-username").value;
-    const nueva     = document.getElementById("chpass-nueva").value;
+    const username = document.getElementById("chpass-username").value;
+    const nueva = document.getElementById("chpass-nueva").value;
     const confirmar = document.getElementById("chpass-confirmar").value;
-    const errEl     = document.getElementById("chpass-error");
+    const errEl = document.getElementById("chpass-error");
     errEl.textContent = "";
     if (nueva.length < 4) { errEl.textContent = "La contraseña debe tener al menos 4 caracteres."; return; }
     if (nueva !== confirmar) { errEl.textContent = "Las contraseñas no coinciden."; return; }
     try {
         const passwordHash = await sha256(nueva);
-        const ref  = doc(db, "usuarios", username);
+        const ref = doc(db, "usuarios", username);
         const snap = await getDoc(ref);
         if (!snap.exists()) { errEl.textContent = "Operador no encontrado."; return; }
         const u = snap.data();
         await setDoc(ref, { ...u, passwordHash, password: null }, { merge: true });
         toast(`✔ Contraseña de "${username}" actualizada.`, "ok");
-        await registrarBitacora("Cambio Contraseña",
-            `Cambió contraseña del operador ${u.fullname} (${username})`);
         cerrarModal("modal-chpass");
-    } catch (err) {
-        console.error(err);
-        errEl.textContent = "Error al guardar. Intentá de nuevo.";
-    }
+    } catch (err) { errEl.textContent = "Error al guardar."; }
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  BIND EVENTOS (actualizado con barra inferior)
+//  BIND EVENTOS
 // ═══════════════════════════════════════════════════════════════
 function bindEvents() {
     document.getElementById("login-form").addEventListener("submit", handleLogin);
-    document.getElementById("logout-btn").addEventListener("click",  handleLogout);
+    document.getElementById("logout-btn").addEventListener("click", handleLogout);
 
-    document.getElementById("btn-filter-todos").addEventListener("click",   () => cambiarFiltro("todos"));
-    document.getElementById("btn-filter-pending").addEventListener("click", () => cambiarFiltro("Pendiente"));
-    document.getElementById("btn-filter-voted").addEventListener("click",   () => cambiarFiltro("Votó"));
-    document.getElementById("btn-filter-novoted").addEventListener("click", () => cambiarFiltro("No Votó"));
+    document.getElementById("btn-filter-todos").addEventListener("click", ()=> cambiarFiltro("todos"));
+    document.getElementById("btn-filter-pending").addEventListener("click", ()=> cambiarFiltro("Pendiente"));
+    document.getElementById("btn-filter-voted").addEventListener("click", ()=> cambiarFiltro("Votó"));
+    document.getElementById("btn-filter-novoted").addEventListener("click", ()=> cambiarFiltro("No Votó"));
 
-    document.getElementById("tab-planilla").addEventListener("click",   () => switchTab("planilla"));
-    document.getElementById("tab-stats").addEventListener("click",      () => switchTab("stats"));
-    document.getElementById("tab-admin").addEventListener("click",      () => switchTab("admin"));
-    document.getElementById("tab-padron-anr").addEventListener("click", () => switchTab("padron-anr"));
+    document.getElementById("tab-planilla").addEventListener("click", ()=> switchTab("planilla"));
+    document.getElementById("tab-stats").addEventListener("click", ()=> switchTab("stats"));
+    document.getElementById("tab-admin").addEventListener("click", ()=> switchTab("admin"));
+    document.getElementById("tab-padron-anr").addEventListener("click", ()=> switchTab("padron-anr"));
 
     document.getElementById("register-user-form").addEventListener("submit", handleRegistrarUsuario);
 
     ["modal-novoto","modal-chpass","modal-obs-confirm","modal-historial"].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.addEventListener("click", function(e) {
-            if (e.target === this) {
-                if (id === "modal-obs-confirm") cancelarObservacion();
-                else cerrarModal(id);
-            }
-        });
+        if (el) el.addEventListener("click", function(e) { if (e.target === this) cerrarModal(id); });
     });
 
-    document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") {
-            ["modal-novoto", "modal-chpass", "modal-obs-confirm", "modal-historial"].forEach(id => {
-                const el = document.getElementById(id);
-                if (el && el.classList.contains("active")) {
-                    if (id === "modal-obs-confirm") cancelarObservacion();
-                    else cerrarModal(id);
-                }
-            });
-        }
-    });
+    const runSearch = debounce((val) => { state.searchQuery = val; if(!val) state.searchAllStates=false; state.pagination.page=1; renderTablaVotantes(); }, 300);
+    document.getElementById("search-input").addEventListener("input", e => runSearch(e.target.value.toLowerCase().trim()));
 
-    const runSearch = debounce((val) => {
-        state.searchQuery = val;
-        if (!val) state.searchAllStates = false;
-        state.pagination.page = 1;
-        renderTablaVotantes();
-    }, 300);
+    document.getElementById("padron-anr-input")?.addEventListener("keydown", e => { if(e.key==="Enter") buscarPadronANR(); });
 
-    document.getElementById("search-input").addEventListener("input", e => {
-        runSearch(e.target.value.toLowerCase().trim());
-    });
-
-    const padronInp = document.getElementById("padron-anr-input");
-    if (padronInp) padronInp.addEventListener("keydown", e => {
-        if (e.key === "Enter") buscarPadronANR();
-    });
-
-    // ── Barra de navegación inferior ──
+    // Barra de navegación inferior
     document.querySelectorAll('.bottom-nav-item').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tab = btn.dataset.tab;
-            switchTab(tab);
-        });
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
     });
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  PADRÓN ANR (sin cambios, solo iconos Material)
+//  PADRÓN ANR
 // ═══════════════════════════════════════════════════════════════
 let _padronCache = null;
-
 async function cargarPadronCSV() {
     if (_padronCache) return _padronCache;
     const resp = await fetch("data/padron_san_estanislao_2026_completo.csv");
     if (!resp.ok) throw new Error("No se pudo cargar el padrón CSV.");
-    const texto   = await resp.text();
-    const lineas  = texto.split("\n").filter(l => l.trim() !== "");
+    const texto = await resp.text();
+    const lineas = texto.split("\n").filter(l => l.trim() !== "");
     const headers = lineas[0].split(",").map(h => h.trim().replace(/^\uFEFF/, ""));
-
     _padronCache = lineas.slice(1).map(linea => {
-        const cols = [];
-        let actual = "", enComilla = false;
+        const cols = []; let actual = "", enComilla = false;
         for (const ch of linea) {
-            if (ch === '"') { enComilla = !enComilla; }
+            if (ch === '"') enComilla = !enComilla;
             else if (ch === "," && !enComilla) { cols.push(actual.trim()); actual = ""; }
-            else { actual += ch; }
+            else actual += ch;
         }
         cols.push(actual.trim());
         const obj = {};
-        headers.forEach((h, i) => { obj[h] = cols[i] ?? ""; });
+        headers.forEach((h,i) => { obj[h] = cols[i] ?? ""; });
         return obj;
     });
     return _padronCache;
 }
 
 window.buscarPadronANR = async function() {
-    const input   = document.getElementById("padron-anr-input");
-    const loading = document.getElementById("padron-anr-loading");
-    const error   = document.getElementById("padron-anr-error");
-    const result  = document.getElementById("padron-anr-resultado");
-
+    const input = document.getElementById("padron-anr-input");
     const cedula = input ? input.value.trim().replace(/\D/g, "") : "";
-    if (!cedula || cedula.length < 3) {
-        if (input) {
-            input.style.outline = "2px solid var(--color-primary)";
-            input.focus();
-            setTimeout(() => input.style.outline = "", 1500);
-        }
-        return;
-    }
-
-    error.style.display   = "none";
-    result.style.display  = "none";
-    loading.style.display = "block";
-
-    const btnAgregar = document.getElementById("pr-btn-agregar");
-    if (btnAgregar) {
-        btnAgregar.disabled = false;
-        btnAgregar.style.background = "";
-        btnAgregar.style.borderColor = "";
-        btnAgregar.innerHTML = `<span class="material-icons">add</span> Añadir a la planilla`;
-    }
-
+    if (!cedula || cedula.length < 3) return;
+    const loading = document.getElementById("padron-anr-loading");
+    const error = document.getElementById("padron-anr-error");
+    const result = document.getElementById("padron-anr-resultado");
+    error.style.display = "none"; result.style.display = "none"; loading.style.display = "block";
     try {
-        const padron  = await cargarPadronCSV();
+        const padron = await cargarPadronCSV();
         const persona = padron.find(r => String(r.CEDULA).trim() === cedula);
         loading.style.display = "none";
-
         if (persona) {
-            document.getElementById("pr-cedula").textContent       = persona.CEDULA        || cedula;
-            document.getElementById("pr-nombres").textContent      = persona.NOMBRES        || "—";
-            document.getElementById("pr-apellidos").textContent    = persona.APELLIDOS      || "—";
-            document.getElementById("pr-departamento").textContent = persona.DEPARTAMENTO   || "—";
-            document.getElementById("pr-distrito").textContent     = persona.DISTRITO       || "—";
-            document.getElementById("pr-seccional").textContent    = persona.SECCIONAL      || "—";
-            document.getElementById("pr-local").textContent        = persona.LOCAL_VOTACION || "—";
-            document.getElementById("pr-mesa").textContent         = persona.MESA           || "—";
-            document.getElementById("pr-orden").textContent        = persona.ORDEN          || "—";
+            document.getElementById("pr-cedula").textContent = persona.CEDULA;
+            document.getElementById("pr-nombres").textContent = persona.NOMBRES;
+            document.getElementById("pr-apellidos").textContent = persona.APELLIDOS;
+            document.getElementById("pr-departamento").textContent = persona.DEPARTAMENTO;
+            document.getElementById("pr-distrito").textContent = persona.DISTRITO;
+            document.getElementById("pr-seccional").textContent = persona.SECCIONAL;
+            document.getElementById("pr-local").textContent = persona.LOCAL_VOTACION;
+            document.getElementById("pr-mesa").textContent = persona.MESA;
+            document.getElementById("pr-orden").textContent = persona.ORDEN;
             result.style.display = "block";
-            registrarBitacora("Consulta Padrón",
-                `Consultó CI ${cedula} → ${persona.NOMBRES} ${persona.APELLIDOS} · Mesa ${persona.MESA}`);
         } else {
-            error.innerHTML = `
-                <span class="material-icons" style="font-size:48px;color:#B91C1C;">error_outline</span>
-                <div style="font-size:.92rem;font-weight:800;color:#B91C1C;margin-bottom:5px;">No está en el padrón</div>
-                <div style="font-size:.8rem;color:#6B7280;">La cédula <strong style="color:#374151;">${cedula}</strong> no figura en el padrón ANR de San Estanislao 2026.</div>`;
+            error.innerHTML = `<span class="material-icons" style="color:#B91C1C;">error_outline</span> No está en el padrón`;
             error.style.display = "block";
-            registrarBitacora("Consulta Padrón", `CI ${cedula} — no encontrado`);
         }
     } catch (err) {
         loading.style.display = "none";
-        error.innerHTML = `
-            <span class="material-icons" style="font-size:48px;color:#B45309;">warning_amber</span>
-            <div style="font-size:.88rem;font-weight:800;color:#B45309;margin-bottom:5px;">No se pudo cargar el padrón</div>
-            <div style="font-size:.78rem;color:#6B7280;">${escHtml(err.message)}</div>`;
+        error.innerHTML = `<span class="material-icons">warning_amber</span> Error al cargar`;
         error.style.display = "block";
-        console.error("Error padrón CSV:", err);
     }
 };
-
-function normalizarCedula(c) {
-    return String(c).replace(/[\s\-]/g, "").replace(/^0+/, "");
-}
 
 window.agregarDesdePardon = async function() {
-    const cedula    = document.getElementById("pr-cedula")?.textContent?.trim();
-    const nombres   = document.getElementById("pr-nombres")?.textContent?.trim()   || "";
+    const cedula = document.getElementById("pr-cedula")?.textContent?.trim();
+    const nombres = document.getElementById("pr-nombres")?.textContent?.trim() || "";
     const apellidos = document.getElementById("pr-apellidos")?.textContent?.trim() || "";
-    const nombre    = `${nombres} ${apellidos}`.trim();
+    const nombre = `${nombres} ${apellidos}`.trim();
+    if (!cedula || !nombre) { toast("No hay datos para agregar.", "error"); return; }
 
-    if (!cedula || !nombre) { toast("No hay datos de consulta para agregar.", "error"); return; }
+    const cedulaNorm = String(cedula).replace(/[\s\-]/g, "").replace(/^0+/, "");
+    if (state.padron.some(p => p.cedula === cedulaNorm)) { toast("Ya está en la planilla.", "warn"); return; }
 
-    const cedulaNorm = normalizarCedula(cedula);
-    const enMemoria  = state.padron.find(p => normalizarCedula(p.cedula) === cedulaNorm);
-    if (enMemoria) {
-        toast(`⚠ ${enMemoria.nombre} (CI: ${cedula}) ya está en la planilla.`, "warn");
-        _marcarBtnAgregado(false);
-        return;
-    }
-
-    try {
-        const snap = await getDoc(doc(db, "padron_extra", cedulaNorm));
-        if (snap.exists()) {
-            const d = snap.data();
-            toast(`⚠ ${d.nombre || nombre} (CI: ${cedula}) ya fue agregado.`, "warn");
-            return;
-        }
-        const snap2 = await getDoc(doc(db, "padron_extra", cedula));
-        if (snap2.exists()) {
-            const d = snap2.data();
-            toast(`⚠ ${d.nombre || nombre} (CI: ${cedula}) ya fue agregado.`, "warn");
-            return;
-        }
-    } catch (err) { console.warn("Verificación Firebase:", err); }
-
-    const btn = document.getElementById("pr-btn-agregar");
-    if (btn) { btn.disabled = true; btn.innerHTML = `<div class="spinner" style="margin:0 auto;width:20px;height:20px;"></div>`; }
-
-    const local    = document.getElementById("pr-local")?.textContent?.trim()     || "";
-    const mesa     = document.getElementById("pr-mesa")?.textContent?.trim()      || "";
-    const orden    = document.getElementById("pr-orden")?.textContent?.trim()     || "";
-    const seccional= document.getElementById("pr-seccional")?.textContent?.trim() || "";
-    const nuevo = { id: "padron_" + Date.now(), nombre, cedula, domicilio: "---", local, mesa, orden, seccional };
+    const local = document.getElementById("pr-local")?.textContent?.trim() || "";
+    const mesa = document.getElementById("pr-mesa")?.textContent?.trim() || "";
+    const orden = document.getElementById("pr-orden")?.textContent?.trim() || "";
+    const nuevo = { id: "padron_"+Date.now(), nombre, cedula: cedulaNorm, domicilio:"---", local, mesa, orden };
     state.padron.push(nuevo);
-
     try {
-        await setDoc(doc(db, "padron_extra", cedula), {
-            ...nuevo,
-            local:      document.getElementById("pr-local")?.textContent?.trim()     || "",
-            mesa:       document.getElementById("pr-mesa")?.textContent?.trim()      || "",
-            orden:      document.getElementById("pr-orden")?.textContent?.trim()     || "",
-            seccional:  document.getElementById("pr-seccional")?.textContent?.trim() || "",
-            creado_por: state.currentUser?.isAdmin ? "Administrador/a" : (state.currentUser?.username || "---"),
-            origen:     "Padrón ANR",
-            timestamp:  serverTimestamp()
-        });
-        toast(`✔ ${nombre} agregado a la planilla.`, "ok");
-        await registrarBitacora("Nuevo Votante", `Agregó desde padrón ANR: ${nombre} (CI: ${cedula})`);
-        _marcarBtnAgregado(true);
+        await setDoc(doc(db, "padron_extra", cedulaNorm), { ...nuevo, timestamp: serverTimestamp() });
+        toast(`✔ ${nombre} agregado.`, "ok");
         actualizarDashboard();
-    } catch (err) {
-        console.error(err);
-        state.padron = state.padron.filter(p => p.cedula !== cedula);
-        toast("Error al guardar. Verificá la conexión.", "error");
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = `<span class="material-icons">add</span> Añadir a la planilla`;
-        }
+    } catch (e) {
+        state.padron = state.padron.filter(p => p.cedula !== cedulaNorm);
+        toast("Error al guardar.", "error");
     }
 };
 
-function _marcarBtnAgregado(exito) {
-    const btn = document.getElementById("pr-btn-agregar");
-    if (!btn) return;
-    btn.disabled = true;
-    if (exito) {
-        btn.style.background = "linear-gradient(135deg, #15803D, #166534)";
-        btn.style.borderColor = "#166534";
-        btn.innerHTML = `<span class="material-icons">check</span> Ya está en la planilla`;
-    } else {
-        btn.style.background = "linear-gradient(135deg, #B45309, #92400E)";
-        btn.style.borderColor = "#78350F";
-        btn.innerHTML = `<span class="material-icons">error</span> Ya existe en la planilla`;
-    }
-}
-
 // ═══════════════════════════════════════════════════════════════
-//  LIMPIAR BITÁCORA (solo admin)
+//  LIMPIAR BITÁCORA
 // ═══════════════════════════════════════════════════════════════
 window.limpiarBitacora = async function() {
     if (!state.currentUser?.isAdmin) return;
-    if (!confirm("¿Estás seguro de borrar TODA la bitácora? Esta acción no se puede deshacer.")) return;
+    if (!confirm("¿Borrar TODA la bitácora?")) return;
     const snap = await getDocs(collection(db, "bitacora"));
-    const batch = [];
-    snap.forEach(doc => batch.push(deleteDoc(doc.ref)));
-    await Promise.all(batch);
+    await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
     toast("Bitácora limpiada.", "ok");
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  FILTROS Y NAVEGACIÓN (con barra inferior)
+//  FILTROS Y NAVEGACIÓN
 // ═══════════════════════════════════════════════════════════════
 function cambiarFiltro(destino) {
     state.currentFilter = destino;
     state.searchAllStates = false;
     state.pagination.page = 1;
     renderTablaVotantes();
-    const cards = document.getElementById("cards-container");
-    if (cards && window.innerWidth < 768) {
-        cards.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
 }
 window.cambiarFiltro = cambiarFiltro;
 
-function showLogin() {
-    document.getElementById("login-section").classList.remove("hidden");
-    document.getElementById("app-section").classList.add("hidden");
-}
-
-function showApp() {
-    document.getElementById("login-section").classList.add("hidden");
-    document.getElementById("app-section").classList.remove("hidden");
-}
+function showLogin() { document.getElementById("login-section").classList.remove("hidden"); document.getElementById("app-section").classList.add("hidden"); }
+function showApp() { document.getElementById("login-section").classList.add("hidden"); document.getElementById("app-section").classList.remove("hidden"); }
 
 function switchTab(tab) {
-    if (tab === "admin" && !state.currentUser?.isAdmin) {
-        toast("Acceso denegado. Solo el Administrador.", "error"); return;
-    }
-    const planilla     = document.getElementById("view-planilla");
-    const stats        = document.getElementById("view-stats");
-    const admin        = document.getElementById("view-admin");
-    const padronAnr    = document.getElementById("view-padron-anr");
-    const fw           = document.getElementById("filter-wrapper");
-    const tabPlanilla  = document.getElementById("tab-planilla");
-    const tabStats     = document.getElementById("tab-stats");
-    const tabAdmin     = document.getElementById("tab-admin");
-    const tabPadronAnr = document.getElementById("tab-padron-anr");
-
-    if (!planilla || !admin) return;
-
-    planilla.style.display = "none";
-    stats.classList.remove("visible");
-    stats.style.display = "none";
-    admin.classList.remove("visible");
-    admin.style.display = "none";
-    if (padronAnr) padronAnr.style.display = "none";
-    if (fw)        fw.style.display        = "none";
-    if (tabPlanilla)  tabPlanilla.classList.remove("active");
-    if (tabStats)     tabStats.classList.remove("active");
-    if (tabAdmin)     tabAdmin.classList.remove("active");
-    if (tabPadronAnr) tabPadronAnr.classList.remove("active");
+    if (tab === "admin" && !state.currentUser?.isAdmin) { toast("Acceso denegado.", "error"); return; }
+    document.getElementById("view-planilla").style.display = "none";
+    document.getElementById("view-stats").style.display = "none";
+    document.getElementById("view-admin").style.display = "none";
+    document.getElementById("view-padron-anr").style.display = "none";
+    document.getElementById("filter-wrapper").style.display = "none";
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".bottom-nav-item").forEach(b => b.classList.remove("active"));
 
     if (tab === "planilla") {
-        planilla.style.display = "";
-        if (fw)        fw.style.display      = "block";
-        if (tabPlanilla) tabPlanilla.classList.add("active");
-        state.currentFilter = "todos";
+        document.getElementById("view-planilla").style.display = "";
+        document.getElementById("filter-wrapper").style.display = "";
+        document.getElementById("tab-planilla").classList.add("active");
+        document.querySelector('.bottom-nav-item[data-tab="planilla"]')?.classList.add("active");
         renderTablaVotantes();
     } else if (tab === "stats") {
-        stats.style.display = "block";
-        stats.classList.add("visible");
-        if (tabStats) tabStats.classList.add("active");
+        document.getElementById("view-stats").style.display = "block";
+        document.getElementById("tab-stats").classList.add("active");
+        document.querySelector('.bottom-nav-item[data-tab="stats"]')?.classList.add("active");
         currentStatsView = "locales";
-        currentLocalForMesas = null;
         renderStatsCharts();
     } else if (tab === "admin") {
-        admin.style.display = "flex";
-        admin.classList.add("visible");
-        if (tabAdmin) tabAdmin.classList.add("active");
+        document.getElementById("view-admin").style.display = "flex";
+        document.getElementById("tab-admin").classList.add("active");
+        document.querySelector('.bottom-nav-item[data-tab="admin"]')?.classList.add("active");
         cargarUsuarios();
         escucharBitacora();
-        cargarLocalesDesdePadron();
     } else if (tab === "padron-anr") {
-        if (padronAnr) padronAnr.style.display = "";
-        if (tabPadronAnr) tabPadronAnr.classList.add("active");
-        const inp = document.getElementById("padron-anr-input");
-        const err = document.getElementById("padron-anr-error");
-        const res = document.getElementById("padron-anr-resultado");
-        const lod = document.getElementById("padron-anr-loading");
-        if (inp) inp.value = "";
-        if (err) err.style.display = "none";
-        if (res) res.style.display = "none";
-        if (lod) lod.style.display = "none";
-        setTimeout(() => { if (inp) inp.focus(); }, 100);
+        document.getElementById("view-padron-anr").style.display = "";
+        document.getElementById("tab-padron-anr").classList.add("active");
+        document.querySelector('.bottom-nav-item[data-tab="padron-anr"]')?.classList.add("active");
     }
-
-    // Sincronizar barra inferior
-    document.querySelectorAll('.bottom-nav-item').forEach(b => {
-        b.classList.toggle('active', b.dataset.tab === tab);
-    });
 }
 
 // Exponer funciones globales
 window.exportarXLSX = exportarXLSX;
-window.exportarEstadisticasXLSX = exportarEstadisticasXLSX;
+window.exportarEstadisticasXLSX = function() { toast("Función disponible en administración.", "warn"); };
 window.accionVoto = accionVoto;
 window.abrirModalObservacion = abrirModalObservacion;
 window.abrirHistorial = abrirHistorial;
-window.activarBusquedaGlobal = activarBusquedaGlobal;
-window.desactivarBusquedaGlobal = desactivarBusquedaGlobal;
+window.activarBusquedaGlobal = ()=>{ state.searchAllStates=true; state.pagination.page=1; renderTablaVotantes(); };
+window.desactivarBusquedaGlobal = ()=>{ state.searchAllStates=false; state.pagination.page=1; renderTablaVotantes(); };
 window.confirmNoVoto = confirmNoVoto;
 window.confirmarObservacion = confirmarObservacion;
 window.cancelarObservacion = cancelarObservacion;
-window.cambiarFiltro = cambiarFiltro;
 window.volverALocales = volverALocales;
 window.agregarDesdePardon = agregarDesdePardon;
 window.buscarPadronANR = buscarPadronANR;

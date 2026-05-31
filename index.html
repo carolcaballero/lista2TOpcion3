@@ -987,7 +987,7 @@
         }
 
         /* ═══════════════════════════════════════
-           STATS SELECTORS
+           STATS SELECTORS (oculto el selector de local)
            ═══════════════════════════════════════ */
         .stats-selectors {
             display: flex;
@@ -996,27 +996,16 @@
             align-items: center;
         }
         .stats-selectors select {
-            padding: 8px 12px;
-            border: 1.5px solid var(--color-border);
-            border-radius: var(--r-sm);
-            font-size: .82rem;
-            font-weight: 700;
-            color: var(--color-dark);
-            background: var(--color-bg-soft);
-            cursor: pointer;
-            font-family: inherit;
-            transition: all var(--t-base);
+            display: none; /* Eliminamos el selector de local */
         }
-        .stats-selectors select:focus {
-            outline: none;
-            border-color: var(--color-primary);
-            box-shadow: 0 0 0 3px var(--color-primary-glow);
+        #btn-volver-locales {
+            margin-left: auto;
         }
     </style>
 </head>
 <body>
 
-<!-- ══ SVG Sprite ══ -->
+<!-- ══ SVG Sprite (íconos) ══ -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none;">
     <symbol id="icon-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
     <symbol id="icon-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
@@ -1050,127 +1039,66 @@
 <!-- ═══════════════ MODAL: No Votó ═══════════════ -->
 <div class="modal-overlay" id="modal-novoto">
     <div class="modal-box">
-        <h3>
-            <svg width="20" height="20" style="color:var(--color-primary-accent)"><use href="#icon-x"/></svg>
-            Registrar No Votó
-        </h3>
+        <h3><svg width="20" height="20" style="color:var(--color-primary-accent)"><use href="#icon-x"/></svg>Registrar No Votó</h3>
         <p class="modal-sub" id="modal-novoto-name"></p>
         <p class="modal-hint">Podés dejar un motivo opcional o confirmar directamente.</p>
-        <textarea class="modal-textarea" id="modal-obs-input"
-            placeholder="Motivo (opcional): viaje, enfermedad, trabajo..."></textarea>
-        <div class="modal-actions">
-            <button class="btn-secondary" onclick="closeModal('modal-novoto')">Cancelar</button>
-            <button class="btn-primary" onclick="confirmNoVoto()">Confirmar No Votó</button>
-        </div>
+        <textarea class="modal-textarea" id="modal-obs-input" placeholder="Motivo (opcional): viaje, enfermedad, trabajo..."></textarea>
+        <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('modal-novoto')">Cancelar</button><button class="btn-primary" onclick="confirmNoVoto()">Confirmar No Votó</button></div>
     </div>
 </div>
 
 <!-- ═══════════════ MODAL: Cambiar Contraseña ═══════════════ -->
 <div class="modal-overlay" id="modal-chpass">
     <div class="modal-box">
-        <h3>
-            <svg width="20" height="20" style="color:var(--color-primary-accent)"><use href="#icon-lock"/></svg>
-            Cambiar Contraseña
-        </h3>
+        <h3><svg width="20" height="20" style="color:var(--color-primary-accent)"><use href="#icon-lock"/></svg>Cambiar Contraseña</h3>
         <input type="hidden" id="chpass-username">
         <p class="modal-hint">Operador: <strong id="chpass-user-label" style="color:var(--color-dark)"></strong></p>
-        <div class="form-group" style="margin-bottom:12px">
-            <label style="font-size:.78rem;color:var(--color-text-soft);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;font-weight:800;">Nueva contraseña</label>
-            <input type="password" id="chpass-nueva" placeholder="Mínimo 4 caracteres"
-                style="width:100%;padding:12px 14px;background:var(--color-bg-soft);border:1.5px solid var(--color-border);color:var(--color-dark);border-radius:var(--r-md);font-size:1rem;-webkit-appearance:none;transition:all .25s;">
-        </div>
-        <div class="form-group" style="margin-bottom:16px">
-            <label style="font-size:.78rem;color:var(--color-text-soft);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px;font-weight:800;">Confirmar contraseña</label>
-            <input type="password" id="chpass-confirmar" placeholder="Repetí la contraseña"
-                style="width:100%;padding:12px 14px;background:var(--color-bg-soft);border:1.5px solid var(--color-border);color:var(--color-dark);border-radius:var(--r-md);font-size:1rem;-webkit-appearance:none;transition:all .25s;">
-        </div>
-        <div id="chpass-error" style="color:var(--color-primary);font-size:.82rem;margin-bottom:10px;min-height:18px;font-weight:700;"></div>
-        <div class="modal-actions">
-            <button class="btn-secondary" onclick="closeModal('modal-chpass')">Cancelar</button>
-            <button class="btn-primary" onclick="confirmarCambiarPassword()">Guardar</button>
-        </div>
+        <div class="form-group"><label>Nueva contraseña</label><input type="password" id="chpass-nueva" placeholder="Mínimo 4 caracteres"></div>
+        <div class="form-group"><label>Confirmar contraseña</label><input type="password" id="chpass-confirmar" placeholder="Repetí la contraseña"></div>
+        <div id="chpass-error" style="color:var(--color-primary);font-size:.82rem;margin-bottom:10px;"></div>
+        <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('modal-chpass')">Cancelar</button><button class="btn-primary" onclick="confirmarCambiarPassword()">Guardar</button></div>
     </div>
 </div>
 
 <!-- ═══════════════ MODAL: Observación ═══════════════ -->
 <div class="modal-overlay" id="modal-obs-confirm">
     <div class="modal-box">
-        <h3>
-            <svg width="20" height="20" style="color:var(--color-warn)"><use href="#icon-pencil"/></svg>
-            Agregar Observación
-        </h3>
+        <h3><svg width="20" height="20" style="color:var(--color-warn)"><use href="#icon-pencil"/></svg>Agregar Observación</h3>
         <p class="modal-hint" id="modal-obs-nombre" style="color:var(--color-dark);font-size:.92rem;font-weight:800;"></p>
-        <textarea class="modal-textarea" id="modal-obs-texto"
-            placeholder="Escribí la observación para este votante..."></textarea>
-        <div class="modal-actions">
-            <button class="btn-secondary" onclick="cancelarObservacion()">Cancelar</button>
-            <button class="btn-primary" onclick="confirmarObservacion()"
-                style="background:linear-gradient(135deg,var(--color-success),#15803D);border-color:var(--color-success);display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 5px 14px rgba(21,128,61,.35);">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                Confirmar
-            </button>
-        </div>
+        <textarea class="modal-textarea" id="modal-obs-texto" placeholder="Escribí la observación para este votante..."></textarea>
+        <div class="modal-actions"><button class="btn-secondary" onclick="cancelarObservacion()">Cancelar</button><button class="btn-primary" onclick="confirmarObservacion()">Confirmar</button></div>
     </div>
 </div>
 
 <!-- ═══════════════ MODAL: Confirmar Eliminación ═══════════════ -->
 <div class="modal-overlay" id="modal-eliminar-confirm">
     <div class="modal-box">
-        <h3 style="color:#B91C1C;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-            Confirmar Eliminación
-        </h3>
+        <h3 style="color:#B91C1C;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>Confirmar Eliminación</h3>
         <p class="modal-hint" id="modal-eliminar-texto">¿Estás seguro que querés eliminar los registros seleccionados? Esta acción no se puede deshacer.</p>
-        <div class="modal-actions">
-            <button class="btn-secondary" onclick="cancelarModoEliminar()">Cancelar</button>
-            <button class="btn-primary"
-                style="background:linear-gradient(135deg,#B91C1C,#7F1D1D);border-color:#B91C1C;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 5px 14px rgba(185,28,28,.35);"
-                onclick="confirmarEliminarSeleccionados()">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-                Eliminar
-            </button>
-        </div>
+        <div class="modal-actions"><button class="btn-secondary" onclick="cancelarModoEliminar()">Cancelar</button><button class="btn-primary" onclick="confirmarEliminarSeleccionados()">Eliminar</button></div>
     </div>
 </div>
 
 <!-- ═══════════════ MODAL: Historial de Cambios ═══════════════ -->
 <div class="modal-overlay" id="modal-historial">
     <div class="modal-box">
-        <h3>
-            <svg width="20" height="20" style="color:var(--color-primary-accent)"><use href="#icon-history"/></svg>
-            Historial de Cambios
-        </h3>
+        <h3><svg width="20" height="20" style="color:var(--color-primary-accent)"><use href="#icon-history"/></svg>Historial de Cambios</h3>
         <p class="modal-hint" id="modal-hist-nombre" style="font-weight:800;color:var(--color-dark);"></p>
-        <div class="historial-list" id="modal-hist-list">
-            <div style="text-align:center;padding:20px;color:var(--color-gray);font-size:.9rem;">Cargando...</div>
-        </div>
-        <div class="modal-actions">
-            <button class="btn-secondary" onclick="closeModal('modal-historial')" style="flex:0 0 auto;padding:12px 24px;">Cerrar</button>
-        </div>
+        <div class="historial-list" id="modal-hist-list"><div style="text-align:center;padding:20px;">Cargando...</div></div>
+        <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('modal-historial')">Cerrar</button></div>
     </div>
 </div>
 
 <!-- ══════════════ LOGIN ══════════════ -->
 <section id="login-section" class="auth-container">
     <div class="login-card">
-        <svg width="50" height="50" style="color:var(--color-primary);margin-bottom:10px;filter:drop-shadow(0 5px 12px rgba(185,28,28,.35));"><use href="#icon-shield"/></svg>
+        <svg width="50" height="50" style="color:var(--color-primary);margin-bottom:10px;"><use href="#icon-shield"/></svg>
         <h1>Control Electoral</h1>
         <h2>MGTR. CAROLINA CABALLERO</h2>
         <div class="subtitle">Elecciones Internas — Lista 2 Opción 3</div>
         <form id="login-form">
-            <div class="form-group">
-                <label for="username"><svg class="icon"><use href="#icon-user"/></svg>Usuario</label>
-                <input type="text" id="username" required
-                    autocomplete="off" autocorrect="off" autocapitalize="off"
-                    spellcheck="false" placeholder="Ingrese su usuario"
-                    inputmode="text">
-            </div>
-            <div class="form-group">
-                <label for="password"><svg class="icon"><use href="#icon-lock"/></svg>Contraseña</label>
-                <input type="password" id="password" required
-                    autocomplete="off" autocorrect="off" autocapitalize="off"
-                    spellcheck="false" placeholder="••••••••">
-            </div>
+            <div class="form-group"><label for="username"><svg class="icon"><use href="#icon-user"/></svg>Usuario</label><input type="text" id="username" required></div>
+            <div class="form-group"><label for="password"><svg class="icon"><use href="#icon-lock"/></svg>Contraseña</label><input type="password" id="password" required></div>
             <button type="submit" class="btn-primary">Ingresar al Sistema</button>
             <div id="login-error" class="error-msg"></div>
         </form>
@@ -1180,416 +1108,116 @@
 <!-- ══════════════ APP ══════════════ -->
 <section id="app-section" class="app-container hidden">
 
-    <!-- HEADER -->
     <header class="main-header">
-        <div class="header-brand">
-            <svg width="22" height="22" style="color:var(--color-primary-accent);flex-shrink:0"><use href="#icon-shield"/></svg>
-            <h2>Control de Gestión de Votantes</h2>
-            <span class="header-live">EN VIVO</span>
-        </div>
+        <div class="header-brand"><svg width="22" height="22" style="color:var(--color-primary-accent)"><use href="#icon-shield"/></svg><h2>Control de Gestión de Votantes</h2><span class="header-live">EN VIVO</span></div>
         <div class="user-info">
-            <span>
-                <span class="status-dot" id="status-dot"></span>
-                <span class="status-label" id="status-label">conectando...</span>
-            </span>
-            <span id="offline-indicator" class="offline-badge hidden" style="margin-left:6px;">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-                Offline
-            </span>
-            <span style="font-size:.8rem;color:var(--color-text-soft);display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                <svg class="icon" style="width:14px;height:14px"><use href="#icon-user"/></svg>
-                <span id="user-prefix" style="color:var(--color-text-soft)"></span>
-                <strong id="current-user-display" style="color:var(--color-dark);font-weight:800;">---</strong>
-                <span id="user-assignment" class="assign-chip hidden"></span>
-            </span>
-            <button id="logout-btn" class="btn-secondary"
-                style="padding:7px 12px;font-size:.76rem;display:flex;align-items:center;gap:5px;">
-                <svg class="icon" style="width:14px;height:14px"><use href="#icon-logout"/></svg>
-                Salir
-            </button>
+            <span><span class="status-dot" id="status-dot"></span><span class="status-label" id="status-label">conectando...</span></span>
+            <span id="offline-indicator" class="offline-badge hidden"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>Offline<span class="offline-count"></span></span>
+            <span><svg class="icon" style="width:14px;height:14px"><use href="#icon-user"/></svg><span id="user-prefix"></span><strong id="current-user-display">---</strong><span id="user-assignment" class="assign-chip hidden"></span></span>
+            <button id="logout-btn" class="btn-secondary"><svg class="icon" style="width:14px;height:14px"><use href="#icon-logout"/></svg>Salir</button>
         </div>
     </header>
 
     <!-- DASHBOARD -->
     <div class="dashboard-wrap" id="metrics-wrapper" style="margin-bottom:16px;">
-
-        <!-- Encabezado con total -->
-        <div class="dash-header">
-            <span class="dash-header-title">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                Resumen en tiempo real
-            </span>
-            <span class="dash-header-total">Total: <strong id="metric-total">0</strong></span>
-        </div>
-
-        <!-- 3 filas de barras -->
+        <div class="dash-header"><span class="dash-header-title"><svg width="14" height="14"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Resumen en tiempo real</span><span class="dash-header-total">Total: <strong id="metric-total">0</strong></span></div>
         <div class="dash-rows">
-
-            <!-- Votaron -->
             <div class="dash-row dash-row-voted" data-filter="Votó">
-                <div class="dash-row-top">
-                    <div class="dash-row-label">
-                        <span class="dash-row-dot dash-dot-voted"></span>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                        Votaron
-                    </div>
-                    <div class="dash-row-right">
-                        <span class="dash-row-num" id="metric-voted">0</span>
-                        <span class="dash-row-pct" id="pct-voted">0%</span>
-                    </div>
-                </div>
-                <div class="dash-bar-track">
-                    <div class="dash-bar-fill dash-bar-voted" id="prog-voted" style="width:0%"></div>
-                </div>
+                <div class="dash-row-top"><div class="dash-row-label"><span class="dash-row-dot dash-dot-voted"></span><svg width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg>Votaron</div><div class="dash-row-right"><span class="dash-row-num" id="metric-voted">0</span><span class="dash-row-pct" id="pct-voted">0%</span></div></div>
+                <div class="dash-bar-track"><div class="dash-bar-fill dash-bar-voted" id="prog-voted" style="width:0%"></div></div>
             </div>
-
-            <!-- No Votaron -->
             <div class="dash-row dash-row-novoted" data-filter="No Votó">
-                <div class="dash-row-top">
-                    <div class="dash-row-label">
-                        <span class="dash-row-dot dash-dot-novoted"></span>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                        No Votaron
-                    </div>
-                    <div class="dash-row-right">
-                        <span class="dash-row-num" id="metric-novoted">0</span>
-                        <span class="dash-row-pct" id="pct-novoted">0%</span>
-                    </div>
-                </div>
-                <div class="dash-bar-track">
-                    <div class="dash-bar-fill dash-bar-novoted" id="prog-novoted" style="width:0%"></div>
-                </div>
+                <div class="dash-row-top"><div class="dash-row-label"><span class="dash-row-dot dash-dot-novoted"></span><svg width="13" height="13"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>No Votaron</div><div class="dash-row-right"><span class="dash-row-num" id="metric-novoted">0</span><span class="dash-row-pct" id="pct-novoted">0%</span></div></div>
+                <div class="dash-bar-track"><div class="dash-bar-fill dash-bar-novoted" id="prog-novoted" style="width:0%"></div></div>
             </div>
-
-            <!-- Pendientes -->
             <div class="dash-row dash-row-pending" data-filter="Pendiente">
-                <div class="dash-row-top">
-                    <div class="dash-row-label">
-                        <span class="dash-row-dot dash-dot-pending"></span>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        Pendientes
-                    </div>
-                    <div class="dash-row-right">
-                        <span class="dash-row-num" id="metric-pending">0</span>
-                        <span class="dash-row-pct" id="pct-pending">0%</span>
-                    </div>
-                </div>
-                <div class="dash-bar-track">
-                    <div class="dash-bar-fill dash-bar-pending" id="prog-pending" style="width:0%"></div>
-                </div>
+                <div class="dash-row-top"><div class="dash-row-label"><span class="dash-row-dot dash-dot-pending"></span><svg width="13" height="13"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Pendientes</div><div class="dash-row-right"><span class="dash-row-num" id="metric-pending">0</span><span class="dash-row-pct" id="pct-pending">0%</span></div></div>
+                <div class="dash-bar-track"><div class="dash-bar-fill dash-bar-pending" id="prog-pending" style="width:0%"></div></div>
             </div>
-
         </div>
     </div>
 
-    <!-- TOOLBAR (Tabs principales) -->
+    <!-- TOOLBAR -->
     <div class="toolbar-top">
-        <div class="toolbar-tabs">
-            <button id="tab-planilla" class="tab-btn active">
-                <svg class="icon" style="color:inherit;margin-right:4px;width:14px;height:14px;"><use href="#icon-clipboard"/></svg>
-                Planilla
-            </button>
-            <button id="tab-stats" class="tab-btn">
-                <svg class="icon" style="color:inherit;margin-right:4px;width:14px;height:14px;"><use href="#icon-bar-chart"/></svg>
-                Estadísticas
-            </button>
-            <button id="tab-admin" class="tab-btn hidden">
-                <svg class="icon" style="color:inherit;margin-right:4px;width:14px;height:14px;"><use href="#icon-settings"/></svg>
-                Administración
-            </button>
-            <button id="tab-padron-anr" class="tab-btn tab-btn-padron">
-                <svg class="icon" style="color:inherit;margin-right:4px;width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1" ry="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
-                Padrón ANR
-            </button>
-        </div>
-        <button id="btn-exportar" onclick="exportarXLSX()" class="btn-secondary hidden"
-            style="display:none;align-items:center;gap:6px;padding:9px 14px;font-size:.78rem;font-weight:800;white-space:nowrap;">
-            <svg style="color:var(--color-primary);width:14px;height:14px"><use href="#icon-download"/></svg>
-            Exportar XLSX
-        </button>
+        <div class="toolbar-tabs"><button id="tab-planilla" class="tab-btn active"><svg class="icon"><use href="#icon-clipboard"/></svg>Planilla</button><button id="tab-stats" class="tab-btn"><svg class="icon"><use href="#icon-bar-chart"/></svg>Estadísticas</button><button id="tab-admin" class="tab-btn hidden"><svg class="icon"><use href="#icon-settings"/></svg>Administración</button><button id="tab-padron-anr" class="tab-btn"><svg class="icon"><use href="#icon-file-text"/></svg>Padrón ANR</button></div>
+        <button id="btn-exportar" onclick="exportarXLSX()" class="btn-secondary hidden" style="display:none;">Exportar XLSX</button>
     </div>
 
-    <!-- FILTROS + BÚSQUEDA (solo planilla) -->
+    <!-- FILTROS + BÚSQUEDA -->
     <div id="filter-wrapper" style="margin-bottom:12px;">
-        <div class="toolbar-filters" style="margin-bottom:10px;">
-            <div class="filter-group">
-                <button id="btn-filter-todos" class="filter-btn f-todos">
-                    <svg><use href="#icon-list"/></svg><span class="filter-label">Todos</span>
-                </button>
-                <button id="btn-filter-pending" class="filter-btn">
-                    <svg><use href="#icon-clock"/></svg><span class="filter-label">Pendientes</span>
-                </button>
-                <button id="btn-filter-voted" class="filter-btn">
-                    <svg><use href="#icon-check"/></svg><span class="filter-label">Votaron</span>
-                </button>
-                <button id="btn-filter-novoted" class="filter-btn">
-                    <svg><use href="#icon-x"/></svg><span class="filter-label">No Votaron</span>
-                </button>
-            </div>
-        </div>
-        <div class="search-box-full">
-            <svg class="icon"><use href="#icon-search"/></svg>
-            <input type="text" id="search-input" placeholder="Buscar por nombre o cédula..." inputmode="search">
-        </div>
+        <div class="toolbar-filters"><div class="filter-group"><button id="btn-filter-todos" class="filter-btn f-todos"><svg><use href="#icon-list"/></svg><span>Todos</span></button><button id="btn-filter-pending" class="filter-btn"><svg><use href="#icon-clock"/></svg><span>Pendientes</span></button><button id="btn-filter-voted" class="filter-btn"><svg><use href="#icon-check"/></svg><span>Votaron</span></button><button id="btn-filter-novoted" class="filter-btn"><svg><use href="#icon-x"/></svg><span>No Votaron</span></button></div></div>
+        <div class="search-box-full"><svg class="icon"><use href="#icon-search"/></svg><input type="text" id="search-input" placeholder="Buscar por nombre o cédula..."></div>
     </div>
-
-    <!-- Search hint -->
     <div id="search-hint"></div>
 
-    <!-- ═══ PLANILLA ═══ -->
+    <!-- PLANILLA -->
     <div id="view-planilla">
-
-        <!-- Botón flotante basurita (solo admin) -->
-        <button id="btn-trash-flotante" class="btn-trash-flotante hidden" title="Eliminar registros" onclick="activarModoEliminar()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-        </button>
-
-        <!-- Banner de modo selección -->
-        <div id="banner-eliminar" class="banner-eliminar hidden">
-            <span id="banner-eliminar-count">0 seleccionados</span>
-            <div style="display:flex;gap:8px;align-items:center;">
-                <button class="btn-secondary" style="padding:7px 14px;font-size:.8rem;" onclick="seleccionarTodosEliminar()">Todos</button>
-                <button class="btn-secondary" style="padding:7px 14px;font-size:.8rem;" onclick="cancelarModoEliminar()">Cancelar</button>
-                <button id="btn-eliminar-seleccionados" class="btn-primary"
-                    style="padding:7px 14px;font-size:.8rem;background:linear-gradient(135deg,#B91C1C,#7F1D1D);border-color:#B91C1C;opacity:.4;pointer-events:none;"
-                    onclick="pedirConfirmacionEliminar()">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-                    Eliminar
-                </button>
-            </div>
-        </div>
-
-        <!-- Vista TARJETAS (mobile) -->
-        <div class="cards-mobile" id="cards-container">
-            <div class="loading-wrap">
-                <div class="spinner"></div>
-                <span class="loading-text">Cargando padrón...</span>
-            </div>
-        </div>
-
-        <!-- Vista TABLA (desktop) -->
-        <div class="tabla-desktop table-responsive">
-            <table>
-                <thead>
-                    <tr>
-                        <th>N°</th>
-                        <th>Nombre y Apellido</th>
-                        <th>Cédula</th>
-                        <th>Local de Votación</th>
-                        <th>Mesa</th>
-                        <th>Orden</th>
-                        <th>Estado</th>
-                        <th>Acciones</th>
-                        <th>Observaciones</th>
-                        <th>Cambiado por</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody id="votantes-table-body">
-                    <tr><td class="spinner-cell" colspan="11"><div class="spinner"></div></td></tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Controles de paginación -->
+        <button id="btn-trash-flotante" class="btn-trash-flotante hidden" title="Eliminar registros"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+        <div id="banner-eliminar" class="banner-eliminar hidden"><span id="banner-eliminar-count">0 seleccionados</span><div><button class="btn-secondary" onclick="seleccionarTodosEliminar()">Todos</button><button class="btn-secondary" onclick="cancelarModoEliminar()">Cancelar</button><button id="btn-eliminar-seleccionados" class="btn-primary" onclick="pedirConfirmacionEliminar()">Eliminar</button></div></div>
+        <div class="cards-mobile" id="cards-container"><div class="loading-wrap"><div class="spinner"></div><span class="loading-text">Cargando padrón...</span></div></div>
+        <div class="tabla-desktop table-responsive"><table><thead><tr><th>N°</th><th>Nombre</th><th>Cédula</th><th>Local</th><th>Mesa</th><th>Orden</th><th>Estado</th><th>Acciones</th><th>Observaciones</th><th>Cambiado por</th><th></th></tr></thead><tbody id="votantes-table-body"><tr><td class="spinner-cell" colspan="11"><div class="spinner"></div></td></tr></tbody></table></div>
         <div id="pagination-controls" style="margin-top:12px;"></div>
-
     </div>
 
-    <!-- ═══ ESTADÍSTICAS ═══ -->
+    <!-- ESTADÍSTICAS (sin selector de local, con botón volver) -->
     <div id="view-stats" style="display:none;">
         <div class="stats-grid">
             <div class="chart-card">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-                    <h4 style="margin:0;display:flex;align-items:center;gap:8px;font-size:.9rem;">
-                        <svg width="16" height="16" style="color:var(--color-primary-accent)"><use href="#icon-bar-chart"/></svg>
-                        <span id="bar-chart-title">Participación por Locales</span>
-                    </h4>
-                    <div class="stats-selectors">
-                        <select id="chart-local-selector">
-                            <option value="">Seleccionar local</option>
-                        </select>
-                    </div>
+                    <h4 style="margin:0;display:flex;align-items:center;gap:8px;"><svg width="16" height="16" style="color:var(--color-primary-accent)"><use href="#icon-bar-chart"/></svg><span id="bar-chart-title">Participación por Locales</span></h4>
+                    <button id="btn-volver-locales" class="btn-secondary hidden" onclick="volverALocales()" style="font-size:.75rem;padding:6px 12px;">← Volver a locales</button>
                 </div>
                 <div class="chart-wrap"><canvas id="chart-mesa"></canvas></div>
             </div>
-            <div class="chart-card">
-                <h4><svg width="16" height="16" style="color:var(--color-success)"><use href="#icon-check"/></svg> Distribución General</h4>
-                <div class="chart-wrap"><canvas id="chart-global"></canvas></div>
-            </div>
+            <div class="chart-card"><h4><svg width="16" height="16" style="color:var(--color-success)"><use href="#icon-check"/></svg> Distribución General</h4><div class="chart-wrap"><canvas id="chart-global"></canvas></div></div>
         </div>
-        <div class="chart-card" style="margin-bottom:18px;">
-            <h4><svg width="16" height="16" style="color:var(--color-warn)"><use href="#icon-clock"/></svg> Participación Horaria</h4>
-            <div class="chart-wrap" style="height:220px;"><canvas id="chart-hora"></canvas></div>
-        </div>
+        <div class="chart-card"><h4><svg width="16" height="16" style="color:var(--color-warn)"><use href="#icon-clock"/></svg> Participación Horaria</h4><div class="chart-wrap" style="height:220px;"><canvas id="chart-hora"></canvas></div></div>
     </div>
 
-    <!-- ═══ ADMINISTRACIÓN ═══ -->
+    <!-- ADMINISTRACIÓN -->
     <div id="view-admin" class="admin-grid">
-
         <div class="admin-top-grid">
-            <div class="admin-card">
-                <h3><svg class="icon"><use href="#icon-useradd"/></svg>Nuevo Operador</h3>
+            <div class="admin-card"><h3><svg class="icon"><use href="#icon-useradd"/></svg>Nuevo Operador</h3>
                 <form id="register-user-form">
-                    <div class="form-group">
-                        <label>Nombre Completo</label>
-                        <input type="text" id="reg-fullname" required placeholder="Ej. Juan Pérez">
-                    </div>
-                    <div class="form-group">
-                        <label><svg class="icon" style="width:14px;height:14px"><use href="#icon-phone"/></svg> WhatsApp</label>
-                        <input type="tel" id="reg-phone" required placeholder="Ej. 595981XXXXXX" inputmode="tel">
-                    </div>
-                    <div class="form-group">
-                        <label>Nombre de Usuario</label>
-                        <input type="text" id="reg-username" required placeholder="Ej. jperez" autocapitalize="off">
-                    </div>
-                    <div class="form-group">
-                        <label><svg class="icon" style="width:14px;height:14px"><use href="#icon-lock"/></svg> Contraseña</label>
-                        <input type="password" id="reg-password" required placeholder="Crear contraseña">
-                    </div>
-                    <div class="form-group">
-                        <label>Local de Votación Asignado</label>
-                        <select id="reg-local" required>
-                            <option value="">Seleccionar local...</option>
-                        </select>
-                    </div>
+                    <div class="form-group"><label>Nombre Completo</label><input type="text" id="reg-fullname" required></div>
+                    <div class="form-group"><label><svg class="icon" style="width:14px;height:14px"><use href="#icon-phone"/></svg> WhatsApp</label><input type="tel" id="reg-phone" required></div>
+                    <div class="form-group"><label>Usuario</label><input type="text" id="reg-username" required></div>
+                    <div class="form-group"><label><svg class="icon" style="width:14px;height:14px"><use href="#icon-lock"/></svg> Contraseña</label><input type="password" id="reg-password" required></div>
+                    <div class="form-group"><label>Local Asignado</label><select id="reg-local" required><option value="">Seleccionar local...</option></select></div>
                     <button type="submit" class="btn-primary">Crear Operador</button>
                 </form>
             </div>
-
-            <div class="admin-card">
-                <h3><svg class="icon"><use href="#icon-download"/></svg>Exportar Planilla Excel (Estadísticas)</h3>
-                <p style="font-size:.82rem;color:var(--color-text-soft);margin-bottom:14px;line-height:1.5;">
-                    Descargá un archivo Excel completo con la <strong>planilla de votantes</strong>, <strong>estadísticas por local</strong>, <strong>por mesa</strong> y <strong>resumen general</strong>.
-                </p>
-                <button onclick="exportarEstadisticasXLSX()" class="btn-primary" style="display:flex;align-items:center;justify-content:center;gap:8px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Descargar Excel Completo
-                </button>
-            </div>
+            <div class="admin-card"><h3><svg class="icon"><use href="#icon-download"/></svg>Exportar Planilla Excel (Estadísticas)</h3><p style="font-size:.82rem;color:var(--color-text-soft);margin-bottom:14px;">Descargá Excel completo con planilla, estadísticas por local, mesa y resumen.</p><button onclick="exportarEstadisticasXLSX()" class="btn-primary">Descargar Excel Completo</button></div>
         </div>
 
-        <div class="admin-card">
-            <h3><svg class="icon"><use href="#icon-users"/></svg>Lista de Operadores</h3>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Nombre</th>
-                            <th>WhatsApp</th>
-                            <th>Usuario</th>
-                            <th>Local Asignado</th>
-                            <th>Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody id="users-table-body"></tbody>
-                </table>
-            </div>
+        <!-- NUEVA TARJETA: Registrar Votante Manual -->
+        <div class="admin-card"><h3><svg class="icon"><use href="#icon-useradd"/></svg>Registrar Votante Manualmente</h3>
+            <form id="register-votante-form">
+                <div class="form-group"><label>Nombre completo</label><input type="text" id="vot-fullname" required placeholder="Ej. María Gómez"></div>
+                <div class="form-group"><label>Cédula</label><input type="text" id="vot-cedula" required placeholder="Ej. 1234567" inputmode="numeric"></div>
+                <div class="form-group"><label>Local</label><input type="text" id="vot-local" placeholder="Ej. GIMNASIO MUNICIPAL"></div>
+                <div class="form-group"><label>Mesa</label><input type="text" id="vot-mesa" placeholder="Número de mesa"></div>
+                <div class="form-group"><label>Orden</label><input type="text" id="vot-orden" placeholder="Número de orden"></div>
+                <div class="form-group"><label>Domicilio</label><input type="text" id="vot-domicilio" placeholder="Opcional"></div>
+                <button type="submit" class="btn-primary">Registrar Votante</button>
+            </form>
         </div>
 
-        <div class="bitacora-card">
-            <div class="bitacora-header">
-                <div class="bitacora-title">
-                    <span class="bit-live-dot"></span>
-                    <svg width="16" height="16" style="color:var(--color-primary-accent)"><use href="#icon-activity"/></svg>
-                    Bitácora de Actividad
-                </div>
-                <span class="bitacora-subtitle">Últimas 150 · Tiempo real · PY</span>
-            </div>
-            <div class="bitacora-table-wrap">
-                <table class="bitacora-table">
-                    <thead>
-                        <tr>
-                            <th>Hora</th>
-                            <th>Operador</th>
-                            <th>Acción</th>
-                            <th>Detalle</th>
-                        </tr>
-                    </thead>
-                    <tbody id="bitacora-tbody">
-                        <tr><td colspan="4" style="text-align:center;padding:24px;color:var(--color-gray);">
-                            <div class="spinner" style="margin:0 auto 8px"></div>
-                            Cargando bitácora...
-                        </td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        <div class="admin-card"><h3><svg class="icon"><use href="#icon-users"/></svg>Lista de Operadores</h3><div class="table-responsive"><table><thead><tr><th>Nombre</th><th>WhatsApp</th><th>Usuario</th><th>Local Asignado</th><th>Acción</th></tr></thead><tbody id="users-table-body"></tbody></table></div></div>
 
+        <div class="bitacora-card"><div class="bitacora-header"><div class="bitacora-title"><span class="bit-live-dot"></span><svg width="16" height="16" style="color:var(--color-primary-accent)"><use href="#icon-activity"/></svg>Bitácora de Actividad</div><span class="bitacora-subtitle">Últimas 150 · Tiempo real · PY</span></div><div class="bitacora-table-wrap"><table class="bitacora-table"><thead><tr><th>Hora</th><th>Operador</th><th>Acción</th><th>Detalle</th></tr></thead><tbody id="bitacora-tbody"><tr><td colspan="4" style="text-align:center;padding:24px;"><div class="spinner"></div>Cargando bitácora...</td></tr></tbody></table></div></div>
     </div>
 
-    <!-- ═══ PADRÓN ANR ═══ -->
+    <!-- PADRÓN ANR -->
     <div id="view-padron-anr" style="display:none;">
         <div style="background:#fff;border:1px solid var(--color-border);border-radius:var(--r-lg);padding:22px;max-width:580px;margin:0 auto;box-shadow:var(--shadow-md);">
-
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
-                <div style="background:linear-gradient(135deg,var(--color-primary-accent),var(--color-primary-hover));padding:10px;border-radius:var(--r-md);box-shadow:0 5px 14px rgba(185,28,28,.3);">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff" style="display:block"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1" ry="1"/></svg>
-                </div>
-                <div>
-                    <h2 style="font-size:1.05rem;color:var(--color-dark);margin:0;font-weight:900;letter-spacing:-.2px;">Consulta Padrón ANR</h2>
-                    <p style="font-size:.76rem;color:var(--color-gray);margin:3px 0 0;font-weight:600;">Internas Municipales - Junio 2026</p>
-                </div>
-            </div>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;"><div style="background:linear-gradient(135deg,var(--color-primary-accent),var(--color-primary-hover));padding:10px;border-radius:var(--r-md);"><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1" ry="1"/></svg></div><div><h2 style="font-size:1.05rem;color:var(--color-dark);margin:0;">Consulta Padrón ANR</h2><p style="font-size:.76rem;color:var(--color-gray);margin:3px 0 0;">Internas Municipales - Junio 2026</p></div></div>
             <div style="border-top:2px solid var(--color-primary-light);margin-bottom:18px;"></div>
-
-            <div style="display:flex;gap:10px;margin-bottom:16px;">
-                <div class="search-box-full" style="flex:1;">
-                    <svg class="icon"><use href="#icon-search"/></svg>
-                    <input type="text" id="padron-anr-input"
-                        placeholder="Número de cédula..."
-                        style="font-size:1rem;"
-                        inputmode="numeric"
-                        pattern="[0-9]*">
-                </div>
-                <button onclick="buscarPadronANR()" class="btn-primary"
-                    style="width:auto;padding:0 22px;white-space:nowrap;font-size:.9rem;">
-                    Consultar
-                </button>
-            </div>
-
-            <div id="padron-anr-loading" style="display:none;text-align:center;padding:26px;color:var(--color-text-soft);font-size:.9rem;font-weight:600;">
-                <div class="spinner" style="margin:0 auto 12px;"></div>
-                Consultando padrón ANR...
-            </div>
-
-            <div id="padron-anr-error" style="display:none;background:var(--color-primary-light);border:1px solid rgba(185,28,28,.3);border-radius:var(--r-md);padding:16px;font-size:.9rem;text-align:center;color:var(--color-primary-hover);font-weight:700;"></div>
-
-            <div id="padron-anr-resultado" style="display:none;">
-                <div style="background:#fff;border:1px solid var(--color-border);border-radius:var(--r-md);overflow:hidden;box-shadow:var(--shadow-sm);">
-                    <div style="background:linear-gradient(135deg,var(--color-primary-accent),var(--color-primary-hover));padding:11px 16px;">
-                        <span style="font-weight:900;font-size:.82rem;letter-spacing:.5px;text-transform:uppercase;color:#fff;display:flex;align-items:center;gap:6px;">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                            Resultado de la Consulta
-                        </span>
-                    </div>
-                    <div>
-                        <div class="padron-field"><span class="padron-label">Cédula</span><span id="pr-cedula" class="padron-value" style="font-family:'SF Mono',monospace;"></span></div>
-                        <div class="padron-field"><span class="padron-label">Nombres</span><span id="pr-nombres" class="padron-value"></span></div>
-                        <div class="padron-field"><span class="padron-label">Apellidos</span><span id="pr-apellidos" class="padron-value"></span></div>
-                        <div class="padron-field"><span class="padron-label">Departamento</span><span id="pr-departamento" class="padron-value"></span></div>
-                        <div class="padron-field"><span class="padron-label">Distrito</span><span id="pr-distrito" class="padron-value"></span></div>
-                        <div class="padron-field"><span class="padron-label">Seccional</span><span id="pr-seccional" class="padron-value"></span></div>
-                        <div class="padron-field"><span class="padron-label">Local</span><span id="pr-local" class="padron-value"></span></div>
-                        <div class="padron-field"><span class="padron-label">Mesa</span><span id="pr-mesa" class="padron-value"></span></div>
-                        <div class="padron-field" style="border:none;"><span class="padron-label">Orden</span><span id="pr-orden" class="padron-value"></span></div>
-                    </div>
-                </div>
-                <div id="pr-btn-agregar-wrap" style="margin-top:14px;">
-                    <button id="pr-btn-agregar" onclick="agregarDesdePardon()" class="btn-primary"
-                        style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 0;font-size:.92rem;font-weight:900;">
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="12" y1="5" x2="12" y2="19"/>
-                            <line x1="5" y1="12" x2="19" y2="12"/>
-                        </svg>
-                        Añadir a la planilla
-                    </button>
-                </div>
-            </div>
-
-            <p style="margin-top:16px;font-size:.72rem;color:var(--color-gray);text-align:center;font-weight:600;">
-                Fuente: <a href="https://www.anr.org.py/padron-2026/" target="_blank" style="color:var(--color-primary);font-weight:800;text-decoration:none;">anr.org.py/padron-2026</a>
-            </p>
+            <div style="display:flex;gap:10px;margin-bottom:16px;"><div class="search-box-full" style="flex:1;"><svg class="icon"><use href="#icon-search"/></svg><input type="text" id="padron-anr-input" placeholder="Número de cédula..." inputmode="numeric"></div><button onclick="buscarPadronANR()" class="btn-primary" style="width:auto;padding:0 22px;">Consultar</button></div>
+            <div id="padron-anr-loading" style="display:none;text-align:center;padding:26px;"><div class="spinner"></div>Consultando padrón ANR...</div>
+            <div id="padron-anr-error" style="display:none;background:var(--color-primary-light);border-radius:var(--r-md);padding:16px;text-align:center;"></div>
+            <div id="padron-anr-resultado" style="display:none;"><div style="background:#fff;border:1px solid var(--color-border);border-radius:var(--r-md);overflow:hidden;"><div style="background:linear-gradient(135deg,var(--color-primary-accent),var(--color-primary-hover));padding:11px 16px;"><span style="color:#fff;">Resultado de la Consulta</span></div><div><div class="padron-field"><span class="padron-label">Cédula</span><span id="pr-cedula" class="padron-value"></span></div><div class="padron-field"><span class="padron-label">Nombres</span><span id="pr-nombres" class="padron-value"></span></div><div class="padron-field"><span class="padron-label">Apellidos</span><span id="pr-apellidos" class="padron-value"></span></div><div class="padron-field"><span class="padron-label">Departamento</span><span id="pr-departamento" class="padron-value"></span></div><div class="padron-field"><span class="padron-label">Distrito</span><span id="pr-distrito" class="padron-value"></span></div><div class="padron-field"><span class="padron-label">Seccional</span><span id="pr-seccional" class="padron-value"></span></div><div class="padron-field"><span class="padron-label">Local</span><span id="pr-local" class="padron-value"></span></div><div class="padron-field"><span class="padron-label">Mesa</span><span id="pr-mesa" class="padron-value"></span></div><div class="padron-field" style="border:none;"><span class="padron-label">Orden</span><span id="pr-orden" class="padron-value"></span></div></div></div><div id="pr-btn-agregar-wrap" style="margin-top:14px;"><button id="pr-btn-agregar" onclick="agregarDesdePardon()" class="btn-primary">Añadir a la planilla</button></div></div>
+            <p style="margin-top:16px;font-size:.72rem;color:var(--color-gray);text-align:center;">Fuente: <a href="https://www.anr.org.py/padron-2026/" target="_blank" style="color:var(--color-primary);">anr.org.py/padron-2026</a></p>
         </div>
     </div>
 
@@ -1597,12 +1225,9 @@
 
 <script type="module" src="js/app.js"></script>
 <script>
-    // Registrar Service Worker para PWA
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js')
-                .then(reg => console.log('SW registrado:', reg.scope))
-                .catch(err => console.warn('SW error:', err));
+            navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW error:', err));
         });
     }
 </script>

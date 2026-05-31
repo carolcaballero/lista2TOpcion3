@@ -1,7 +1,8 @@
-const CACHE_NAME = 'ce-v9-cache-v1';
+const CACHE_NAME = 'ce-v12-cache-v3';
 const STATIC_ASSETS = [
   './',
   './index.html',
+  './manifest.json',
   './css/styles.css',
   './js/app.js',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
@@ -18,8 +19,12 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )  // ← paréntesis que faltaba
+      Promise.all(
+        keys
+          .filter(key => key !== CACHE_NAME)
+          .map(key => caches.delete(key))
+      )
+    )
   );
   self.clients.claim();
 });
@@ -34,13 +39,13 @@ self.addEventListener('fetch', event => {
   }
 
   event.respondWith(
-    caches.match(request).then(cached => {
-      return cached || fetch(request).then(response => {
-        return caches.open(CACHE_NAME).then(cache => {
-          cache.put(request, response.clone());
-          return response;
-        });
-      });
-    }).catch(() => caches.match('./index.html'))
+    fetch(request)
+      .then(response => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+        return response;
+      })
+      .catch(() => caches.match(request).then(r => r || caches.match('./index.html')))
   );
 });
+

@@ -1373,11 +1373,327 @@ svg[fill][fill]:not([fill="none"]) {
 ═══════════════════════════════════════════════════════════════ */
 .bit-badge svg { width: 11px; height: 11px; vertical-align: -1px; margin-right: 3px; stroke-width: 2.4; }
 
+/* local-card animations moved to styles_additions.css */
+
+
+
 /* ═══════════════════════════════════════════════════════════════
-   STATS — animación de entrada para tarjetas-resumen
+   SELECTOR DE LOCALES — Estadísticas
+   Botones para elegir local antes de ver mesas
 ═══════════════════════════════════════════════════════════════ */
-.locales-summary .local-card {
+.local-selector-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.local-sel-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 14px 16px;
+    background: #fff;
+    border: 2px solid var(--local-color, var(--color-border));
+    border-radius: var(--r-lg);
+    cursor: pointer;
+    text-align: left;
+    transition: all var(--t-base);
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+.local-sel-btn::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--local-soft, #f3f4f6) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity var(--t-base);
+    pointer-events: none;
+}
+.local-sel-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+.local-sel-btn:hover::before { opacity: 1; }
+.local-sel-btn:active { transform: scale(.98); }
+
+.local-sel-icon {
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    border-radius: var(--r-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(0,0,0,.2);
+}
+.local-sel-icon svg { stroke: #fff; }
+
+.local-sel-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.local-sel-name {
+    font-size: .88rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .3px;
+    line-height: 1.2;
+    margin-bottom: 2px;
+    color: var(--local-color, var(--color-dark));
+}
+
+.local-sel-mesas {
+    font-size: .72rem;
+    font-weight: 700;
+    color: var(--color-gray);
+    margin-bottom: 6px;
+}
+
+.local-sel-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .8rem;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+
+.local-sel-pct {
+    font-size: .7rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 100px;
+    margin-left: auto;
+}
+
+.local-sel-bar {
+    height: 5px;
+    background: var(--color-bg-alt);
+    border-radius: 100px;
+    overflow: hidden;
+}
+.local-sel-bar-fill {
+    height: 100%;
+    border-radius: 100px;
+    transition: width .8s cubic-bezier(.4,0,.2,1);
+}
+
+.local-sel-arrow {
+    flex-shrink: 0;
+    opacity: .5;
+    transition: transform var(--t-base), opacity var(--t-base);
+}
+.local-sel-btn:hover .local-sel-arrow {
+    transform: translateX(4px);
+    opacity: 1;
+}
+
+@media (min-width: 600px) {
+    .local-selector-btns {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    .local-sel-btn {
+        flex: 1;
+        min-width: 200px;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PICKER DE LOCAL — Formulario Nuevo Operador
+═══════════════════════════════════════════════════════════════ */
+.local-picker-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.local-picker-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 11px 14px;
+    background: var(--color-bg-soft);
+    border: 2px solid var(--color-border);
+    border-radius: var(--r-md);
+    cursor: pointer;
+    font-size: .82rem;
+    font-weight: 700;
+    color: var(--color-text-soft);
+    transition: all var(--t-base);
+    text-align: left;
+    -webkit-tap-highlight-color: transparent;
+}
+.local-picker-btn:hover {
+    border-color: var(--lc, var(--color-primary));
+    color: var(--lc, var(--color-primary));
+    background: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0,0,0,.06);
+}
+.local-picker-btn:active { transform: scale(.97); }
+.local-picker-btn.selected {
+    border-color: var(--lc, var(--color-primary)) !important;
+    color: var(--lc, var(--color-primary)) !important;
+    font-weight: 800;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--lc, var(--color-primary)) 20%, transparent);
+}
+.local-picker-btn span:first-of-type {
+    flex: 1;
+}
+.lp-mesas {
+    font-size: .7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    background: var(--color-bg-alt);
+    border-radius: 100px;
+    margin-left: auto;
+}
+.local-picker-btn.selected .lp-mesas {
+    background: var(--ls, var(--color-primary-light));
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CHART WRAP — mesa oculto hasta que se elige local
+═══════════════════════════════════════════════════════════════ */
+#chart-mesa-wrap {
+    margin-top: 16px;
+    animation: fadeInUp .3s var(--t-base);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STATS GRID — dos columnas en desktop
+═══════════════════════════════════════════════════════════════ */
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+@media (min-width: 768px) {
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+}
+
+.chart-card {
+    background: #fff;
+    border: 1px solid var(--color-border);
+    border-radius: var(--r-lg);
+    padding: 18px 16px;
+    box-shadow: var(--shadow-sm);
+}
+.chart-card h4 {
+    font-size: .88rem;
+    font-weight: 800;
+    color: var(--color-dark);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+    letter-spacing: .3px;
+}
+.chart-wrap {
+    position: relative;
+    height: 260px;
+}
+.chart-card canvas { max-width: 100% !important; }
+
+/* Animación de entrada mesas */
+@keyframes mesaChartIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+#mesa-tabla-wrap { animation: mesaChartIn .35s var(--t-base); }
+
+/* ═══════════════════════════════════════════════════════════════
+   TABLA MESAS — detalle dentro de estadísticas
+═══════════════════════════════════════════════════════════════ */
+#mesa-tabla-wrap table thead th {
+    font-size: .68rem;
+    padding: 8px 12px;
+}
+#mesa-tabla-wrap table tbody td {
+    font-size: .78rem;
+    padding: 7px 12px;
+}
+#mesa-tabla-wrap table tbody tr:last-child td {
+    font-size: .8rem;
+    padding: 9px 12px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LOCAL CARDS — animación mejorada
+═══════════════════════════════════════════════════════════════ */
+.locales-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.local-card {
+    background: #fff;
+    border: 1px solid var(--color-border);
+    border-radius: var(--r-lg);
+    padding: 14px 16px;
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    transition: all var(--t-base);
+    position: relative;
+    overflow: hidden;
+    border-left: 5px solid var(--color-primary-accent);
     animation: cardSlideIn .4s var(--t-base) both;
+}
+.local-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+.local-card-name {
+    font-size: .72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+.local-card-num {
+    font-size: 1.7rem;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -1px;
+}
+.local-card-meta {
+    font-size: .72rem;
+    color: var(--color-gray);
+    font-weight: 600;
+    margin-top: 4px;
+}
+.local-card-bar {
+    margin-top: 10px;
+    height: 6px;
+    background: var(--color-bg-alt);
+    border-radius: 100px;
+    overflow: hidden;
+}
+.local-card-bar-fill {
+    height: 100%;
+    border-radius: 100px;
+    transition: width .8s cubic-bezier(.4,0,.2,1);
+}
+.local-card-pct {
+    font-size: .7rem;
+    font-weight: 800;
+    margin-top: 5px;
 }
 .locales-summary .local-card:nth-child(1) { animation-delay: 0ms; }
 .locales-summary .local-card:nth-child(2) { animation-delay: 60ms; }

@@ -1259,7 +1259,7 @@ function switchTab(tab) {
 // Configuración de locales y mesas fijas (sin acentos, normalizados)
 const LOCALES_CONFIG = {
     "GIMNASIO MUNICIPAL": { mesaMin: 1, mesaMax: 20 },
-    "MUSEO HISTORICO": { mesaMin: 21, mesaMax: 40 },   // ← sin acento
+    "COLEGIO NACIONAL SEBASTIAN DE YEGROS": { mesaMin: 21, mesaMax: 40 },   // reemplaza al antiguo Museo Histórico
     "ESC.CARLOS ANTONIO LOPEZ": { mesaMin: 41, mesaMax: 65 }
 };
 
@@ -1376,7 +1376,7 @@ function renderStatsCharts() {
         backgroundColors = labels.map(local => {
             if (local === "OTRO") return '#9CA3AF';
             if (local === "GIMNASIO MUNICIPAL") return '#B91C1C';
-            if (local === "MUSEO HISTORICO") return '#7F1D1D';
+            if (local === "COLEGIO NACIONAL SEBASTIAN DE YEGROS") return '#7F1D1D';
             return '#DC2626';
         });
     } else {

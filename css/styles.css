@@ -1294,3 +1294,92 @@ code {
     border-radius: 50%;
     animation: spin 0.7s linear infinite;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   ÍCONOS SVG — UNIFICACIÓN GLOBAL
+   Todos los <svg> reciben currentColor automáticamente para que
+   hereden el color de su contenedor (tabs, botones, headers, etc.)
+═══════════════════════════════════════════════════════════════ */
+svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
+}
+/* Excepciones: SVGs decorativos con fill explícito (manuales) */
+svg[fill][fill]:not([fill="none"]) {
+    stroke: none;
+}
+.icon { transition: transform var(--t-base), color var(--t-base); }
+.btn-primary svg, .btn-secondary svg, .btn-danger svg { stroke: currentColor; }
+.btn-primary:hover .icon, .btn-secondary:hover .icon { transform: translateY(-1px); }
+.tab-btn svg { width: 14px; height: 14px; stroke-width: 2.2; }
+.filter-btn svg { stroke-width: 2.3; }
+
+/* ═══════════════════════════════════════════════════════════════
+   CHART CARD MEJORAS (canvas + headers)
+═══════════════════════════════════════════════════════════════ */
+.chart-card {
+    transition: box-shadow var(--t-base), transform var(--t-base);
+}
+.chart-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+.chart-card h4 svg { stroke-width: 2.2; }
+.chart-card canvas { max-width: 100% !important; }
+
+/* ═══════════════════════════════════════════════════════════════
+   FORM GROUP — alineación de íconos en labels
+═══════════════════════════════════════════════════════════════ */
+.form-group label svg,
+.admin-card .form-group label svg {
+    width: 13px;
+    height: 13px;
+    stroke-width: 2.3;
+    color: var(--color-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ASSIGN CHIP (operador con local) — mejor alineación
+═══════════════════════════════════════════════════════════════ */
+.assign-chip svg { width: 11px; height: 11px; stroke-width: 2.4; }
+
+/* ═══════════════════════════════════════════════════════════════
+   FILTER BUTTONS — íconos blancos en estados activos
+═══════════════════════════════════════════════════════════════ */
+.filter-btn.f-todos svg,
+.filter-btn.f-pending svg,
+.filter-btn.f-voted svg,
+.filter-btn.f-novoted svg {
+    color: #fff;
+    stroke: #fff;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DASHBOARD ROWS — íconos heredando color del label
+═══════════════════════════════════════════════════════════════ */
+.dash-row-label svg {
+    width: 13px;
+    height: 13px;
+    stroke-width: 2.4;
+    stroke: currentColor;
+}
+.dash-header-title svg { width: 14px; height: 14px; stroke-width: 2.4; stroke: rgba(255,255,255,.9); }
+
+/* ═══════════════════════════════════════════════════════════════
+   BADGE de bitácora — íconos
+═══════════════════════════════════════════════════════════════ */
+.bit-badge svg { width: 11px; height: 11px; vertical-align: -1px; margin-right: 3px; stroke-width: 2.4; }
+
+/* ═══════════════════════════════════════════════════════════════
+   STATS — animación de entrada para tarjetas-resumen
+═══════════════════════════════════════════════════════════════ */
+.locales-summary .local-card {
+    animation: cardSlideIn .4s var(--t-base) both;
+}
+.locales-summary .local-card:nth-child(1) { animation-delay: 0ms; }
+.locales-summary .local-card:nth-child(2) { animation-delay: 60ms; }
+.locales-summary .local-card:nth-child(3) { animation-delay: 120ms; }
+.locales-summary .local-card:nth-child(4) { animation-delay: 180ms; }

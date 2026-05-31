@@ -1115,6 +1115,17 @@ async function handleRegistrarUsuario(e) {
     const password = document.getElementById("reg-password").value;
     const local    = (document.getElementById("reg-local-value")?.value || document.getElementById("reg-local")?.value || "").trim();
 
+    if (!local) {
+        toast("Seleccioná un local para el operador.", "error");
+        // Highlight the picker
+        const picker = document.getElementById("reg-local-picker");
+        if (picker) {
+            picker.style.outline = "2px solid var(--color-primary)";
+            picker.style.borderRadius = "var(--r-md)";
+            setTimeout(() => { picker.style.outline = ""; }, 2000);
+        }
+        return;
+    }
     if (username === ADMIN_USER_ID) {
         toast("Ese nombre de usuario está reservado.", "error");
         return;
@@ -1128,6 +1139,15 @@ async function handleRegistrarUsuario(e) {
         toast(`✔ Operador "${fullname}" creado correctamente.`);
         await registrarBitacora("Nuevo Operador", `Creó operador ${fullname} (usuario: ${username})${local ? " · Local: "+local : ""}`);
         document.getElementById("register-user-form").reset();
+        // Reset visual picker
+        const lp = document.getElementById("reg-local-picker");
+        if (lp) lp.querySelectorAll(".local-picker-btn").forEach(b => {
+            b.classList.remove("selected");
+            b.style.background = "";
+            b.style.borderColor = "";
+        });
+        const lv = document.getElementById("reg-local-value");
+        if (lv) lv.value = "";
         cargarUsuarios();
     } catch (err) {
         console.error(err);
@@ -1383,11 +1403,9 @@ function renderStatsCharts() {
         if (btnVolver) btnVolver.classList.remove("hidden");
         if (hintEl)    hintEl.style.display = "none";
 
-        // Ocultar el selector de locales, mostrar canvas
+        // Ocultar el selector de locales
         const selectorEl = document.getElementById("local-selector-btns");
         if (selectorEl) selectorEl.style.display = "none";
-        const chartWrap = document.getElementById("chart-mesa-wrap");
-        if (chartWrap) chartWrap.style.display = "block";
 
         const config = LOCALES_CONFIG[currentLocalForMesas];
         if (config) {
@@ -1483,10 +1501,6 @@ function renderStatsCharts() {
         if (titleEl)   titleEl.textContent = "Seleccioná un local para ver estadísticas por mesa";
         if (btnVolver) btnVolver.classList.add("hidden");
         if (hintEl)    hintEl.style.display = "none";
-
-        // Ocultar canvas, mostrar selector
-        const chartWrap2 = document.getElementById("chart-mesa-wrap");
-        if (chartWrap2) chartWrap2.style.display = "none";
 
         // Limpiar chart anterior
         const ctxMesa = document.getElementById("chart-mesa");
@@ -1733,8 +1747,6 @@ window.volverALocales = function() {
     currentStatsView = "locales";
     currentLocalForMesas = null;
     renderStatsCharts();
-};
-
 };
 
 // ═══════════════════════════════════════════════════════════════

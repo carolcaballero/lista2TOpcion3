@@ -1092,47 +1092,8 @@ window.actualizarObservacion = async function(cedula, texto, nombre) {
 };
 
 // ═══════════════════════════════════════════════════════════════
-//  ADMIN: VOTANTES (Registro manual)
-// ═══════════════════════════════════════════════════════════════
-async function handleRegistrarVotante(e) {
-    e.preventDefault();
-    const nombre    = document.getElementById("vot-fullname").value.trim();
-    const cedulaRaw = document.getElementById("vot-cedula").value.trim();
-    const cedula    = cedulaRaw.replace(/[\s\-]/g, "").replace(/^0+/, "");
-    const domicilio = document.getElementById("vot-domicilio").value.trim() || "---";
-    const local     = document.getElementById("vot-local").value.trim();
-    const mesa      = document.getElementById("vot-mesa").value.trim();
-    const orden     = document.getElementById("vot-orden").value.trim();
-
-    if (!nombre || !cedula) {
-        toast("Completá nombre y cédula.", "error");
-        return;
-    }
-    if (state.padron.some(v => v.cedula === cedula)) {
-        toast(`Ya existe un votante con la cédula ${cedula}.`, "error");
-        return;
-    }
-
-    const nuevo = { id: "manual_" + Date.now(), nombre, cedula, domicilio, local, mesa, orden };
-    state.padron.push(nuevo);
-
-    try {
-        await setDoc(doc(db, "padron_extra", cedula), {
-            ...nuevo,
-            creado_por: state.currentUser.isAdmin ? "Administrador/a" : state.currentUser.username,
-            timestamp:  serverTimestamp()
-        });
-        toast(`✔ ${nombre} registrado como votante.`);
-        await registrarBitacora("Nuevo Votante", `Registró a ${nombre} (CI: ${cedula})`);
-        document.getElementById("register-votante-form").reset();
-        cambiarFiltro("Pendiente");
-        actualizarDashboard();
-    } catch(err) {
-        console.error(err);
-        state.padron = state.padron.filter(p => p.cedula !== cedula);
-        toast("Error al guardar. Verificá la conexión.", "error");
-    }
-}
+//  ADMIN: VOTANTES — Carga únicamente desde Padrón ANR
+//  (La función manual fue eliminada. Usar agregarDesdePardon().)
 
 // ═══════════════════════════════════════════════════════════════
 //  ADMIN: OPERADORES
@@ -1236,10 +1197,20 @@ function renderTablaUsuarios() {
 //  CARGAR LOCALES (desde configuración fija)
 // ═══════════════════════════════════════════════════════════════
 const LOCALES_CONFIG = {
-    "GIMNASIO MUNICIPAL": { mesaMin: 1, mesaMax: 20 },
-    "MUSEO HISTORICO": { mesaMin: 21, mesaMax: 40 },
-    "ESC.CARLOS ANTONIO LOPEZ": { mesaMin: 41, mesaMax: 65 }
+    "GIMNASIO MUNICIPAL":       { mesaMin: 1,  mesaMax: 20, color: "#B91C1C", colorSoft: "#FCA5A5", icon: "icon-shield"     },
+    "MUSEO HISTORICO":          { mesaMin: 21, mesaMax: 40, color: "#1E40AF", colorSoft: "#93C5FD", icon: "icon-clipboard"  },
+    "ESC.CARLOS ANTONIO LOPEZ": { mesaMin: 41, mesaMax: 65, color: "#15803D", colorSoft: "#86EFAC", icon: "icon-file-text"  }
 };
+
+const LOCAL_COLOR_FALLBACK      = "#9CA3AF";
+const LOCAL_COLOR_FALLBACK_SOFT = "#D1D5DB";
+
+function getColorLocal(local) {
+    return (LOCALES_CONFIG[local] && LOCALES_CONFIG[local].color) || LOCAL_COLOR_FALLBACK;
+}
+function getColorLocalSoft(local) {
+    return (LOCALES_CONFIG[local] && LOCALES_CONFIG[local].colorSoft) || LOCAL_COLOR_FALLBACK_SOFT;
+}
 
 function normalizarLocal(nombre) {
     if (!nombre) return "";
@@ -1311,7 +1282,58 @@ const doughnutLabelsPlugin = {
     }
 };
 
+function renderLocalesSummary() {
+    const container = document.getElementById("locales-summary");
+    if (!container) return;
+    container.innerHTML = "";
+
+    const todos = [...Object.keys(LOCALES_CONFIG), "OTRO"];
+    todos.forEach(local => {
+        const conf = LOCALES_CONFIG[local];
+        let total = 0, voted = 0;
+        state.padron.forEach(v => {
+            if (determinarLocal(v) !== local) return;
+            total++;
+            if (getVoto(v.cedula) === "Votó") voted++;
+        });
+        if (total === 0 && local === "OTRO") return; // ocultar OTRO si está vacío
+
+        const pct = total ? Math.round((voted/total)*100) : 0;
+        const color = getColorLocal(local);
+        const colorSoft = getColorLocalSoft(local);
+        const icon  = (conf && conf.icon) || "icon-grid";
+
+        const card = document.createElement("div");
+        card.className = "local-card";
+        card.style.borderLeftColor = color;
+        card.innerHTML = `
+            <div class="local-card-name" style="color:${color}">
+                <svg width="14" height="14"><use href="#${icon}"/></svg>
+                ${local}
+            </div>
+            <div class="local-card-num" style="color:${color}">${voted}<span style="font-size:.85rem;color:var(--color-gray);font-weight:700;"> / ${total}</span></div>
+            <div class="local-card-meta">${conf ? `Mesas ${conf.mesaMin}–${conf.mesaMax}` : "Sin asignar"}</div>
+            <div class="local-card-bar"><div class="local-card-bar-fill" style="width:${pct}%;background:linear-gradient(90deg, ${color}, ${colorSoft})"></div></div>
+            <div class="local-card-pct" style="color:${color}">${pct}% de participación</div>
+        `;
+        if (local !== "OTRO") {
+            card.addEventListener("click", () => {
+                currentStatsView = "mesas";
+                currentLocalForMesas = local;
+                renderStatsCharts();
+                document.getElementById("chart-mesa")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+        } else {
+            card.style.cursor = "default";
+        }
+        container.appendChild(card);
+    });
+}
+
 function renderStatsCharts() {
+    // Render summary cards always
+    renderLocalesSummary();
+
     if (!state.padron.length) {
         ["chart-mesa", "chart-global", "chart-hora"].forEach(id => {
             const canvas = document.getElementById(id);
@@ -1323,27 +1345,41 @@ function renderStatsCharts() {
         return;
     }
 
-    const titleEl = document.getElementById("bar-chart-title");
+    const titleEl   = document.getElementById("bar-chart-title");
     const btnVolver = document.getElementById("btn-volver-locales");
+    const hintEl    = document.getElementById("chart-hint");
 
     if (currentStatsView === "mesas" && currentLocalForMesas) {
-        // Vista de mesas para un local específico
-        if (titleEl) titleEl.textContent = `Participación por Mesa — ${currentLocalForMesas}`;
+        // ── Vista drill-down: Estadísticas por mesa del local seleccionado ──
+        if (titleEl)   titleEl.textContent = `Mesas — ${currentLocalForMesas}`;
         if (btnVolver) btnVolver.classList.remove("hidden");
+        if (hintEl)    hintEl.style.display = "none";
 
         const config = LOCALES_CONFIG[currentLocalForMesas];
         if (config) {
-            const agrupado = {};
-            for (let m = config.mesaMin; m <= config.mesaMax; m++) agrupado[m] = 0;
+            const colorLocal = getColorLocal(currentLocalForMesas);
+
+            // Por cada mesa: voted, noVoted, pending
+            const mesas = {};
+            for (let m = config.mesaMin; m <= config.mesaMax; m++) {
+                mesas[m] = { voted: 0, noVoted: 0, pending: 0, total: 0 };
+            }
             state.padron.forEach(v => {
-                if (getVoto(v.cedula) !== "Votó") return;
-                const localVotante = determinarLocal(v);
-                if (localVotante !== currentLocalForMesas) return;
+                if (determinarLocal(v) !== currentLocalForMesas) return;
                 const numMesa = parseInt(String(v.mesa || "").replace(/\D/g, '')) || 0;
-                if (agrupado[numMesa] !== undefined) agrupado[numMesa]++;
+                if (mesas[numMesa] === undefined) return;
+                mesas[numMesa].total++;
+                const estado = getVoto(v.cedula);
+                if (estado === "Votó")        mesas[numMesa].voted++;
+                else if (estado === "No Votó") mesas[numMesa].noVoted++;
+                else                          mesas[numMesa].pending++;
             });
-            const labels = Object.keys(agrupado).sort((a,b) => parseInt(a)-parseInt(b));
-            const dataValues = labels.map(l => agrupado[l]);
+
+            const labels    = Object.keys(mesas).map(m => `M${m}`);
+            const dataVoted = Object.values(mesas).map(m => m.voted);
+            const dataNo    = Object.values(mesas).map(m => m.noVoted);
+            const dataPend  = Object.values(mesas).map(m => m.pending);
+            const totals    = Object.values(mesas).map(m => m.total);
 
             const ctxMesa = document.getElementById("chart-mesa");
             if (ctxMesa) {
@@ -1352,22 +1388,45 @@ function renderStatsCharts() {
                     type: "bar",
                     data: {
                         labels: labels,
-                        datasets: [{ label: "Votaron", data: dataValues, backgroundColor: "#B91C1C", borderRadius: 6 }]
+                        datasets: [
+                            { label: "Votaron",    data: dataVoted, backgroundColor: "#15803D", borderRadius: 4, stack: "s1" },
+                            { label: "No Votaron", data: dataNo,    backgroundColor: colorLocal, borderRadius: 4, stack: "s1" },
+                            { label: "Pendientes", data: dataPend,  backgroundColor: "#D1D5DB", borderRadius: 4, stack: "s1" }
+                        ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11, weight: '600' } } },
+                            tooltip: {
+                                callbacks: {
+                                    title: (items) => items[0]?.label ? `Mesa ${items[0].label.replace('M','')}` : '',
+                                    footer: (items) => {
+                                        const idx = items[0]?.dataIndex;
+                                        if (idx === undefined) return '';
+                                        const t = totals[idx];
+                                        const v = dataVoted[idx];
+                                        return `Total inscriptos: ${t} · Participación: ${t ? ((v/t)*100).toFixed(1) : 0}%`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { stacked: true, ticks: { font: { size: 10, weight: '600' } } },
+                            y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
+                        }
                     }
                 });
             }
         }
     } else {
-        // Vista general: Participación por Local (barras)
+        // ── Vista general: Participación por Local (barras con colores distintivos) ──
         currentStatsView = "locales";
-        if (titleEl) titleEl.textContent = "Participación por Locales";
+        if (titleEl)   titleEl.textContent = "Participación por Locales";
         if (btnVolver) btnVolver.classList.add("hidden");
+        if (hintEl)    hintEl.style.display = "block";
 
         const agrupado = {};
         Object.keys(LOCALES_CONFIG).forEach(local => { agrupado[local] = { voted: 0, total: 0 }; });
@@ -1379,44 +1438,87 @@ function renderStatsCharts() {
             if (getVoto(v.cedula) === "Votó") agrupado[localVotante].voted++;
         });
 
-        const ordenLocal = Object.keys(LOCALES_CONFIG);
-        const localesOrdenados = Object.keys(agrupado).sort((a,b) => {
-            const idxA = ordenLocal.indexOf(a);
-            const idxB = ordenLocal.indexOf(b);
-            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-            if (idxA !== -1) return -1;
-            if (idxB !== -1) return 1;
-            return 0;
-        });
-        const labels = localesOrdenados;
-        const dataValues = labels.map(l => agrupado[l].voted);
-        const backgroundColors = labels.map(local => {
-            if (local === "OTRO") return "#9CA3AF";
-            if (local === "GIMNASIO MUNICIPAL") return "#B91C1C";
-            if (local === "MUSEO HISTORICO") return "#7F1D1D";
-            return "#DC2626";
-        });
+        // Filtrar OTRO si no tiene registros
+        const todosLocales = [...Object.keys(LOCALES_CONFIG)];
+        if (agrupado["OTRO"].total > 0) todosLocales.push("OTRO");
+
+        const labels        = todosLocales;
+        const dataValues    = labels.map(l => agrupado[l].voted);
+        const totalsByLocal = labels.map(l => agrupado[l].total);
+        const colorsArr     = labels.map(l => getColorLocal(l));
+        const colorsSoft    = labels.map(l => getColorLocalSoft(l));
 
         const ctxMesa = document.getElementById("chart-mesa");
         if (ctxMesa) {
             if (state.charts.mesa) state.charts.mesa.destroy();
+
+            // Gradientes por barra
+            const ctx2d = ctxMesa.getContext("2d");
+            const gradients = colorsArr.map((c, i) => {
+                const g = ctx2d.createLinearGradient(0, 0, 0, 280);
+                g.addColorStop(0, c);
+                g.addColorStop(1, colorsSoft[i]);
+                return g;
+            });
+
             state.charts.mesa = new Chart(ctxMesa, {
                 type: "bar",
                 data: {
-                    labels: labels,
-                    datasets: [{ label: "Votaron", data: dataValues, backgroundColor: backgroundColors, borderRadius: 6 }]
+                    labels: labels.map(l => l.length > 18 ? l.substring(0, 16) + "…" : l),
+                    datasets: [
+                        {
+                            label: "Votaron",
+                            data: dataValues,
+                            backgroundColor: gradients,
+                            borderColor: colorsArr,
+                            borderWidth: 2,
+                            borderRadius: 8,
+                            maxBarThickness: 70
+                        },
+                        {
+                            label: "Inscriptos",
+                            data: totalsByLocal,
+                            backgroundColor: "transparent",
+                            borderColor: colorsArr,
+                            borderWidth: 1.5,
+                            borderDash: [4, 4],
+                            borderRadius: 4,
+                            type: "bar",
+                            maxBarThickness: 70,
+                            order: 2
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { display: false },
-                        tooltip: { callbacks: { label: (ctx) => `${ctx.raw} votos (${((ctx.raw / agrupado[ctx.label].total)*100).toFixed(1)}%)` } }
+                        legend: {
+                            position: "bottom",
+                            labels: { boxWidth: 12, font: { size: 11, weight: '700' } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: (items) => labels[items[0]?.dataIndex] || '',
+                                label: (ctx) => {
+                                    const i = ctx.dataIndex;
+                                    if (ctx.datasetIndex === 0) {
+                                        const v = dataValues[i];
+                                        const t = totalsByLocal[i];
+                                        return `Votaron: ${v} de ${t} (${t ? ((v/t)*100).toFixed(1) : 0}%)`;
+                                    }
+                                    return `Inscriptos: ${totalsByLocal[i]}`;
+                                }
+                            }
+                        }
                     },
-                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+                    scales: {
+                        x: { ticks: { font: { size: 10, weight: '700' }, color: '#374151' } },
+                        y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
+                    },
                     onClick: (e, activeEls) => {
                         if (activeEls.length) {
-                            const index = activeEls[0].dataIndex;
+                            const index = activeEls[0].index !== undefined ? activeEls[0].index : activeEls[0].dataIndex;
                             const localSeleccionado = labels[index];
                             if (localSeleccionado !== "OTRO" && LOCALES_CONFIG[localSeleccionado]) {
                                 currentStatsView = "mesas";
@@ -1424,13 +1526,18 @@ function renderStatsCharts() {
                                 renderStatsCharts();
                             }
                         }
+                    },
+                    onHover: (e, activeEls) => {
+                        if (e.native && e.native.target) {
+                            e.native.target.style.cursor = activeEls.length ? 'pointer' : 'default';
+                        }
                     }
                 }
             });
         }
     }
 
-    // Gráfico de torta global (siempre visible)
+    // ── Gráfico de torta global (siempre visible) ──
     const total = state.padron.length;
     const voted = state.padron.filter(v => getVoto(v.cedula) === "Votó").length;
     const noVoted = state.padron.filter(v => getVoto(v.cedula) === "No Votó").length;
@@ -1444,13 +1551,37 @@ function renderStatsCharts() {
             plugins: [doughnutLabelsPlugin],
             data: {
                 labels: ["Votaron", "No Votaron", "Pendientes"],
-                datasets: [{ data: [voted, noVoted, pending], backgroundColor: ["#15803D", "#B91C1C", "#9CA3AF"], borderWidth: 0 }]
+                datasets: [{
+                    data: [voted, noVoted, pending],
+                    backgroundColor: ["#15803D", "#B91C1C", "#9CA3AF"],
+                    borderColor: "#fff",
+                    borderWidth: 3,
+                    hoverOffset: 8
+                }]
             },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '62%',
+                plugins: {
+                    legend: {
+                        position: "bottom",
+                        labels: { boxWidth: 12, font: { size: 11, weight: '700' }, padding: 14 }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                const t = total || 1;
+                                return `${ctx.label}: ${ctx.raw} (${((ctx.raw/t)*100).toFixed(1)}%)`;
+                            }
+                        }
+                    }
+                }
+            }
         });
     }
 
-    // Gráfico horario (líneas)
+    // ── Gráfico horario (líneas con gradiente) ──
     const horas = {};
     for (let h = 7; h <= 18; h++) horas[`${h}:00`] = 0;
     Object.entries(state.votos).forEach(([cedula, v]) => {
@@ -1463,25 +1594,43 @@ function renderStatsCharts() {
     const ctxHora = document.getElementById("chart-hora");
     if (ctxHora) {
         if (state.charts.hora) state.charts.hora.destroy();
+        const ctx2dH = ctxHora.getContext("2d");
+        const grad = ctx2dH.createLinearGradient(0, 0, 0, 220);
+        grad.addColorStop(0, "rgba(185,28,28,0.35)");
+        grad.addColorStop(1, "rgba(185,28,28,0.02)");
+
         state.charts.hora = new Chart(ctxHora, {
             type: "line",
             data: {
                 labels: Object.keys(horas),
                 datasets: [{
+                    label: "Votos por hora",
                     data: Object.values(horas),
                     borderColor: "#B91C1C",
-                    backgroundColor: "rgba(185,28,28,0.1)",
+                    backgroundColor: grad,
                     fill: true,
                     tension: 0.4,
                     pointRadius: 4,
-                    pointBackgroundColor: "#B91C1C"
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: "#B91C1C",
+                    pointBorderColor: "#fff",
+                    pointBorderWidth: 2,
+                    borderWidth: 2.5
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: { label: (ctx) => `${ctx.raw} voto${ctx.raw === 1 ? '' : 's'} a las ${ctx.label}` }
+                    }
+                },
+                scales: {
+                    x: { ticks: { font: { size: 10, weight: '600' } } },
+                    y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
+                }
             }
         });
     }
@@ -1740,7 +1889,7 @@ function bindEvents() {
     document.getElementById("tab-padron-anr").addEventListener("click", () => switchTab("padron-anr"));
 
     document.getElementById("register-user-form").addEventListener("submit",    handleRegistrarUsuario);
-    document.getElementById("register-votante-form")?.addEventListener("submit", handleRegistrarVotante);
+    // Carga manual de votantes eliminada — todo se gestiona desde la pestaña Padrón ANR
 
     ["modal-novoto","modal-chpass","modal-obs-confirm","modal-historial"].forEach(id => {
         const el = document.getElementById(id);

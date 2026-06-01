@@ -19,9 +19,10 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 
-    <!-- SVG SPRITES — fallback estable para iconos críticos -->
+    <!-- SVG SPRITES — fallback estable para iconos críticos + set profesional ampliado -->
     <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
         <defs>
+            <!-- ═══ ICONOS BASE (originales) ═══ -->
             <symbol id="i-shield" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 4 5v6c0 5 3.4 9.6 8 11 4.6-1.4 8-6 8-11V5l-8-3Zm0 10.99h6c-.45 3.39-2.72 6.41-6 7.43V13H6V6.39l6-2.24v8.84Z"/></symbol>
             <symbol id="i-user" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2.5c-3.34 0-10 1.67-10 5V22h20v-2.5c0-3.33-6.66-5-10-5Z"/></symbol>
             <symbol id="i-admin" viewBox="0 0 24 24"><path fill="currentColor" d="M12 14.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5Zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm7 14H5v-1c0-2.67 5.33-4 7-4 .62 0 1.53.18 2.5.5v2.09c-.95-.38-1.86-.59-2.5-.59-2.48 0-4.88 1.07-4.98 2H19v1Zm1.35-7.15L22 15l-1.65 1.65.7 2.35-2.4-.55L17 20l-1.65-1.55-2.4.55.7-2.35L12 15l1.65-1.65-.7-2.35 2.4.55L17 10l1.65 1.55 2.4-.55-.7 2.35Z"/></symbol>
@@ -49,6 +50,27 @@
             <symbol id="i-colegio" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3 3 8v2h1v8h16v-8h1V8l-9-5Zm0 2.2L16.9 8H7.1L12 5.2ZM6 10h12v6h-2v-3H8v3H6v-6Zm4 0h1.5v1.5H10V10Zm2.5 0H14v1.5h-1.5V10ZM10 14h4v2h-4v-2ZM3 20h18v1H3v-1Z"/></symbol>
             <symbol id="i-escuela-local" viewBox="0 0 24 24"><path fill="currentColor" d="M12 4 4 9v10h16V9l-8-5Zm0 2.35 5.5 3.44V17h-3v-4H9.5v4h-3V9.79L12 6.35ZM9 10h2v2H9v-2Zm4 0h2v2h-2v-2ZM3 20h18v1H3v-1Z"/></symbol>
             <symbol id="i-ubicacion-votacion" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.08 7 13 7 13s7-7.92 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z"/></symbol>
+
+            <!-- ═══ SET PROFESIONAL AMPLIADO (estilo Lucide/Phosphor — outline limpio) ═══ -->
+            <symbol id="i-more-vert" viewBox="0 0 24 24"><path fill="currentColor" d="M12 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm0 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm0 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z"/></symbol>
+            <symbol id="i-check-circle" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m22 4-10 10.01-3-3"/></symbol>
+            <symbol id="i-edit-pencil" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 20h9"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+            <symbol id="i-person" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+            <symbol id="i-schedule" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 6v6l4 2"/></symbol>
+            <symbol id="i-arrow-right" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/></symbol>
+            <symbol id="i-remove-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M8 12h8"/></symbol>
+            <symbol id="i-delete-forever" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14Z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M10 11v6M14 11v6"/></symbol>
+            <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 16v-4M12 8h.01"/></symbol>
+            <symbol id="i-warning-triangle" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 9v4M12 17h.01"/></symbol>
+            <symbol id="i-delete-sweep" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14Z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M22 6h-6m6 4h-6m6 4h-6"/></symbol>
+            <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-width="2" d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+            <symbol id="i-person-add" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M20 8v6M23 11h-6"/></symbol>
+            <symbol id="i-download" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+            <symbol id="i-people" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+            <symbol id="i-inbox" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M22 12h-6l-2 3h-4l-2-3H2"/><path fill="none" stroke="currentColor" stroke-width="2" d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></symbol>
+            <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+            <symbol id="i-error" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M15 9l-6 6M9 9l6 6"/></symbol>
+            <symbol id="i-search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="m21 21-4.35-4.35"/></symbol>
         </defs>
     </svg>
 </head>
@@ -62,7 +84,7 @@
 <!-- Modal: No Votó -->
 <div class="modal-overlay" id="modal-novoto">
     <div class="modal-box">
-        <h3><span class="material-symbols-outlined">cancel</span>Registrar No Votó</h3>
+        <h3><svg class="svg-icon" aria-hidden="true" style="color:var(--color-primary);"><use href="#i-cancel"/></svg>Registrar No Votó</h3>
         <p class="modal-sub" id="modal-novoto-name"></p>
         <p class="modal-hint">Podés dejar un motivo opcional o confirmar directamente.</p>
         <textarea class="modal-textarea" id="modal-obs-input" placeholder="Motivo (opcional): viaje, enfermedad, trabajo..."></textarea>
@@ -76,7 +98,7 @@
 <!-- Modal: Cambiar Contraseña -->
 <div class="modal-overlay" id="modal-chpass">
     <div class="modal-box">
-        <h3><span class="material-symbols-outlined">lock</span>Cambiar Contraseña</h3>
+        <h3><svg class="svg-icon" aria-hidden="true" style="color:var(--color-primary);"><use href="#i-lock"/></svg>Cambiar Contraseña</h3>
         <input type="hidden" id="chpass-username">
         <p class="modal-hint">Operador: <strong id="chpass-user-label" style="color:var(--color-dark)"></strong></p>
         <div class="form-group">
@@ -98,7 +120,7 @@
 <!-- Modal: Observación -->
 <div class="modal-overlay" id="modal-obs-confirm">
     <div class="modal-box">
-        <h3><span class="material-symbols-outlined">edit</span>Agregar Observación</h3>
+        <h3><svg class="svg-icon" aria-hidden="true" style="color:var(--color-primary);"><use href="#i-edit"/></svg>Agregar Observación</h3>
         <p class="modal-hint" id="modal-obs-nombre" style="color:var(--color-dark);font-size:.92rem;font-weight:800;"></p>
         <textarea class="modal-textarea" id="modal-obs-texto" placeholder="Escribí la observación para este votante..."></textarea>
         <div class="modal-actions">
@@ -119,7 +141,7 @@
         <div class="modal-actions">
             <button class="btn-secondary" onclick="closeModal('modal-eliminar-confirm')">Cancelar</button>
             <button class="btn-primary btn-danger-strong" onclick="confirmarEliminarSeleccionados()">
-                <span class="material-symbols-outlined">delete_forever</span>Eliminar
+                <svg class="svg-icon" aria-hidden="true"><use href="#i-delete"/></svg>Eliminar
             </button>
         </div>
     </div>
@@ -134,14 +156,14 @@
         <h3 class="modal-danger-title">Eliminar Operador</h3>
         <p class="modal-hint">Operador a eliminar: <strong id="del-user-label" style="color:var(--color-dark);"></strong></p>
         <p class="modal-hint" style="background:var(--color-primary-softer);padding:10px 14px;border-radius:var(--r-md);border-left:3px solid var(--color-primary);">
-            <span class="material-symbols-outlined" style="font-size:16px;color:var(--color-primary);vertical-align:middle;">info</span>
+            <svg class="svg-icon" aria-hidden="true" style="color:var(--color-primary);vertical-align:middle;width:16px;height:16px;"><use href="#i-info"/></svg>
             Esta acción es <strong>irreversible</strong>. El operador no podrá volver a iniciar sesión.
         </p>
         <input type="hidden" id="del-user-username">
         <div class="modal-actions">
             <button class="btn-secondary" onclick="closeModal('modal-del-user')">Cancelar</button>
             <button class="btn-primary btn-danger-strong" onclick="confirmarEliminarOperador()">
-                <span class="material-symbols-outlined">delete_forever</span>Eliminar Operador
+                <svg class="svg-icon" aria-hidden="true"><use href="#i-delete"/></svg>Eliminar Operador
             </button>
         </div>
     </div>
@@ -156,13 +178,13 @@
         <h3 class="modal-danger-title">Limpiar Bitácora</h3>
         <p class="modal-hint">Vas a borrar <strong>toda</strong> la actividad registrada en la bitácora del sistema.</p>
         <p class="modal-hint" style="background:#FEF3C7;padding:10px 14px;border-radius:var(--r-md);border-left:3px solid #B45309;color:#78350F;">
-            <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;">warning</span>
+            <svg class="svg-icon" aria-hidden="true" style="color:#B45309;vertical-align:middle;width:16px;height:16px;"><use href="#i-warning-triangle"/></svg>
             Esta acción <strong>no se puede deshacer</strong>. Los registros del historial individual de cada votante se mantienen.
         </p>
         <div class="modal-actions">
             <button class="btn-secondary" onclick="closeModal('modal-clear-bit')">Cancelar</button>
             <button class="btn-primary btn-danger-strong" onclick="confirmarLimpiarBitacora()">
-                <span class="material-symbols-outlined">delete_sweep</span>Limpiar Bitácora
+                <svg class="svg-icon" aria-hidden="true"><use href="#i-delete-sweep"/></svg>Limpiar Bitácora
             </button>
         </div>
     </div>
@@ -329,7 +351,7 @@
     <div id="view-admin" class="admin-grid">
         <div class="admin-top-grid">
             <div class="admin-card">
-                <h3><span class="material-symbols-outlined">person_add</span>Nuevo Operador</h3>
+                <h3><svg class="svg-icon" aria-hidden="true" style="width:18px;height:18px;"><use href="#i-person-add"/></svg>Nuevo Operador</h3>
                 <form id="register-user-form" autocomplete="off">
                     <div class="form-group">
                         <label>Nombre Completo</label>
@@ -356,14 +378,14 @@
                 </form>
             </div>
             <div class="admin-card">
-                <h3><span class="material-symbols-outlined">download</span>Exportar Estadísticas</h3>
+                <h3><svg class="svg-icon" aria-hidden="true" style="width:18px;height:18px;"><use href="#i-download"/></svg>Exportar Estadísticas</h3>
                 <p style="font-size:.82rem;color:var(--color-text-soft);margin-bottom:14px;">Descargá Excel completo con planilla, estadísticas por local, mesa y resumen.</p>
                 <button onclick="exportarEstadisticasXLSX()" class="btn-primary">Descargar Excel Completo</button>
             </div>
         </div>
 
         <div class="admin-card">
-            <h3><span class="material-symbols-outlined">people</span>Lista de Operadores</h3>
+            <h3><svg class="svg-icon" aria-hidden="true" style="width:18px;height:18px;"><use href="#i-people"/></svg>Lista de Operadores</h3>
             <div class="table-responsive">
                 <table>
                     <thead><tr><th>Nombre</th><th>WhatsApp</th><th>Usuario</th><th>Local Asignado</th><th>Acción</th></tr></thead>
@@ -376,11 +398,11 @@
             <div class="bitacora-header">
                 <div class="bitacora-title">
                     <span class="bit-live-dot"></span>
-                    <span class="material-symbols-outlined" style="color:var(--color-primary-accent);">history</span>Bitácora de Actividad
+                    <svg class="svg-icon" aria-hidden="true" style="color:var(--color-primary-accent);width:18px;height:18px;"><use href="#i-history"/></svg>Bitácora de Actividad
                 </div>
                 <div>
                     <button class="btn-secondary" onclick="pedirLimpiarBitacora()" style="font-size:.75rem;padding:6px 12px;">
-                        <span class="material-symbols-outlined">delete_sweep</span>Limpiar
+                        <svg class="svg-icon svg-sm" aria-hidden="true"><use href="#i-delete-sweep"/></svg>Limpiar
                     </button>
                 </div>
             </div>
@@ -473,5 +495,4 @@
 </script>
 </body>
 </html>
-
 

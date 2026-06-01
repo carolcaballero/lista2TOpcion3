@@ -558,13 +558,13 @@ async function renderTablaVotantes() {
             const otros = totalMatch - lista.length;
             if (otros > 0) {
                 searchHint.style.display = "flex";
-                searchHint.innerHTML = `<span class="material-icons" style="font-size:16px;">search</span>
+                searchHint.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px;">search</span>
                     <span>Se encontraron <strong>${otros}</strong> resultado${otros>1?"s":""} en otros estados.</span>
                     <button onclick="activarBusquedaGlobal()" class="btn-hint-global">Ver todos</button>`;
             } else searchHint.style.display = "none";
         } else if (q && state.searchAllStates) {
             searchHint.style.display = "flex";
-            searchHint.innerHTML = `<span class="material-icons" style="font-size:16px;">search</span>
+            searchHint.innerHTML = `<span class="material-symbols-outlined" style="font-size:16px;">search</span>
                 <span>Mostrando resultados de <strong>todos los estados</strong>.</span>
                 <button onclick="desactivarBusquedaGlobal()" class="btn-hint-volver">Volver al filtro</button>`;
         } else searchHint.style.display = "none";
@@ -579,7 +579,7 @@ async function renderTablaVotantes() {
         if (!paginatedList.length) {
             cardsContainer.innerHTML = `
                 <div class="empty-state">
-                    <span class="material-icons" style="font-size:48px;opacity:.3;">inbox</span>
+                    <span class="material-symbols-outlined" style="font-size:48px;opacity:.3;">inbox</span>
                     <strong>Sin resultados</strong>
                     No se encontraron registros para este criterio.
                 </div>`;
@@ -625,16 +625,16 @@ async function renderTablaVotantes() {
                     <td>
                         <div class="action-btns action-btns-table">
                             <button class="btn-accion ${voto==='Votó'?'sel-voto':''}" data-action="voto" data-cedula="${v.cedula}" title="Marcar Votó">
-                                <span class="material-icons">check_circle</span>
+                                <span class="material-symbols-outlined">check_circle</span>
                             </button>
                             <button class="btn-accion ${voto==='No Votó'?'sel-novoto':''}" data-action="novoto" data-cedula="${v.cedula}" title="Marcar No Votó">
-                                <span class="material-icons">cancel</span>
+                                <span class="material-symbols-outlined">cancel</span>
                             </button>
                         </div>
                     </td>
                     <td>
                         <button class="btn-obs ${obs ? 'has-obs' : ''}" data-action="obs" data-cedula="${v.cedula}" data-nombre="${escHtml(v.nombre)}">
-                            <span class="material-icons" style="font-size:16px;">edit</span>
+                            <span class="material-symbols-outlined" style="font-size:16px;">edit</span>
                             <span class="obs-preview">${obs ? escHtml(obs) : "Agregar obs..."}</span>
                         </button>
                     </td>
@@ -642,7 +642,7 @@ async function renderTablaVotantes() {
                     <td>
                         <div class="menu-tres-puntos">
                             <button class="btn-puntos" data-action="menu" data-cedula="${v.cedula}" title="Más opciones">
-                                <span class="material-icons">more_vert</span>
+                                <span class="material-symbols-outlined">more_vert</span>
                             </button>
                             ${construirDropdownMenu(v, voto, obs, isAdmin)}
                         </div>
@@ -688,7 +688,7 @@ function construirCardsConSecciones(lista, mostrarSecciones, isAdmin) {
         if (!items.length) return "";
         let h = `
             <div class="section-divider ${claseSection}">
-                <span class="material-icons">${iconName}</span>
+                <span class="material-symbols-outlined">${iconName}</span>
                 ${titulo}
                 <span class="sd-count">${items.length}</span>
             </div>`;
@@ -784,26 +784,26 @@ function construirTarjeta(v, idx, isAdmin) {
                 </div>
                 <div class="menu-tres-puntos card-menu">
                     <button class="btn-puntos" data-action="menu" data-cedula="${v.cedula}" title="Más opciones">
-                        <span class="material-icons">more_vert</span>
+                        <span class="material-symbols-outlined">more_vert</span>
                     </button>
                     ${construirDropdownMenu(v, voto, obs, isAdmin)}
                 </div>
             </div>
             <div class="action-btns action-btns-card">
                 <button class="btn-accion btn-accion-lg ${voto==='Votó'?'sel-voto':''}" data-action="voto" data-cedula="${v.cedula}">
-                    <span class="material-icons">check_circle</span>
+                    <span class="material-symbols-outlined">check_circle</span>
                     <span class="btn-accion-label">${voto === "Votó" ? "Quitar voto" : "Votó"}</span>
                 </button>
                 <button class="btn-accion btn-accion-lg ${voto==='No Votó'?'sel-novoto':''}" data-action="novoto" data-cedula="${v.cedula}" data-nombre="${jsEscape(v.nombre)}">
-                    <span class="material-icons">cancel</span>
+                    <span class="material-symbols-outlined">cancel</span>
                     <span class="btn-accion-label">${voto === "No Votó" ? "Quitar No Votó" : "No Votó"}</span>
                 </button>
             </div>
             <button class="${obsClass}" data-action="obs" data-cedula="${v.cedula}" data-nombre="${jsEscape(v.nombre)}">
-                <span class="material-icons" style="font-size:16px;">edit</span>
+                <span class="material-symbols-outlined" style="font-size:16px;">edit</span>
                 <span class="obs-preview">${obsLabel}</span>
             </button>
-            ${log !== "---" ? `<div class="card-log"><span class="material-icons">person</span> ${escHtml(log)}</div>` : ""}
+            ${log !== "---" ? `<div class="card-log"><span class="material-symbols-outlined">person</span> ${escHtml(log)}</div>` : ""}
         </div>`;
 }
 
@@ -1078,7 +1078,7 @@ async function abrirHistorial(cedula, nombre) {
             </div>`;
 
         if (snap.empty) {
-            list.innerHTML = resumenHtml + `<div class="historial-empty"><span class="material-icons" style="font-size:42px;opacity:.3;">history_toggle_off</span><br>Sin cambios registrados.<br><span style="font-size:.78rem;color:var(--color-gray);">Cuando se realice algún cambio aparecerá aquí.</span></div>`;
+            list.innerHTML = resumenHtml + `<div class="historial-empty"><span class="material-symbols-outlined" style="font-size:42px;opacity:.3;">history_toggle_off</span><br>Sin cambios registrados.<br><span style="font-size:.78rem;color:var(--color-gray);">Cuando se realice algún cambio aparecerá aquí.</span></div>`;
             return;
         }
 
@@ -1090,7 +1090,7 @@ async function abrirHistorial(cedula, nombre) {
             "Observación":   { color: "#B45309", icon: "edit",           label: "Observación" }
         };
 
-        let timelineHtml = `<div class="hist-timeline-title"><span class="material-icons">history</span> Línea de tiempo (${snap.size} eventos)</div>`;
+        let timelineHtml = `<div class="hist-timeline-title"><span class="material-symbols-outlined">history</span> Línea de tiempo (${snap.size} eventos)</div>`;
         let timeline = "";
         let primer = true;
         snap.forEach(d => {
@@ -1099,20 +1099,20 @@ async function abrirHistorial(cedula, nombre) {
             const info = accionInfo[h.accion] || { color: "#6B7280", icon: "info", label: h.accion || "Cambio" };
 
             const transicion = (h.estadoAnterior && h.estadoNuevo && h.estadoAnterior !== h.estadoNuevo)
-                ? `<span class="hist-trans"><span class="hist-prev">${escHtml(h.estadoAnterior)}</span> <span class="material-icons" style="font-size:14px;">arrow_right_alt</span> <span class="hist-next" style="color:${info.color};">${escHtml(h.estadoNuevo)}</span></span>`
+                ? `<span class="hist-trans"><span class="hist-prev">${escHtml(h.estadoAnterior)}</span> <span class="material-symbols-outlined" style="font-size:14px;">arrow_right_alt</span> <span class="hist-next" style="color:${info.color};">${escHtml(h.estadoNuevo)}</span></span>`
                 : "";
 
             timeline += `
                 <div class="historial-item ${primer ? 'is-latest' : ''}">
                     <div class="historial-icon" style="background:${info.color}1a;color:${info.color};border-color:${info.color}55;">
-                        <span class="material-icons">${info.icon}</span>
+                        <span class="material-symbols-outlined">${info.icon}</span>
                     </div>
                     <div class="historial-body">
                         <div class="historial-accion" style="color:${info.color};">${escHtml(info.label)}${primer ? ' <span class="hist-latest-tag">Más reciente</span>' : ''}</div>
                         ${transicion}
                         <div class="historial-meta">
-                            <span class="hist-meta-chip"><span class="material-icons">person</span> ${escHtml(h.operador || "---")}</span>
-                            <span class="hist-meta-chip"><span class="material-icons">schedule</span> ${escHtml(hora)}</span>
+                            <span class="hist-meta-chip"><span class="material-symbols-outlined">person</span> ${escHtml(h.operador || "---")}</span>
+                            <span class="hist-meta-chip"><span class="material-symbols-outlined">schedule</span> ${escHtml(hora)}</span>
                         </div>
                         ${h.detalle ? `<div class="historial-detalle">${escHtml(h.detalle)}</div>` : ""}
                     </div>
@@ -1325,16 +1325,16 @@ function renderTablaUsuarios() {
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td>${escHtml(u.fullname)}</td>
-            <td>${waLink ? `<a href="${waLink}" target="_blank" class="wa-link"><span class="material-icons" style="font-size:16px;">phone</span> ${escHtml(u.phone)}</a>` : escHtml(u.phone || "---")}</td>
+            <td>${waLink ? `<a href="${waLink}" target="_blank" class="wa-link"><span class="material-symbols-outlined" style="font-size:16px;">phone</span> ${escHtml(u.phone)}</a>` : escHtml(u.phone || "---")}</td>
             <td><code>${escHtml(u.username)}</code></td>
             <td>${escHtml(u.local || "—")}</td>
             <td>
                 <div class="btn-action-row">
                     <button class="btn-action btn-action-blue" onclick="abrirCambiarPassword('${escHtml(u.username)}')">
-                        <span class="material-icons">lock</span> Cambiar Clave
+                        <span class="material-symbols-outlined">lock</span> Cambiar Clave
                     </button>
                     <button class="btn-action btn-action-red" onclick="pedirEliminarOperador('${escHtml(u.username)}')">
-                        <span class="material-icons">delete</span> Eliminar
+                        <span class="material-symbols-outlined">delete</span> Eliminar
                     </button>
                 </div>
             </td>`;
@@ -1372,7 +1372,7 @@ async function cargarLocalesDesdePadron() {
             btn.style.setProperty("--ls", conf.colorSoft);
             const iconHtml = conf.svgId
                 ? `<svg class="svg-icon lp-icon" aria-hidden="true" style="color:${conf.color};width:22px;height:22px;"><use href="#${conf.svgId}"/></svg>`
-                : `<span class="material-icons" style="color:${conf.color};">${conf.icon}</span>`;
+                : `<span class="material-symbols-outlined" style="color:${conf.color};">${conf.icon}</span>`;
             btn.innerHTML = `${iconHtml}<span class="lp-name">${loc}</span><span class="lp-mesas">M${conf.mesaMin}–${conf.mesaMax}</span>`;
             btn.onclick = () => {
                 picker.querySelectorAll(".local-picker-btn").forEach(b => {
@@ -1442,7 +1442,7 @@ function renderLocalesSummary() {
         const colorSoft = getColorLocalSoft(local);
         const iconHtml = (conf && conf.svgId)
             ? `<svg class="svg-icon" aria-hidden="true" style="color:${color};width:18px;height:18px;"><use href="#${conf.svgId}"/></svg>`
-            : `<span class="material-icons">${(conf && conf.icon) || "grid_view"}</span>`;
+            : `<span class="material-symbols-outlined">${(conf && conf.icon) || "grid_view"}</span>`;
         const card = document.createElement("div");
         card.className = "local-card";
         card.style.borderLeftColor = color;
@@ -1733,12 +1733,12 @@ window.buscarPadronANR = async function() {
             document.getElementById("pr-orden").textContent = persona.ORDEN;
             result.style.display = "block";
         } else {
-            error.innerHTML = `<span class="material-icons" style="color:#B91C1C;">error_outline</span> No está en el padrón`;
+            error.innerHTML = `<span class="material-symbols-outlined" style="color:#B91C1C;">error_outline</span> No está en el padrón`;
             error.style.display = "block";
         }
     } catch (err) {
         loading.style.display = "none";
-        error.innerHTML = `<span class="material-icons">warning_amber</span> Error al cargar`;
+        error.innerHTML = `<span class="material-symbols-outlined">warning_amber</span> Error al cargar`;
         error.style.display = "block";
     }
 };
@@ -1842,5 +1842,4 @@ window.exportarXLSX = exportarXLSX;
 window.exportarEstadisticasXLSX = function() { toast("Función disponible en administración.", "warn"); };
 window.activarBusquedaGlobal = ()=>{ state.searchAllStates=true; state.pagination.page=1; renderTablaVotantes(); };
 window.desactivarBusquedaGlobal = ()=>{ state.searchAllStates=false; state.pagination.page=1; renderTablaVotantes(); };
-
 

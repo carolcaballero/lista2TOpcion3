@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#B91C1C">
+    <title>Control Electoral</title>
+    <link rel="manifest" href="manifest.json">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/styles.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+    <!-- SVG SPRITES — fallback estable para iconos críticos -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+        <defs>
+            <symbol id="i-shield" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 4 5v6c0 5 3.4 9.6 8 11 4.6-1.4 8-6 8-11V5l-8-3Zm0 10.99h6c-.45 3.39-2.72 6.41-6 7.43V13H6V6.39l6-2.24v8.84Z"/></symbol>
+            <symbol id="i-user" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2.5c-3.34 0-10 1.67-10 5V22h20v-2.5c0-3.33-6.66-5-10-5Z"/></symbol>
+            <symbol id="i-admin" viewBox="0 0 24 24"><path fill="currentColor" d="M12 14.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5Zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm7 14H5v-1c0-2.67 5.33-4 7-4 .62 0 1.53.18 2.5.5v2.09c-.95-.38-1.86-.59-2.5-.59-2.48 0-4.88 1.07-4.98 2H19v1Zm1.35-7.15L22 15l-1.65 1.65.7 2.35-2.4-.55L17 20l-1.65-1.55-2.4.55.7-2.35L12 15l1.65-1.65-.7-2.35 2.4.55L17 10l1.65 1.55 2.4-.55-.7 2.35Z"/></symbol>
+            <symbol id="i-arrow-back" viewBox="0 0 24 24"><path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2Z"/></symbol>
+            <symbol id="i-cancel" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2Zm4 13.59L14.59 17 12 14.41 9.41 17 8 15.59 10.59 13 8 10.41 9.41 9 12 11.59 14.59 9 16 10.41 13.41 13 16 15.59Z"/></symbol>
+            <symbol id="i-chart" viewBox="0 0 24 24"><path fill="currentColor" d="M5 9.2h3V19H5V9.2Zm5.5-4.2h3V19h-3V5Zm5.5 7h3V19h-3v-7Z"/></symbol>
+            <symbol id="i-check" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Zm-1.1 14.3-4.2-4.2 1.4-1.4 2.8 2.79 5.79-5.79 1.41 1.41-7.2 7.19Z"/></symbol>
+            <symbol id="i-clock" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm1 11h-5V7h2v4h3Z"/></symbol>
+            <symbol id="i-copy" viewBox="0 0 24 24"><path fill="currentColor" d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12V1Zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0 16H8V7h11v14Z"/></symbol>
+            <symbol id="i-delete" viewBox="0 0 24 24"><path fill="currentColor" d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12Zm3.46-7.88L12 13.66l2.54-2.54 1.41 1.42L13.41 15l2.54 2.46-1.41 1.42L12 16.41l-2.54 2.47-1.41-1.42L10.59 15l-2.54-2.46 1.41-1.42ZM15.5 4l-1-1h-5l-1 1H5v2h14V4Z"/></symbol>
+            <symbol id="i-doc" viewBox="0 0 24 24"><path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm0 2.5L17.5 8H14V4.5ZM8 13h8v2H8v-2Zm0-4h5v2H8V9Zm0 8h8v2H8v-2Z"/></symbol>
+            <symbol id="i-edit" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25Zm2.92 2.33H5v-.92l8.06-8.06.92.92L5.92 19.58ZM20.71 7.04a1 1 0 0 0 0-1.41L18.37 3.29a1 1 0 0 0-1.41 0L15.13 5.12l3.75 3.75 1.83-1.83Z"/></symbol>
+            <symbol id="i-history" viewBox="0 0 24 24"><path fill="currentColor" d="M13 3a9 9 0 0 0-8.95 8H1l4 4 4-4H6.07A7 7 0 1 1 13 18a6.96 6.96 0 0 1-4.95-2.05l-1.42 1.42A9 9 0 1 0 13 3Zm-1 5h2v5h-5v-2h3V8Z"/></symbol>
+            <symbol id="i-list" viewBox="0 0 24 24"><path fill="currentColor" d="M4 6.5A1.5 1.5 0 1 1 5.5 8 1.5 1.5 0 0 1 4 6.5Zm4 1h12V6H8v1.5ZM4 12a1.5 1.5 0 1 1 1.5 1.5A1.5 1.5 0 0 1 4 12Zm4 .5h12V11H8v1.5ZM4 17.5A1.5 1.5 0 1 1 5.5 19 1.5 1.5 0 0 1 4 17.5ZM8 18h12v-1.5H8V18Z"/></symbol>
+            <symbol id="i-lock" viewBox="0 0 24 24"><path fill="currentColor" d="M17 9h-1V7a4 4 0 1 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-7-2a2 2 0 1 1 4 0v2h-4V7Zm2 10a2 2 0 0 1-1-3.73V12h2v1.27A2 2 0 0 1 12 17Z"/></symbol>
+            <symbol id="i-logout" viewBox="0 0 24 24"><path fill="currentColor" d="M10 17v-2h4V9h-4V7h4a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-4Zm-6 3a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7v2H4v12h7v2H4Zm13.59-4.59L20 13H9v-2h11l-2.41-2.41L19 7l5 5-5 5-1.41-1.59Z"/></symbol>
+            <symbol id="i-phone" viewBox="0 0 24 24"><path fill="currentColor" d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1-.24c1.12.37 2.33.57 3.59.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.26.2 2.47.57 3.59a1 1 0 0 1-.25 1l-2.2 2.2Z"/></symbol>
+            <symbol id="i-search" viewBox="0 0 24 24"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 1 0 14 15.5l.27.28v.79L20 22l2-2-6.5-6Zm-6 0A4.5 4.5 0 1 1 10 5a4.5 4.5 0 0 1-.5 9Z"/></symbol>
+            <symbol id="i-trash-sweep" viewBox="0 0 24 24"><path fill="currentColor" d="M9 3h6l1 1h4v2H4V4h4l1-1Zm1 7h2v8h-2v-8Zm4 0h2v8h-2v-8ZM6 7h12l-1 13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 7Zm-3 9 2.5-2.5 1.4 1.4L4.4 17.4H8v2H3v-3.4Z"/></symbol>
+            <symbol id="i-urna" viewBox="0 0 24 24"><path fill="currentColor" d="M4 7h16v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Zm2 2v10h12V9H6Zm3-6h6l2 3H7l2-3Zm2.2 7 5.3 4.24-1.24 1.56L11 12.27l-2.56 2.56-1.41-1.41L11.2 10Z"/></symbol>
+            <symbol id="i-warning" viewBox="0 0 24 24"><path fill="currentColor" d="M1 21h22L12 2 1 21Zm12-3h-2v-2h2v2Zm0-4h-2v-4h2v4Z"/></symbol>
+            <symbol id="i-whatsapp" viewBox="0 0 24 24"><path fill="currentColor" d="M19.05 4.94A9.9 9.9 0 0 0 12.01 2C6.49 2 2 6.48 2 12c0 1.93.55 3.81 1.6 5.43L2 22l4.73-1.55A10 10 0 1 0 19.05 4.94ZM12 20a8 8 0 0 1-4.07-1.11l-.29-.17-2.81.92.91-2.74-.19-.3A8 8 0 1 1 12 20Zm4.38-5.46c-.24-.12-1.4-.69-1.62-.77-.22-.08-.38-.12-.54.12-.16.24-.62.77-.76.92-.14.16-.28.18-.52.06-.24-.12-1-.37-1.91-1.18-.71-.63-1.19-1.41-1.33-1.65-.14-.24-.01-.37.11-.49.11-.11.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.79-.2-.47-.4-.4-.54-.41h-.46c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2s.86 2.32.98 2.48c.12.16 1.69 2.58 4.09 3.62.57.25 1.02.4 1.37.51.58.18 1.1.15 1.51.09.46-.07 1.4-.57 1.6-1.13.2-.55.2-1.03.14-1.13-.06-.09-.22-.15-.46-.27Z"/></symbol>
+            <symbol id="i-wifi-off" viewBox="0 0 24 24"><path fill="currentColor" d="m2.28 3 18.72 18.72-1.27 1.27-3.09-3.09A10.94 10.94 0 0 0 12 19c-2.67 0-5.12.95-7.03 2.54L3.56 20.1A12.93 12.93 0 0 1 12 17c1.7 0 3.32.33 4.8.94l-2.06-2.06A6.92 6.92 0 0 0 12 15c-1.6 0-3.07.53-4.25 1.43l-1.4-1.4A8.9 8.9 0 0 1 12 13c.57 0 1.12.05 1.66.15l-2.1-2.1A3.01 3.01 0 0 0 12 11a3 3 0 0 0-2.12.88L8.46 10.46A4.98 4.98 0 0 1 12 9c.88 0 1.71.23 2.42.63l-1.64-1.64A10.9 10.9 0 0 0 12 8c-2.31 0-4.46.72-6.23 1.95L4.36 8.54A12.88 12.88 0 0 1 12 6c.94 0 1.85.1 2.73.29L9.44 1.73 10.72.45 12 1.73A12.89 12.89 0 0 1 20.46 4.5l-1.41 1.41A10.89 10.89 0 0 0 12 3c-.74 0-1.47.07-2.17.21L7.74 1.12 2.28 3Z"/></symbol>
+            <symbol id="i-polideportivo" viewBox="0 0 24 24"><path fill="currentColor" d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4.2l1.2 2H17v1H7v-1h2.2l1.2-2H6a2 2 0 0 1-2-2V5Zm2 0v12h12V5H6Zm2 2h8v2H8V7Zm1 4h2v2H9v-2Zm4 0h2v2h-2v-2Zm-4 3h6v1.8c0 .66-.54 1.2-1.2 1.2h-3.6c-.66 0-1.2-.54-1.2-1.2V14Z"/></symbol>
+            <symbol id="i-colegio" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3 3 8v2h1v8h16v-8h1V8l-9-5Zm0 2.2L16.9 8H7.1L12 5.2ZM6 10h12v6h-2v-3H8v3H6v-6Zm4 0h1.5v1.5H10V10Zm2.5 0H14v1.5h-1.5V10ZM10 14h4v2h-4v-2ZM3 20h18v1H3v-1Z"/></symbol>
+            <symbol id="i-escuela-local" viewBox="0 0 24 24"><path fill="currentColor" d="M12 4 4 9v10h16V9l-8-5Zm0 2.35 5.5 3.44V17h-3v-4H9.5v4h-3V9.79L12 6.35ZM9 10h2v2H9v-2Zm4 0h2v2h-2v-2ZM3 20h18v1H3v-1Z"/></symbol>
+            <symbol id="i-ubicacion-votacion" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.08 7 13 7 13s7-7.92 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5Z"/></symbol>
+        </defs>
+    </svg>
+</head>
+<body>
+
+<div id="toast-container"></div>
+<div id="menu-backdrop" aria-hidden="true"></div>
+
+<!-- ═══════════════ MODALES ═══════════════ -->
+
+<!-- Modal: No Votó -->
+<div class="modal-overlay" id="modal-novoto">
+    <div class="modal-box">
+        <h3><span class="material-symbols-outlined">cancel</span>Registrar No Votó</h3>
+        <p class="modal-sub" id="modal-novoto-name"></p>
+        <p class="modal-hint">Podés dejar un motivo opcional o confirmar directamente.</p>
+        <textarea class="modal-textarea" id="modal-obs-input" placeholder="Motivo (opcional): viaje, enfermedad, trabajo..."></textarea>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('modal-novoto')">Cancelar</button>
+            <button class="btn-primary" onclick="confirmNoVoto()">Confirmar No Votó</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Cambiar Contraseña -->
+<div class="modal-overlay" id="modal-chpass">
+    <div class="modal-box">
+        <h3><span class="material-symbols-outlined">lock</span>Cambiar Contraseña</h3>
+        <input type="hidden" id="chpass-username">
+        <p class="modal-hint">Operador: <strong id="chpass-user-label" style="color:var(--color-dark)"></strong></p>
+        <div class="form-group">
+            <label>Nueva contraseña</label>
+            <input type="password" id="chpass-nueva" placeholder="Mínimo 4 caracteres" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+            <label>Confirmar contraseña</label>
+            <input type="password" id="chpass-confirmar" placeholder="Repetí la contraseña" autocomplete="new-password">
+        </div>
+        <div id="chpass-error" style="color:var(--color-primary);font-size:.82rem;margin-bottom:10px;"></div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('modal-chpass')">Cancelar</button>
+            <button class="btn-primary" onclick="confirmarCambiarPassword()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Observación -->
+<div class="modal-overlay" id="modal-obs-confirm">
+    <div class="modal-box">
+        <h3><span class="material-symbols-outlined">edit</span>Agregar Observación</h3>
+        <p class="modal-hint" id="modal-obs-nombre" style="color:var(--color-dark);font-size:.92rem;font-weight:800;"></p>
+        <textarea class="modal-textarea" id="modal-obs-texto" placeholder="Escribí la observación para este votante..."></textarea>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="cancelarObservacion()">Cancelar</button>
+            <button class="btn-primary" onclick="confirmarObservacion()">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Confirmar Eliminación (planilla) -->
+<div class="modal-overlay" id="modal-eliminar-confirm">
+    <div class="modal-box">
+        <div class="modal-icon-banner modal-icon-danger">
+            <svg class="svg-icon" aria-hidden="true"><use href="#i-warning"/></svg>
+        </div>
+        <h3 class="modal-danger-title">Confirmar Eliminación</h3>
+        <p class="modal-hint" id="modal-eliminar-texto">¿Estás seguro que querés eliminar los registros seleccionados? Esta acción no se puede deshacer.</p>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('modal-eliminar-confirm')">Cancelar</button>
+            <button class="btn-primary btn-danger-strong" onclick="confirmarEliminarSeleccionados()">
+                <span class="material-symbols-outlined">delete_forever</span>Eliminar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Confirmar Eliminar Operador -->
+<div class="modal-overlay" id="modal-del-user">
+    <div class="modal-box">
+        <div class="modal-icon-banner modal-icon-danger">
+            <svg class="svg-icon" aria-hidden="true"><use href="#i-delete"/></svg>
+        </div>
+        <h3 class="modal-danger-title">Eliminar Operador</h3>
+        <p class="modal-hint">Operador a eliminar: <strong id="del-user-label" style="color:var(--color-dark);"></strong></p>
+        <p class="modal-hint" style="background:var(--color-primary-softer);padding:10px 14px;border-radius:var(--r-md);border-left:3px solid var(--color-primary);">
+            <span class="material-symbols-outlined" style="font-size:16px;color:var(--color-primary);vertical-align:middle;">info</span>
+            Esta acción es <strong>irreversible</strong>. El operador no podrá volver a iniciar sesión.
+        </p>
+        <input type="hidden" id="del-user-username">
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('modal-del-user')">Cancelar</button>
+            <button class="btn-primary btn-danger-strong" onclick="confirmarEliminarOperador()">
+                <span class="material-symbols-outlined">delete_forever</span>Eliminar Operador
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Confirmar Limpiar Bitácora -->
+<div class="modal-overlay" id="modal-clear-bit">
+    <div class="modal-box">
+        <div class="modal-icon-banner modal-icon-warn">
+            <svg class="svg-icon" aria-hidden="true"><use href="#i-trash-sweep"/></svg>
+        </div>
+        <h3 class="modal-danger-title">Limpiar Bitácora</h3>
+        <p class="modal-hint">Vas a borrar <strong>toda</strong> la actividad registrada en la bitácora del sistema.</p>
+        <p class="modal-hint" style="background:#FEF3C7;padding:10px 14px;border-radius:var(--r-md);border-left:3px solid #B45309;color:#78350F;">
+            <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;">warning</span>
+            Esta acción <strong>no se puede deshacer</strong>. Los registros del historial individual de cada votante se mantienen.
+        </p>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('modal-clear-bit')">Cancelar</button>
+            <button class="btn-primary btn-danger-strong" onclick="confirmarLimpiarBitacora()">
+                <span class="material-symbols-outlined">delete_sweep</span>Limpiar Bitácora
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Historial -->
+<div class="modal-overlay" id="modal-historial">
+    <div class="modal-box modal-box-large">
+        <h3><svg class="svg-icon" aria-hidden="true"><use href="#i-history"/></svg>Historial de Actividad</h3>
+        <p class="modal-hint" id="modal-hist-nombre" style="font-weight:800;color:var(--color-dark);"></p>
+        <div class="historial-list" id="modal-hist-list">
+            <div style="text-align:center;padding:20px;">Cargando...</div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeModal('modal-historial')">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════ LOGIN ═══════════════ -->
+<section id="login-section" class="auth-container">
+    <div class="auth-bg-shapes" aria-hidden="true">
+        <span class="shape shape-1"></span>
+        <span class="shape shape-2"></span>
+        <span class="shape shape-3"></span>
+    </div>
+    <div class="login-card">
+        <div class="login-logo">
+            <svg class="svg-icon login-svg" aria-hidden="true"><use href="#i-shield"/></svg>
+        </div>
+        <h1>Control Electoral</h1>
+        <h2>MGTR. CAROLINA CABALLERO</h2>
+        <div class="subtitle">Elecciones Internas — Lista 2 Opción 3</div>
+        <form id="login-form" autocomplete="off">
+            <div class="form-group">
+                <label><svg class="svg-icon" aria-hidden="true"><use href="#i-user"/></svg>Usuario</label>
+                <input type="text" id="username" autocomplete="off" required>
+            </div>
+            <div class="form-group">
+                <label><svg class="svg-icon" aria-hidden="true"><use href="#i-lock"/></svg>Contraseña</label>
+                <input type="password" id="password" autocomplete="new-password" required>
+            </div>
+            <button type="submit" class="btn-primary">Ingresar al Sistema</button>
+            <div id="login-error" class="error-msg"></div>
+        </form>
+    </div>
+</section>
+
+<!-- ═══════════════ APLICACIÓN ═══════════════ -->
+<section id="app-section" class="app-container hidden">
+
+    <header class="main-header">
+        <div class="header-brand">
+            <span class="header-brand-icon">
+                <svg class="svg-icon" aria-hidden="true"><use href="#i-shield"/></svg>
+            </span>
+            <h2>Control de Gestión de Votantes</h2>
+            <span class="header-live"><span class="live-dot"></span>EN VIVO</span>
+        </div>
+        <div class="user-info">
+            <span class="user-info-chip">
+                <span class="status-dot" id="status-dot"></span>
+                <span class="status-label" id="status-label">conectando...</span>
+            </span>
+            <span id="offline-indicator" class="offline-badge hidden">
+                <svg class="svg-icon svg-xs" aria-hidden="true"><use href="#i-wifi-off"/></svg>Offline<span class="offline-count"></span>
+            </span>
+            <span class="user-info-chip">
+                <svg class="svg-icon svg-xs" aria-hidden="true"><use href="#i-user"/></svg>
+                <span id="user-prefix"></span><strong id="current-user-display">---</strong>
+                <span id="user-assignment" class="assign-chip hidden"></span>
+            </span>
+            <button id="logout-btn" class="btn-secondary">
+                <svg class="svg-icon svg-xs" aria-hidden="true"><use href="#i-logout"/></svg>Salir
+            </button>
+        </div>
+    </header>
+
+    <div class="toolbar-top">
+        <div class="toolbar-tabs">
+            <button id="tab-planilla"   class="tab-btn active"><svg class="svg-icon svg-sm" aria-hidden="true"><use href="#i-list"/></svg>Planilla</button>
+            <button id="tab-stats"      class="tab-btn"><svg class="svg-icon svg-sm" aria-hidden="true"><use href="#i-chart"/></svg>Estadísticas</button>
+            <button id="tab-admin"      class="tab-btn hidden"><svg class="svg-icon svg-sm" aria-hidden="true"><use href="#i-admin"/></svg>Administración</button>
+            <button id="tab-padron-anr" class="tab-btn"><svg class="svg-icon svg-sm" aria-hidden="true"><use href="#i-doc"/></svg>Padrón ANR</button>
+        </div>
+        <button id="btn-exportar" onclick="exportarXLSX()" class="btn-secondary hidden" style="display:none;">Exportar XLSX</button>
+    </div>
+
+    <div id="filter-wrapper">
+        <div class="toolbar-filters">
+            <div class="filter-group">
+                <button id="btn-filter-todos"   class="filter-btn f-todos"><svg class="svg-icon svg-sm" aria-hidden="true"><use href="#i-list"/></svg><span>Todos</span></button>
+                <button id="btn-filter-pending" class="filter-btn"><svg class="svg-icon svg-sm" aria-hidden="true"><use href="#i-clock"/></svg><span>Pendientes</span></button>
+                <button id="btn-filter-voted"   class="filter-btn"><svg class="svg-icon svg-sm" aria-hidden="true"><use href="#i-check"/></svg><span>Votaron</span></button>
+                <button id="btn-filter-novoted" class="filter-btn"><svg class="svg-icon svg-sm" aria-hidden="true"><use href="#i-cancel"/></svg><span>No Votaron</span></button>
+            </div>
+        </div>
+        <div class="search-box-full">
+            <svg class="svg-icon svg-sm search-icon" aria-hidden="true"><use href="#i-search"/></svg>
+            <input type="text" id="search-input" placeholder="Buscar por nombre o cédula...">
+        </div>
+    </div>
+    <div id="search-hint"></div>
+
+    <div id="view-planilla">
+        <div id="barra-seleccion">
+            <span id="contador-seleccion">0 seleccionados</span>
+            <div class="barra-seleccion-actions">
+                <button class="btn-secondary" onclick="seleccionarTodosCheckbox()">Todos</button>
+                <button class="btn-secondary" onclick="deseleccionarTodos()">Ninguno</button>
+                <button class="btn-primary"   onclick="pedirConfirmacionEliminar()">Eliminar seleccionados</button>
+            </div>
+        </div>
+
+        <div class="cards-mobile" id="cards-container">
+            <div class="loading-wrap"><div class="spinner"></div><span class="loading-text">Cargando padrón...</span></div>
+        </div>
+
+        <div class="tabla-desktop table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:30px;"><input type="checkbox" id="checkbox-todos" onchange="toggleTodosCheckbox()"></th>
+                        <th>N°</th><th>Nombre</th><th>Cédula</th><th>Local</th><th>Mesa</th><th>Orden</th>
+                        <th>Estado</th><th>Acciones</th><th>Observaciones</th><th>Cambiado por</th><th></th>
+                    </tr>
+                </thead>
+                <tbody id="votantes-table-body">
+                    <tr><td class="spinner-cell" colspan="12"><div class="spinner"></div></td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="pagination-controls"></div>
+    </div>
+
+    <div id="view-stats" style="display:none;">
+        <div id="locales-summary" class="locales-summary"></div>
+        <div class="chart-card" id="panel-mesas-wrap">
+            <h4>
+                <span id="bar-chart-icon-wrap"></span>
+                <span id="bar-chart-title">Votos por mesa</span>
+                <button id="btn-volver-locales" class="btn-secondary hidden" onclick="volverALocales()" style="font-size:.75rem;padding:6px 12px;">
+                    <svg class="svg-icon svg-sm" aria-hidden="true"><use href="#i-arrow-back"/></svg> Volver
+                </button>
+            </h4>
+            <div id="chart-hint" style="display:none;">
+                <svg class="svg-icon chart-hint-svg" aria-hidden="true"><use href="#i-chart"/></svg>
+                <span>Seleccioná un local para ver el detalle de mesas</span>
+            </div>
+            <div class="chart-wrap" id="chart-mesa-wrap"><canvas id="chart-mesa"></canvas></div>
+        </div>
+        <div class="stats-grid">
+            <div class="chart-card">
+                <h4><svg class="svg-icon svg-sm icon-success" aria-hidden="true"><use href="#i-check"/></svg> Distribución General</h4>
+                <div class="chart-wrap"><canvas id="chart-global"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <h4><svg class="svg-icon svg-sm icon-warn" aria-hidden="true"><use href="#i-clock"/></svg> Participación Horaria (07:00 – 17:00)</h4>
+                <div class="chart-wrap"><canvas id="chart-hora"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-admin" class="admin-grid">
+        <div class="admin-top-grid">
+            <div class="admin-card">
+                <h3><span class="material-symbols-outlined">person_add</span>Nuevo Operador</h3>
+                <form id="register-user-form" autocomplete="off">
+                    <div class="form-group">
+                        <label>Nombre Completo</label>
+                        <input type="text" id="reg-fullname" autocomplete="off" required>
+                    </div>
+                    <div class="form-group">
+                        <label><svg class="svg-icon svg-xs" aria-hidden="true"><use href="#i-phone"/></svg> WhatsApp</label>
+                        <input type="tel" id="reg-phone" autocomplete="off" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Usuario</label>
+                        <input type="text" id="reg-username" autocomplete="off" required>
+                    </div>
+                    <div class="form-group">
+                        <label><svg class="svg-icon svg-xs" aria-hidden="true"><use href="#i-lock"/></svg> Contraseña</label>
+                        <input type="password" id="reg-password" autocomplete="new-password" required>
+                    </div>
+                    <div class="form-group">
+                        <label><svg class="svg-icon svg-xs" aria-hidden="true"><use href="#i-urna"/></svg> Local Asignado</label>
+                        <input type="hidden" id="reg-local-value" name="reg-local">
+                        <div id="reg-local-picker" class="local-picker-wrap"></div>
+                    </div>
+                    <button type="submit" class="btn-primary">Crear Operador</button>
+                </form>
+            </div>
+            <div class="admin-card">
+                <h3><span class="material-symbols-outlined">download</span>Exportar Estadísticas</h3>
+                <p style="font-size:.82rem;color:var(--color-text-soft);margin-bottom:14px;">Descargá Excel completo con planilla, estadísticas por local, mesa y resumen.</p>
+                <button onclick="exportarEstadisticasXLSX()" class="btn-primary">Descargar Excel Completo</button>
+            </div>
+        </div>
+
+        <div class="admin-card">
+            <h3><span class="material-symbols-outlined">people</span>Lista de Operadores</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead><tr><th>Nombre</th><th>WhatsApp</th><th>Usuario</th><th>Local Asignado</th><th>Acción</th></tr></thead>
+                    <tbody id="users-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bitacora-card">
+            <div class="bitacora-header">
+                <div class="bitacora-title">
+                    <span class="bit-live-dot"></span>
+                    <span class="material-symbols-outlined" style="color:var(--color-primary-accent);">history</span>Bitácora de Actividad
+                </div>
+                <div>
+                    <button class="btn-secondary" onclick="pedirLimpiarBitacora()" style="font-size:.75rem;padding:6px 12px;">
+                        <span class="material-symbols-outlined">delete_sweep</span>Limpiar
+                    </button>
+                </div>
+            </div>
+            <div class="bitacora-table-wrap">
+                <table class="bitacora-table">
+                    <thead><tr><th>Hora</th><th>Operador</th><th>Acción</th><th>Detalle</th></tr></thead>
+                    <tbody id="bitacora-tbody">
+                        <tr><td colspan="4" style="text-align:center;padding:24px;"><div class="spinner"></div>Cargando bitácora...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-padron-anr" style="display:none;">
+        <div class="padron-card">
+            <div class="padron-head">
+                <div class="padron-head-icon">
+                    <svg class="svg-icon" aria-hidden="true" style="color:#fff;width:28px;height:28px;"><use href="#i-doc"/></svg>
+                </div>
+                <div>
+                    <h2>Consulta Padrón ANR</h2>
+                    <p>Internas Municipales — Junio 2026</p>
+                </div>
+            </div>
+            <div class="padron-divider"></div>
+            <div class="padron-search-row">
+                <div class="search-box-full">
+                    <svg class="svg-icon svg-sm search-icon" aria-hidden="true"><use href="#i-search"/></svg>
+                    <input type="text" id="padron-anr-input" placeholder="Número de cédula..." inputmode="numeric">
+                </div>
+                <button onclick="buscarPadronANR()" class="btn-primary padron-btn-consult">Consultar</button>
+            </div>
+            <div id="padron-anr-loading" style="display:none;text-align:center;padding:26px;">
+                <div class="spinner"></div>Consultando padrón ANR...
+            </div>
+            <div id="padron-anr-error" style="display:none;"></div>
+            <div id="padron-anr-resultado" style="display:none;">
+                <div class="padron-result">
+                    <div class="padron-result-head"><span>Resultado de la Consulta</span></div>
+                    <div>
+                        <div class="padron-field"><span class="padron-label">Cédula</span><span id="pr-cedula" class="padron-value"></span></div>
+                        <div class="padron-field"><span class="padron-label">Nombres</span><span id="pr-nombres" class="padron-value"></span></div>
+                        <div class="padron-field"><span class="padron-label">Apellidos</span><span id="pr-apellidos" class="padron-value"></span></div>
+                        <div class="padron-field"><span class="padron-label">Departamento</span><span id="pr-departamento" class="padron-value"></span></div>
+                        <div class="padron-field"><span class="padron-label">Distrito</span><span id="pr-distrito" class="padron-value"></span></div>
+                        <div class="padron-field"><span class="padron-label">Seccional</span><span id="pr-seccional" class="padron-value"></span></div>
+                        <div class="padron-field"><span class="padron-label">Local</span><span id="pr-local" class="padron-value"></span></div>
+                        <div class="padron-field"><span class="padron-label">Mesa</span><span id="pr-mesa" class="padron-value"></span></div>
+                        <div class="padron-field padron-field-last"><span class="padron-label">Orden</span><span id="pr-orden" class="padron-value"></span></div>
+                    </div>
+                </div>
+                <div id="pr-btn-agregar-wrap" style="margin-top:14px;">
+                    <button id="pr-btn-agregar" onclick="agregarDesdePardon()" class="btn-primary">Añadir a la planilla</button>
+                </div>
+            </div>
+            <p class="padron-footer">Fuente: <a href="https://www.anr.org.py/padron-2026/" target="_blank">anr.org.py/padron-2026</a></p>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <button class="bottom-nav-item active" data-tab="planilla">
+            <svg class="svg-icon" aria-hidden="true"><use href="#i-list"/></svg>
+            <span>Planilla</span>
+        </button>
+        <button class="bottom-nav-item" data-tab="stats">
+            <svg class="svg-icon" aria-hidden="true"><use href="#i-chart"/></svg>
+            <span>Estadísticas</span>
+        </button>
+        <button class="bottom-nav-item" data-tab="padron-anr">
+            <svg class="svg-icon" aria-hidden="true"><use href="#i-doc"/></svg>
+            <span>Padrón</span>
+        </button>
+        <button class="bottom-nav-item hidden" data-tab="admin" id="bottom-tab-admin">
+            <svg class="svg-icon" aria-hidden="true"><use href="#i-admin"/></svg>
+            <span>Admin</span>
+        </button>
+    </nav>
+
+</section>
+
+<script type="module" src="js/app.js"></script>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW error:', err));
+        });
+    }
+</script>
+</body>
+</html>
+
+

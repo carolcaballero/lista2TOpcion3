@@ -533,11 +533,6 @@ async function renderTablaVotantes() {
         lista.sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"));
     }
 
-    if (state.currentUser && !isAdmin) {
-        const asigLocal = (state.currentUser.local || "").trim().toLowerCase();
-        if (asigLocal) lista = lista.filter(v => (v.local || "").toLowerCase() === asigLocal);
-    }
-
     const totalItems = lista.length;
     const totalPages = Math.ceil(totalItems / state.pagination.perPage) || 1;
     if (state.pagination.page > totalPages) state.pagination.page = totalPages || 1;

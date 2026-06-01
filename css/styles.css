@@ -146,9 +146,10 @@ body {
     direction: ltr;
     vertical-align: middle;
     -webkit-font-feature-settings: 'liga';
+    font-feature-settings: 'liga';
     -webkit-font-smoothing: antialiased;
     font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-    font-variant-ligatures: normal;
+    font-variant-ligatures: contextual common-ligatures;
     font-kerning: auto;
     text-rendering: optimizeLegibility;
     transition: color var(--t-base);
@@ -457,7 +458,7 @@ button:focus-visible {
     box-shadow: var(--shadow-sm);
     border-left: 4px solid var(--color-primary);
     position: relative;
-    overflow: hidden;
+    overflow: visible;
 }
 .main-header::before {
     content: "";
@@ -763,6 +764,7 @@ button:focus-visible {
 /* ═══════════════ TABLA ESCRITORIO ═══════════════ */
 .table-responsive {
     overflow-x: auto;
+    overflow-y: visible;
     background: #fff;
     border: 1px solid var(--color-border);
     border-radius: var(--r-lg);
@@ -850,7 +852,7 @@ td input[type="checkbox"],
     border-left: 4px solid transparent;
     animation: cardEnter .4s var(--ease-out) both;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
 }
 .card-votante::before {
     content: "";
@@ -1010,7 +1012,10 @@ td input[type="checkbox"],
 .menu-tres-puntos {
     position: relative;
     display: inline-block;
+    z-index: 15;
 }
+.card-menu { z-index: 16; }
+.card-votante.menu-open { z-index: 40; }
 .menu-tres-puntos .btn-puntos {
     background: var(--color-bg-soft);
     border: 1px solid var(--color-border-soft);
@@ -1259,7 +1264,7 @@ td input[type="checkbox"],
     transition: all var(--t-base);
     border-left: 4px solid var(--color-primary);
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     animation: cardEnter .4s var(--ease-out) both;
 }
 .local-card::after {
@@ -2198,7 +2203,7 @@ td input[type="checkbox"],
     box-shadow: var(--shadow-lg);
     min-width: 260px;
     max-width: 300px;
-    z-index: 200;
+    z-index: 1200;
     display: none;
     overflow: hidden;
     transform-origin: top right;
@@ -2307,7 +2312,7 @@ td input[type="checkbox"],
     font-size: .78rem;
     border-radius: var(--r-md);
     position: relative;
-    overflow: hidden;
+    overflow: visible;
 }
 .btn-accion-lg .material-symbols-outlined { font-size: 22px; }
 .btn-accion-lg .btn-accion-label {
@@ -2684,3 +2689,43 @@ td input[type="checkbox"],
         font-size: 14px;
     }
 }
+
+
+/* ═══════════════ FALLBACK JS PARA MATERIAL SYMBOLS ═══════════════ */
+.ms-fallback-active .material-symbols-outlined {
+    font-size: 0 !important;
+    line-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    color: inherit !important;
+    position: static !important;
+}
+.ms-fallback-active .material-symbols-outlined::after {
+    content: none !important;
+}
+.ms-fallback-active .material-symbols-outlined.ms-fallback-applied {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1em;
+    height: 1em;
+    vertical-align: middle;
+}
+.ms-fallback-icon {
+    width: 1em;
+    height: 1em;
+    display: inline-block;
+    fill: currentColor;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+@media (max-width: 768px) {
+    .cards-mobile,
+    .card-top,
+    .card-votante,
+    .menu-tres-puntos {
+        overflow: visible;
+    }
+}
+

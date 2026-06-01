@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ce-v12-cache-v5'; // ← Incrementar versión
+const CACHE_NAME = 'ce-v12-cache-v6'; // ← Incrementar versión
 const STATIC_ASSETS = [
   './',
   './index.html',

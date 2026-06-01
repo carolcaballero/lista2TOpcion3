@@ -1,9 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════
    CONTROL ELECTORAL — styles.css v12.0 PRO
+   • Migrado a Material Symbols (sustituye Material Icons)
    • Paleta unificada (rojo 70% + neutros/verde/azul/gris)
    • Sistema de botones consistente
    • Animaciones y transiciones cubic-bezier
-   • Iconos SVG + compatibilidad con Material Icons (inyectados por JS)
+   • Iconos SVG + compatibilidad con Material Symbols (inyectados por JS)
    • Mantiene 100% IDs/clases originales — no rompe app.js
 ═══════════════════════════════════════════════════════════════ */
 
@@ -130,12 +131,21 @@ body {
 .icon-info    { color: var(--color-info); }
 .icon-danger  { color: var(--color-primary); }
 
-/* Material Icons (los inyecta app.js) — armonizar con SVG */
-.material-icons {
+/* Material Symbols — sustituye a Material Icons */
+.material-symbols-outlined {
     font-size: 18px;
     vertical-align: middle;
     line-height: 1;
     transition: color var(--t-base);
+    font-variation-settings:
+        'FILL' 0,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24;
+    font-variant-ligatures: normal;
+    font-kerning: auto;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
 }
 
 /* ═══════════════ TIPOGRAFÍA ═══════════════ */
@@ -272,7 +282,7 @@ a:hover { color: var(--color-primary-hover); }
     text-transform: uppercase;
     letter-spacing: .06em;
 }
-.form-group label .material-icons,
+.form-group label .material-symbols-outlined,
 .form-group label .svg-icon { color: var(--color-primary); }
 
 .form-group input,
@@ -306,7 +316,6 @@ a:hover { color: var(--color-primary-hover); }
 .form-group textarea::placeholder { color: var(--color-gray-soft); }
 
 /* ═══════════════ SISTEMA UNIFICADO DE BOTONES ═══════════════ */
-/* Botón base — todos heredan transición, focus, tipografía */
 .btn-primary, .btn-secondary, .btn-danger, .btn-accion, .btn-obs,
 .btn-page, .filter-btn, .tab-btn, .btn-hint-global, .btn-hint-volver,
 .btn-icon-danger, .menu-tres-puntos .btn-puntos {
@@ -412,7 +421,7 @@ button:focus-visible {
     transform: translateY(-1px);
     box-shadow: var(--shadow-red);
 }
-.btn-icon-danger .material-icons { font-size: 16px; }
+.btn-icon-danger .material-symbols-outlined { font-size: 16px; }
 
 /* ═══════════════ APP CONTAINER + HEADER ═══════════════ */
 .app-container {
@@ -637,7 +646,7 @@ button:focus-visible {
     min-height: 56px;
     box-shadow: var(--shadow-xs);
 }
-.filter-btn .material-icons,
+.filter-btn .material-symbols-outlined,
 .filter-btn .svg-icon { font-size: 20px; width: 20px; height: 20px; }
 .filter-btn:hover {
     border-color: var(--color-primary);
@@ -679,7 +688,7 @@ button:focus-visible {
     flex: 1;
     width: 100%;
 }
-.search-box-full .material-icons,
+.search-box-full .material-symbols-outlined,
 .search-box-full .search-icon {
     position: absolute;
     left: .85rem;
@@ -705,7 +714,7 @@ button:focus-visible {
     border-color: var(--color-primary);
     box-shadow: var(--shadow-focus);
 }
-.search-box-full input:focus ~ .material-icons,
+.search-box-full input:focus ~ .material-symbols-outlined,
 .search-box-full input:focus ~ .search-icon { color: var(--color-primary); }
 
 #search-hint {
@@ -1094,7 +1103,7 @@ td input[type="checkbox"],
     background: var(--color-bg-soft);
     color: var(--color-text-soft);
 }
-.section-divider .material-icons { font-size: 18px; }
+.section-divider .material-symbols-outlined { font-size: 18px; }
 .section-divider .sd-count {
     margin-left: auto;
     background: #fff;
@@ -1121,7 +1130,7 @@ td input[type="checkbox"],
     border-radius: var(--r-lg);
     animation: cardEnter .4s var(--ease-out);
 }
-.empty-state .material-icons {
+.empty-state .material-symbols-outlined {
     font-size: 56px;
     color: var(--color-border-strong);
     margin-bottom: .5rem;
@@ -1202,14 +1211,14 @@ td input[type="checkbox"],
     transition: color var(--t-base), transform var(--t-base);
     position: relative;
 }
-.bottom-nav-item .material-icons,
+.bottom-nav-item .material-symbols-outlined,
 .bottom-nav-item .svg-icon { font-size: 22px; width: 22px; height: 22px; transition: transform var(--t-base); }
 
 .bottom-nav-item:hover { color: var(--color-primary); }
 .bottom-nav-item.active {
     color: var(--color-primary);
 }
-.bottom-nav-item.active .material-icons,
+.bottom-nav-item.active .material-symbols-outlined,
 .bottom-nav-item.active .svg-icon {
     transform: translateY(-3px) scale(1.1);
 }
@@ -1351,7 +1360,7 @@ td input[type="checkbox"],
     color: var(--color-gray);
     font-size: .82rem;
 }
-.chart-hint-svg, #chart-hint .material-icons {
+.chart-hint-svg, #chart-hint .material-symbols-outlined {
     width: 36px; height: 36px; font-size: 36px;
     opacity: .35;
     color: var(--color-gray);
@@ -1399,7 +1408,7 @@ td input[type="checkbox"],
     text-transform: uppercase;
     letter-spacing: .4px;
 }
-.admin-card h3 .material-icons,
+.admin-card h3 .material-symbols-outlined,
 .admin-card h3 .svg-icon { color: var(--color-primary); }
 
 /* Local picker */
@@ -1740,9 +1749,9 @@ td input[type="checkbox"],
     margin-bottom: .85rem;
     color: var(--color-dark);
 }
-.modal-box h3 .material-icons { color: var(--color-primary); }
+.modal-box h3 .material-symbols-outlined { color: var(--color-primary); }
 .modal-danger-title { color: var(--color-primary) !important; }
-.modal-danger-title .material-icons { color: var(--color-primary); }
+.modal-danger-title .material-symbols-outlined { color: var(--color-primary); }
 
 .modal-box .modal-sub {
     font-size: 1rem;
@@ -1892,7 +1901,7 @@ td input[type="checkbox"],
         border-radius: var(--r-pill);
         gap: .4rem;
     }
-    .filter-btn .material-icons,
+    .filter-btn .material-symbols-outlined,
     .filter-btn .svg-icon { font-size: 16px; width: 16px; height: 16px; }
 
     .bottom-nav { display: none; }
@@ -1920,8 +1929,8 @@ td input[type="checkbox"],
         scroll-behavior: auto !important;
     }
 }
-/* ═══════════════ AJUSTES v11.0 — POST APP.JS ═══════════════ */
 
+/* ═══════════════ AJUSTES v11.0 — POST APP.JS ═══════════════ */
 /* Locales en FILAS (uno debajo del otro) */
 #reg-local-picker.local-picker-wrap {
     display: flex !important;
@@ -1987,7 +1996,7 @@ td input[type="checkbox"],
     box-shadow: var(--shadow-xs);
     -webkit-tap-highlight-color: transparent;
 }
-.btn-action .material-icons { font-size: 16px; }
+.btn-action .material-symbols-outlined { font-size: 16px; }
 .btn-action:active { transform: scale(.96); }
 
 .btn-action-blue {
@@ -2036,7 +2045,7 @@ td input[type="checkbox"],
     display: grid; place-items: center;
     border: 1px solid currentColor;
 }
-.historial-icon .material-icons { font-size: 20px; }
+.historial-icon .material-symbols-outlined { font-size: 20px; }
 
 .historial-body { flex: 1; min-width: 0; }
 .historial-accion {
@@ -2067,7 +2076,7 @@ td input[type="checkbox"],
     color: var(--color-gray);
     margin-top: .25rem;
 }
-.historial-meta .material-icons { color: var(--color-gray); }
+.historial-meta .material-symbols-outlined { color: var(--color-gray); }
 
 .historial-detalle {
     margin-top: .35rem;
@@ -2088,8 +2097,8 @@ td input[type="checkbox"],
 }
 
 /* Si el operador NO es admin: ocultar columnas/checkbox y barra selección */
-/* (la lógica la hace JS, pero por las dudas estilamos el TD vacío) */
 .tabla-desktop tbody tr td:first-child:empty { padding: 0; }
+
 /* ═══════════════ AJUSTES v12.0 — UX & MENÚ ═══════════════ */
 
 /* Botón danger fuerte (modales de eliminación) */
@@ -2162,7 +2171,7 @@ td input[type="checkbox"],
     min-height: 36px;
     transition: all var(--t-base);
 }
-.menu-tres-puntos .btn-puntos .material-icons { font-size: 20px; }
+.menu-tres-puntos .btn-puntos .material-symbols-outlined { font-size: 20px; }
 .menu-tres-puntos .btn-puntos:hover {
     background: var(--color-primary);
     color: #fff;
@@ -2279,7 +2288,7 @@ td input[type="checkbox"],
     padding: 0;
     border-radius: var(--r-md);
 }
-.action-btns-table .btn-accion .material-icons { font-size: 22px; }
+.action-btns-table .btn-accion .material-symbols-outlined { font-size: 22px; }
 
 /* Versión TARJETA (grandes, con texto) */
 .btn-accion-lg {
@@ -2291,7 +2300,7 @@ td input[type="checkbox"],
     position: relative;
     overflow: hidden;
 }
-.btn-accion-lg .material-icons { font-size: 22px; }
+.btn-accion-lg .material-symbols-outlined { font-size: 22px; }
 .btn-accion-lg .btn-accion-label {
     font-weight: 800;
     letter-spacing: .3px;
@@ -2375,18 +2384,11 @@ td input[type="checkbox"],
     border-left: 3px solid var(--color-border-strong);
     font-style: normal;
 }
-.card-log .material-icons { font-size: 14px; color: var(--color-gray); }
+.card-log .material-symbols-outlined { font-size: 14px; color: var(--color-gray); }
 
 .card-menu {
     align-self: flex-start;
     flex-shrink: 0;
-}
-
-/* Ocultar card-domicilio si no tiene contenido */
-.card-domicilio {
-    font-size: .74rem;
-    color: var(--color-gray);
-    margin-top: .25rem;
 }
 
 /* ═══════════════ HISTORIAL MEJORADO ═══════════════ */
@@ -2454,7 +2456,7 @@ td input[type="checkbox"],
     margin-bottom: .25rem;
     border-bottom: 1px dashed var(--color-border);
 }
-.hist-timeline-title .material-icons { font-size: 16px; color: var(--color-primary); }
+.hist-timeline-title .material-symbols-outlined { font-size: 16px; color: var(--color-primary); }
 
 .historial-list {
     max-height: 380px;
@@ -2489,7 +2491,7 @@ td input[type="checkbox"],
     display: grid; place-items: center;
     border: 1.5px solid currentColor;
 }
-.historial-icon .material-icons { font-size: 22px; }
+.historial-icon .material-symbols-outlined { font-size: 22px; }
 
 .historial-body { flex: 1; min-width: 0; }
 .historial-accion {
@@ -2546,7 +2548,7 @@ td input[type="checkbox"],
     border: 1px solid var(--color-border-soft);
     font-weight: 600;
 }
-.hist-meta-chip .material-icons { font-size: 13px; color: var(--color-gray); }
+.hist-meta-chip .material-symbols-outlined { font-size: 13px; color: var(--color-gray); }
 
 .historial-detalle {
     margin-top: .4rem;

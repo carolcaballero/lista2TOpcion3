@@ -1,10 +1,8 @@
 // ═══════════════════════════════════════════════════════════════
-//  CONTROL ELECTORAL — app.js v12.0
-//  • Fix bug selección checkbox (event propagation correcto)
-//  • Menú 3 puntos enriquecido (Historial, Marcar, Copiar, WhatsApp, Eliminar)
-//  • Modales elegantes para eliminar operador + limpiar bitácora
-//  • Historial muestra todos los "Cambiado por"
-//  • Botones de acción de planilla mejorados
+//  CONTROL ELECTORAL — app.js v12.1
+//  • Fix: Material Symbols no aparecían por destrucción del DOM
+//  • Delegación de eventos real (sin cloneNode)
+//  • Espera document.fonts.load() antes de primer render
 // ═══════════════════════════════════════════════════════════════
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -57,6 +55,12 @@ const state = {
 };
 
 const selectedCedulas = new Set();
+
+// Helper para iconos Material Symbols (con fallback visual)
+function icon(name, extraClasses = "") {
+    return `<span class="material-symbols-outlined ${extraClasses}" aria-hidden="true">${name}</span>`;
+}
+window.icon = icon;
 
 // ═══════════════ SHA-256 ═══════════════
 async function sha256(texto) {
@@ -206,11 +210,22 @@ function renderBitacora(eventos) {
 }
 
 // ═══════════════ INICIO ═══════════════
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+    // 🔑 Esperar a que Material Symbols cargue antes de renderizar UI
+    try {
+        await document.fonts.load('1em "Material Symbols Outlined"');
+    } catch (e) {
+        console.warn("Material Symbols no cargó:", e);
+    }
+
     bindEvents();
     bindNetworkEvents();
     iniciarReintentosOffline();
     ajustarStickyFiltros();
+    
+    // Bindear eventos de votantes UNA SOLA VEZ
+    bindRowEvents();
+    
     checkSession();
 
     document.addEventListener('click', function(e) {
@@ -652,9 +667,6 @@ async function renderTablaVotantes() {
         }
     }
 
-    // 🔑 BINDING DELEGADO — un solo listener por contenedor
-    bindRowEvents();
-
     const master = document.getElementById("checkbox-todos");
     if (master) master.checked = paginatedList.length > 0 && paginatedList.every(v => selectedCedulas.has(v.cedula));
 
@@ -701,12 +713,11 @@ function construirCardsConSecciones(lista, mostrarSecciones, isAdmin) {
     return html;
 }
 
-// 🆕 Dropdown del menú 3 puntos: opciones ampliadas
+// Dropdown del menú 3 puntos: opciones ampliadas
 function construirDropdownMenu(v, voto, obs, isAdmin) {
     const id = `menu-${v.cedula}`;
     const nombreEsc = jsEscape(v.nombre);
 
-    // Acciones de voto contextuales
     let accionesVoto = "";
     if (voto === "Pendiente") {
         accionesVoto += `
@@ -716,7 +727,7 @@ function construirDropdownMenu(v, voto, obs, isAdmin) {
         accionesVoto += `
             <a href="#" data-action="quick-novoto" data-cedula="${v.cedula}" data-nombre="${nombreEsc}"><svg class="svg-icon" aria-hidden="true" style="color:#B45309;"><use href="#i-cancel"/></svg> Cambiar a <strong>No Votó</strong></a>
             <a href="#" data-action="quick-voto"   data-cedula="${v.cedula}"><svg class="svg-icon" aria-hidden="true" style="color:#B91C1C;"><use href="#i-arrow-back"/></svg> Quitar voto (Pendiente)</a>`;
-    } else { // No Votó
+    } else {
         accionesVoto += `
             <a href="#" data-action="quick-voto"   data-cedula="${v.cedula}"><svg class="svg-icon" aria-hidden="true" style="color:#15803D;"><use href="#i-check"/></svg> Cambiar a <strong>Votó</strong></a>
             <a href="#" data-action="quick-novoto" data-cedula="${v.cedula}" data-nombre="${nombreEsc}"><svg class="svg-icon" aria-hidden="true" style="color:#B91C1C;"><use href="#i-arrow-back"/></svg> Quitar No Votó (Pendiente)</a>`;
@@ -807,63 +818,21 @@ function construirTarjeta(v, idx, isAdmin) {
         </div>`;
 }
 
-// ═══════════════ 🔑 BINDING DELEGADO (fix bug selección) ═══════════════
+// ═══════════════ 🔑 BINDING DELEGADO (una sola vez, sin clonar) ═══════════════
+let _rowEventsBound = false;
+
 function bindRowEvents() {
-    const cards = document.getElementById("cards-container");
-    const tbody = document.getElementById("votantes-table-body");
+    if (_rowEventsBound) return;
+    _rowEventsBound = true;
 
-    [cards, tbody].forEach(root => {
-        if (!root) return;
-        // Limpiamos handlers previos clonando
-        const fresh = root.cloneNode(true);
-        root.parentNode.replaceChild(fresh, root);
-    });
+    const appSection = document.getElementById("app-section");
+    if (!appSection) return;
 
-    // Re-obtener tras clonar
-    const cards2 = document.getElementById("cards-container");
-    const tbody2 = document.getElementById("votantes-table-body");
-
-    [cards2, tbody2].forEach(root => {
-        if (!root) return;
-
-        // Click delegado para data-action
-        root.addEventListener("click", (e) => {
-            const target = e.target.closest("[data-action]");
-            if (!target) return;
-
-            // No interferir con checkboxes ni el wrap del label
-            if (e.target.classList.contains("sel-checkbox") || e.target.closest(".sel-checkbox-wrap")) return;
-
-            const action = target.dataset.action;
-            const cedula = target.dataset.cedula;
-            const nombre = target.dataset.nombre || "";
-
-            e.preventDefault();
-            e.stopPropagation();
-
-            switch(action) {
-                case "voto":          accionVoto(cedula, "Votó"); break;
-                case "novoto":        accionVoto(cedula, "No Votó"); break;
-                case "quick-voto":    quickVoto(cedula); break;
-                case "quick-novoto":  quickNoVoto(cedula, nombre); break;
-                case "obs":           abrirModalObservacion(cedula, nombre); break;
-                case "historial":     abrirHistorial(cedula, nombre); break;
-                case "menu":          toggleMenu(e, cedula); break;
-                case "eliminar":      eliminarIndividual(cedula); break;
-                case "copiar-ci":     copiarCedula(cedula); break;
-                case "compartir-wa":  compartirWhatsApp(cedula, nombre); break;
-            }
-
-            // Cerrar dropdown tras una acción de menú
-            if (target.closest(".dropdown")) {
-                document.querySelectorAll('.menu-tres-puntos .dropdown.show').forEach(d => d.classList.remove('show'));
-            }
-        });
-
-        // 🔑 Cambio de checkbox SOLO en la celda específica
-        root.addEventListener("change", (e) => {
-            const cb = e.target.closest(".sel-checkbox");
-            if (!cb) return;
+    // Un solo listener para toda la app: checkboxes + acciones + dropdowns
+    appSection.addEventListener("click", (e) => {
+        // 1) Checkbox de selección (admin)
+        const cb = e.target.closest(".sel-checkbox");
+        if (cb) {
             e.stopPropagation();
             const cedula = cb.dataset.cedula;
             if (!cedula) return;
@@ -872,16 +841,59 @@ function bindRowEvents() {
             actualizarBarraSeleccion();
             const master = document.getElementById("checkbox-todos");
             if (master) {
-                const allCheckboxes = root.querySelectorAll('.sel-checkbox');
-                master.checked = allCheckboxes.length > 0 && [...allCheckboxes].every(cb2 => cb2.checked);
+                const all = document.querySelectorAll('.sel-checkbox');
+                master.checked = all.length > 0 && [...all].every(c => c.checked);
             }
-        });
+            return;
+        }
+
+        // 2) Botón de menú 3 puntos (toggle dropdown)
+        const menuBtn = e.target.closest('.btn-puntos[data-action="menu"]');
+        if (menuBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const cedula = menuBtn.dataset.cedula;
+            document.querySelectorAll('.menu-tres-puntos .dropdown.show').forEach(d => {
+                if (d.id !== `menu-${cedula}`) d.classList.remove('show');
+            });
+            const menu = document.getElementById(`menu-${cedula}`);
+            if (menu) menu.classList.toggle('show');
+            return;
+        }
+
+        // 3) Acciones de botones o dropdown items
+        const target = e.target.closest("[data-action]");
+        if (!target) return;
+        if (target.classList.contains("sel-checkbox") || target.closest(".sel-checkbox-wrap")) return;
+
+        const action = target.dataset.action;
+        const cedula = target.dataset.cedula;
+        const nombre = target.dataset.nombre || "";
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        switch (action) {
+            case "voto":          accionVoto(cedula, "Votó"); break;
+            case "novoto":        accionVoto(cedula, "No Votó"); break;
+            case "quick-voto":    quickVoto(cedula); break;
+            case "quick-novoto":  quickNoVoto(cedula, nombre); break;
+            case "obs":           abrirModalObservacion(cedula, nombre); break;
+            case "historial":     abrirHistorial(cedula, nombre); break;
+            case "eliminar":      eliminarIndividual(cedula); break;
+            case "copiar-ci":     copiarCedula(cedula); break;
+            case "compartir-wa":  compartirWhatsApp(cedula, nombre); break;
+        }
+
+        // Cerrar dropdown si el click vino de adentro
+        if (target.closest(".dropdown")) {
+            document.querySelectorAll('.menu-tres-puntos .dropdown.show').forEach(d => d.classList.remove('show'));
+        }
     });
 }
 
 // ═══════════════ CHECKBOXES — funciones globales ═══════════════
 window.handleCheckboxChange = function(checkbox) {
-    // Legacy no-op (ahora se maneja por delegación). Mantener por compatibilidad.
     const cedula = checkbox.dataset.cedula;
     if (!cedula) return;
     if (checkbox.checked) selectedCedulas.add(cedula);
@@ -944,7 +956,6 @@ async function copiarCedula(cedula) {
         await navigator.clipboard.writeText(cedula);
         toast(`✔ Cédula ${cedula} copiada.`, "ok");
     } catch {
-        // Fallback
         const ta = document.createElement("textarea");
         ta.value = cedula;
         document.body.appendChild(ta);
@@ -1059,7 +1070,6 @@ async function abrirHistorial(cedula, nombre) {
         const qRef = query(collection(db, "votos", cedula, "historial"), orderBy("timestamp", "desc"), limit(100));
         const snap = await getDocs(qRef);
 
-        // Estado actual (cabecera resumen)
         const actual = state.votos[cedula];
         const votoActual = actual?.voto || "Pendiente";
         const cambiadoPor = actual?.modificado_por || "—";
@@ -1287,7 +1297,7 @@ async function handleRegistrarUsuario(e) {
     } catch (err) { console.error(err); toast("Error al crear el usuario.", "error"); }
 }
 
-// 🆕 Eliminar operador con modal elegante
+// Eliminar operador con modal elegante
 window.pedirEliminarOperador = function(username) {
     const u = state.usuarios.find(x => x.username === username);
     document.getElementById("del-user-username").value = username;
@@ -1767,7 +1777,7 @@ window.agregarDesdePardon = async function() {
     }
 };
 
-// ═══════════════ 🆕 LIMPIAR BITÁCORA con modal ═══════════════
+// ═══════════════ LIMPIAR BITÁCORA con modal ═══════════════
 window.pedirLimpiarBitacora = function() {
     if (!state.currentUser?.isAdmin) return;
     abrirModal("modal-clear-bit");

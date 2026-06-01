@@ -62,6 +62,100 @@ function icon(name, extraClasses = "") {
 }
 window.icon = icon;
 
+const MATERIAL_SYMBOLS_FALLBACK = {
+    more_vert: '<circle cx="12" cy="5" r="1.9"></circle><circle cx="12" cy="12" r="1.9"></circle><circle cx="12" cy="19" r="1.9"></circle>',
+    check_circle: '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Zm-1.1 14.3-4.2-4.2 1.4-1.4 2.8 2.79 5.79-5.79 1.41 1.41-7.2 7.19Z"></path>',
+    cancel: '<path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2Zm4 13.59L14.59 17 12 14.41 9.41 17 8 15.59 10.59 13 8 10.41 9.41 9 12 11.59 14.59 9 16 10.41 13.41 13 16 15.59Z"></path>',
+    edit: '<path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25Zm2.92 2.33H5v-.92l8.06-8.06.92.92L5.92 19.58ZM20.71 7.04a1 1 0 0 0 0-1.41L18.37 3.29a1 1 0 0 0-1.41 0L15.13 5.12l3.75 3.75 1.83-1.83Z"></path>',
+    person: '<path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2.5c-3.34 0-10 1.67-10 5V22h20v-2.5c0-3.33-6.66-5-10-5Z"></path>',
+    history: '<path d="M13 3a9 9 0 0 0-8.95 8H1l4 4 4-4H6.07A7 7 0 1 1 13 18a6.96 6.96 0 0 1-4.95-2.05l-1.42 1.42A9 9 0 1 0 13 3Zm-1 5h2v5h-5v-2h3V8Z"></path>',
+    schedule: '<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm1 11h-5V7h2v4h3Z"></path>',
+    history_toggle_off: '<path d="M13 3a9 9 0 0 0-8.95 8H1l4 4 4-4H6.07A7 7 0 1 1 13 18a6.97 6.97 0 0 1-4.28-1.46l-1.43 1.43A9 9 0 1 0 13 3Zm-1 4h2v4.17l2.67 1.6-1 1.65L12 12.25V7Z"></path>',
+    arrow_right_alt: '<path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8Z"></path>',
+    remove_circle: '<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm5 11H7v-2h10Z"></path>',
+    delete_forever: '<path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12Zm4.59-6-2.3-2.29L9.7 9.3 12 11.59l2.29-2.29 1.41 1.41L13.41 13l2.29 2.29-1.41 1.41L12 14.41l-2.29 2.29-1.41-1.41L10.59 13ZM15.5 4l-1-1h-5l-1 1H5v2h14V4Z"></path>',
+    info: '<path d="M11 9h2V7h-2v2Zm0 8h2v-6h-2v6Zm1-15a10 10 0 1 0 10 10A10 10 0 0 0 12 2Z"></path>',
+    warning: '<path d="M1 21h22L12 2 1 21Zm12-3h-2v-2h2v2Zm0-4h-2v-4h2v4Z"></path>',
+    delete_sweep: '<path d="M15 16h4v2h-4v-2ZM3 18c0 .55.45 1 1 1h7v-2H5V7h10v6h2V7h2V5h-3.5l-1-1h-5l-1 1H5v2H3v11Z"></path>',
+    lock: '<path d="M17 9h-1V7a4 4 0 1 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-7-2a2 2 0 1 1 4 0v2h-4V7Zm2 10a2 2 0 0 1-1-3.73V12h2v1.27A2 2 0 0 1 12 17Z"></path>',
+    person_add: '<path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4Zm-8 0V9H4V7h3V4h2v3h3v2H9v3H7Zm8 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4Z"></path>',
+    download: '<path d="M5 20h14v-2H5v2ZM12 2v12l4-4 1.41 1.41L12 17.83l-5.41-5.42L8 10l4 4V2h0Z"></path>',
+    people: '<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3Zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.96 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z"></path>',
+    phone: '<path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1-.24c1.12.37 2.33.57 3.59.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.26.2 2.47.57 3.59a1 1 0 0 1-.25 1l-2.2 2.2Z"></path>',
+    search: '<path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 1 0 14 15.5l.27.28v.79L20 22l2-2-6.5-6ZM10 14A4 4 0 1 1 10 6a4 4 0 0 1 0 8Z"></path>',
+    inbox: '<path d="M19 3H4.99A2 2 0 0 0 3 5l.01 14A2 2 0 0 0 5 21h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm0 12h-4a3 3 0 0 1-6 0H5V5h14v10Z"></path>',
+    grid_view: '<path d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 7v-7h7v7h-7Z"></path>',
+    error_outline: '<path d="M11 15h2v2h-2v-2Zm0-8h2v6h-2V7Zm1 15A10 10 0 1 1 22 12 10 10 0 0 1 12 22Z"></path>',
+    warning_amber: '<path d="M12 5.99 19.53 19H4.47L12 5.99ZM12 2 1 21h22L12 2Zm-1 14h2v2h-2v-2Zm0-6h2v5h-2v-5Z"></path>'
+};
+
+let materialSymbolsObserver = null;
+
+function buildMaterialSymbolSvg(name) {
+    const svg = MATERIAL_SYMBOLS_FALLBACK[name];
+    if (!svg) return '';
+    return `<svg class="ms-fallback-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${svg}</svg>`;
+}
+
+function applyMaterialSymbolsFallback(root = document) {
+    if (!document.documentElement.classList.contains('ms-fallback-active')) return;
+    root.querySelectorAll?.('.material-symbols-outlined').forEach(el => {
+        const iconName = (el.dataset.iconName || el.textContent || '').trim();
+        if (!iconName) return;
+        el.dataset.iconName = iconName;
+        const svg = buildMaterialSymbolSvg(iconName);
+        if (!svg) return;
+        if (el.dataset.msFallbackApplied === '1') return;
+        el.dataset.msFallbackApplied = '1';
+        el.classList.add('ms-fallback-applied');
+        el.setAttribute('aria-label', iconName.replace(/_/g, ' '));
+        el.textContent = '';
+        el.insertAdjacentHTML('afterbegin', svg);
+    });
+}
+
+function activateMaterialSymbolsFallback(reason = '') {
+    if (!document.documentElement.classList.contains('ms-fallback-active')) {
+        document.documentElement.classList.add('ms-fallback-active');
+        if (reason) console.warn('Fallback Material Symbols activado:', reason);
+    }
+    applyMaterialSymbolsFallback(document);
+    if (!materialSymbolsObserver) {
+        materialSymbolsObserver = new MutationObserver(mutations => {
+            mutations.forEach(m => {
+                m.addedNodes.forEach(node => {
+                    if (node.nodeType !== 1) return;
+                    if (node.matches?.('.material-symbols-outlined')) applyMaterialSymbolsFallback(node.parentElement || document);
+                    else applyMaterialSymbolsFallback(node);
+                });
+            });
+        });
+        materialSymbolsObserver.observe(document.body, { childList: true, subtree: true });
+    }
+}
+
+async function ensureMaterialSymbolsReady() {
+    try {
+        if (!document.fonts?.load) {
+            activateMaterialSymbolsFallback('API document.fonts no disponible');
+            return;
+        }
+        const ok = await Promise.race([
+            (async () => {
+                await document.fonts.load('16px "Material Symbols Outlined"', 'more_vert');
+                if (document.fonts.ready) await document.fonts.ready;
+                return document.fonts.check ? document.fonts.check('16px "Material Symbols Outlined"', 'more_vert') : true;
+            })(),
+            new Promise(resolve => setTimeout(() => resolve(false), 1800))
+        ]);
+        if (!ok) activateMaterialSymbolsFallback('fuente no disponible o ligaduras no activas');
+    } catch (e) {
+        activateMaterialSymbolsFallback(e?.message || 'error al cargar fuente');
+    }
+}
+
+window.ensureMaterialSymbolsReady = ensureMaterialSymbolsReady;
+
 // ═══════════════ SHA-256 ═══════════════
 async function sha256(texto) {
     const encoder = new TextEncoder();
@@ -212,11 +306,7 @@ function renderBitacora(eventos) {
 // ═══════════════ INICIO ═══════════════
 document.addEventListener("DOMContentLoaded", async () => {
     // 🔑 Esperar a que Material Symbols cargue antes de renderizar UI
-    try {
-        await document.fonts.load('1em "Material Symbols Outlined"');
-    } catch (e) {
-        console.warn("Material Symbols no cargó:", e);
-    }
+    await ensureMaterialSymbolsReady();
 
     bindEvents();
     bindNetworkEvents();
@@ -229,14 +319,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     checkSession();
 
     document.addEventListener('click', function(e) {
-        if (!e.target.closest('.menu-tres-puntos')) {
-            document.querySelectorAll('.menu-tres-puntos .dropdown.show').forEach(d => d.classList.remove('show'));
-        }
+        if (!e.target.closest('.menu-tres-puntos')) closeAllMenus();
     });
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            document.querySelectorAll('.menu-tres-puntos .dropdown.show').forEach(d => d.classList.remove('show'));
-        }
+        if (e.key === 'Escape') closeAllMenus();
     });
 });
 
@@ -248,6 +334,22 @@ function bindNetworkEvents() {
     window.addEventListener("offline", () => {
         setStatus(false); updateOfflineBadge();
         toast("Sin conexión. Modo offline activado.", "warn");
+    });
+}
+
+function closeAllMenus(exceptCedula = null) {
+    document.querySelectorAll('.menu-tres-puntos .dropdown.show').forEach(d => {
+        if (!exceptCedula || d.id !== `menu-${exceptCedula}`) d.classList.remove('show');
+    });
+    document.querySelectorAll('.card-votante.menu-open').forEach(card => {
+        if (!exceptCedula || card.dataset.cedula !== exceptCedula) card.classList.remove('menu-open');
+    });
+}
+
+function syncMenuCardState() {
+    document.querySelectorAll('.card-votante').forEach(card => {
+        const open = !!card.querySelector('.menu-tres-puntos .dropdown.show');
+        card.classList.toggle('menu-open', open);
     });
 }
 
@@ -853,11 +955,12 @@ function bindRowEvents() {
             e.preventDefault();
             e.stopPropagation();
             const cedula = menuBtn.dataset.cedula;
-            document.querySelectorAll('.menu-tres-puntos .dropdown.show').forEach(d => {
-                if (d.id !== `menu-${cedula}`) d.classList.remove('show');
-            });
             const menu = document.getElementById(`menu-${cedula}`);
-            if (menu) menu.classList.toggle('show');
+            const card = menuBtn.closest('.card-votante');
+            const willShow = !!menu && !menu.classList.contains('show');
+            closeAllMenus();
+            if (menu) menu.classList.toggle('show', willShow);
+            if (card) card.classList.toggle('menu-open', willShow);
             return;
         }
 
@@ -886,9 +989,8 @@ function bindRowEvents() {
         }
 
         // Cerrar dropdown si el click vino de adentro
-        if (target.closest(".dropdown")) {
-            document.querySelectorAll('.menu-tres-puntos .dropdown.show').forEach(d => d.classList.remove('show'));
-        }
+        if (target.closest(".dropdown")) closeAllMenus();
+        else syncMenuCardState();
     });
 }
 
@@ -942,11 +1044,12 @@ function actualizarBarraSeleccion() {
 function toggleMenu(event, cedula) {
     event.stopPropagation();
     event.preventDefault();
-    document.querySelectorAll('.menu-tres-puntos .dropdown.show').forEach(d => {
-        if (d.id !== `menu-${cedula}`) d.classList.remove('show');
-    });
     const menu = document.getElementById(`menu-${cedula}`);
-    if (menu) menu.classList.toggle('show');
+    const card = event.target.closest('.card-votante');
+    const willShow = !!menu && !menu.classList.contains('show');
+    closeAllMenus();
+    if (menu) menu.classList.toggle('show', willShow);
+    if (card) card.classList.toggle('menu-open', willShow);
 }
 window.toggleMenu = toggleMenu;
 
@@ -970,10 +1073,22 @@ function compartirWhatsApp(cedula, nombre) {
     const v = state.padron.find(p => p.cedula === cedula);
     if (!v) return;
     const voto = getVoto(cedula);
-    const texto = `📋 *Control Electoral*\n\n👤 *Nombre:* ${v.nombre}\n🆔 *CI:* ${v.cedula}\n📍 *Local:* ${v.local || "—"}\n🗳️ *Mesa:* ${v.mesa || "—"} · Orden ${v.orden || "—"}\n📊 *Estado:* ${voto}`;
+    const obs = getObs(cedula);
+    const cambiadoPor = getLog(cedula);
+    const texto = [
+        '📋 *Control Electoral*',
+        '',
+        `👤 *Nombre:* ${v.nombre}`,
+        `🆔 *CI:* ${v.cedula}`,
+        `📍 *Local:* ${v.local || "—"}`,
+        `🗳️ *Mesa:* ${v.mesa || "—"} · Orden ${v.orden || "—"}`,
+        `📊 *Estado:* ${voto}`,
+        obs ? `📝 *Observación:* ${obs}` : '',
+        cambiadoPor !== '---' ? `👤 *Última actualización:* ${cambiadoPor}` : ''
+    ].filter(Boolean).join('\n');
     const url = `https://wa.me/?text=${encodeURIComponent(texto)}`;
-    window.open(url, "_blank");
-    toast(`Compartiendo datos de ${nombre || v.nombre}...`, "ok");
+    window.open(url, '_blank', 'noopener,noreferrer');
+    toast(`Compartiendo datos de ${nombre || v.nombre}...`, 'ok');
 }
 
 function quickVoto(cedula) {
@@ -1852,4 +1967,6 @@ window.exportarXLSX = exportarXLSX;
 window.exportarEstadisticasXLSX = function() { toast("Función disponible en administración.", "warn"); };
 window.activarBusquedaGlobal = ()=>{ state.searchAllStates=true; state.pagination.page=1; renderTablaVotantes(); };
 window.desactivarBusquedaGlobal = ()=>{ state.searchAllStates=false; state.pagination.page=1; renderTablaVotantes(); };
+
+
 

@@ -135,46 +135,45 @@ function activateMaterialSymbolsFallback(reason = '') {
 }
 
 async function ensureMaterialSymbolsReady() {
+    // Sin API de fonts → fallback inmediato
+    if (!document.fonts?.load) {
+        activateMaterialSymbolsFallback('API document.fonts no disponible');
+        return;
+    }
+
+    // Esperar que el CSS de Google Fonts haya sido parseado y las @font-face registradas
+    // fonts.ready se resuelve cuando el motor de fuentes termina de procesar los @font-face del DOM
     try {
-        if (!document.fonts?.load) {
-            activateMaterialSymbolsFallback('API document.fonts no disponible');
-            return;
-        }
-        const ok = await Promise.race([
-            (async () => {
-                // Cargar las dos variantes en paralelo
-                await Promise.allSettled([
-                    document.fonts.load('16px "Material Symbols Outlined"', 'more_vert'),
-                    document.fonts.load('16px "Material Symbols Rounded"', 'more_vert')
-                ]);
-                if (document.fonts.ready) await document.fonts.ready;
-
-                // Verificar con canvas si la ligatura realmente renderiza distinto al texto plano
-                // (document.fonts.check es poco fiable con ligaduras de iconos)
-                try {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 60; canvas.height = 30;
-                    const ctx = canvas.getContext('2d');
-                    if (!ctx) return true; // sin canvas, asumir OK
-
-                    // Medida con fuente de iconos
-                    ctx.font = '16px "Material Symbols Outlined", "Material Symbols Rounded"';
-                    const w1 = ctx.measureText('more_vert').width;
-
-                    // Medida con fuente genérica (debería ser diferente si la ligatura funciona)
-                    ctx.font = '16px sans-serif';
-                    const w2 = ctx.measureText('more_vert').width;
-
-                    // Si los anchos son iguales la ligatura NO funcionó (renderizó texto plano)
-                    return Math.abs(w1 - w2) > 2;
-                } catch (_) {
-                    // Si canvas falla, asumir que la fuente cargó OK
-                    return true;
-                }
-            })(),
-            new Promise(resolve => setTimeout(() => resolve(false), 3000))
+        await Promise.race([
+            document.fonts.ready,
+            new Promise(r => setTimeout(r, 4000)) // máximo 4s de espera
         ]);
-        if (!ok) activateMaterialSymbolsFallback('fuente no disponible o ligaduras no activas');
+    } catch (_) { /* ignorar */ }
+
+    // Intentar cargar ambas variantes con varios tamaños (el nombre exacto depende del UA)
+    const intentos = [
+        document.fonts.load('400 24px "Material Symbols Outlined"'),
+        document.fonts.load('400 24px "Material Symbols Rounded"'),
+        document.fonts.load('24px "Material Symbols Outlined"'),
+        document.fonts.load('24px "Material Symbols Rounded"'),
+    ];
+
+    try {
+        const resultados = await Promise.allSettled(intentos);
+        const cargó = resultados.some(r => r.status === 'fulfilled' && Array.isArray(r.value) && r.value.length > 0);
+
+        if (!cargó) {
+            // Verificar con check() como último recurso (menos fiable pero cubre edge cases)
+            const checkOk = (
+                (document.fonts.check?.('24px "Material Symbols Outlined"') ||
+                 document.fonts.check?.('24px "Material Symbols Rounded"'))
+            );
+            if (!checkOk) {
+                activateMaterialSymbolsFallback('fuente no disponible o ligaduras no activas');
+            }
+            // Si checkOk es true, la fuente está cargada aunque fonts.load no devolvió elementos
+        }
+        // Si cargó → no hacer nada, los iconos ya renderizan correctamente
     } catch (e) {
         activateMaterialSymbolsFallback(e?.message || 'error al cargar fuente');
     }

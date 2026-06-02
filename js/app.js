@@ -142,11 +142,37 @@ async function ensureMaterialSymbolsReady() {
         }
         const ok = await Promise.race([
             (async () => {
-                await document.fonts.load('16px "Material Symbols Rounded"', 'more_vert');
+                // Cargar las dos variantes en paralelo
+                await Promise.allSettled([
+                    document.fonts.load('16px "Material Symbols Outlined"', 'more_vert'),
+                    document.fonts.load('16px "Material Symbols Rounded"', 'more_vert')
+                ]);
                 if (document.fonts.ready) await document.fonts.ready;
-                return document.fonts.check ? document.fonts.check('16px "Material Symbols Rounded"', 'more_vert') : true;
+
+                // Verificar con canvas si la ligatura realmente renderiza distinto al texto plano
+                // (document.fonts.check es poco fiable con ligaduras de iconos)
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 60; canvas.height = 30;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) return true; // sin canvas, asumir OK
+
+                    // Medida con fuente de iconos
+                    ctx.font = '16px "Material Symbols Outlined", "Material Symbols Rounded"';
+                    const w1 = ctx.measureText('more_vert').width;
+
+                    // Medida con fuente genérica (debería ser diferente si la ligatura funciona)
+                    ctx.font = '16px sans-serif';
+                    const w2 = ctx.measureText('more_vert').width;
+
+                    // Si los anchos son iguales la ligatura NO funcionó (renderizó texto plano)
+                    return Math.abs(w1 - w2) > 2;
+                } catch (_) {
+                    // Si canvas falla, asumir que la fuente cargó OK
+                    return true;
+                }
             })(),
-            new Promise(resolve => setTimeout(() => resolve(false), 1800))
+            new Promise(resolve => setTimeout(() => resolve(false), 3000))
         ]);
         if (!ok) activateMaterialSymbolsFallback('fuente no disponible o ligaduras no activas');
     } catch (e) {
@@ -2094,5 +2120,4 @@ window.exportarXLSX = exportarXLSX;
 window.exportarEstadisticasXLSX = function() { toast("Función disponible en administración.", "warn"); };
 window.activarBusquedaGlobal = ()=>{ state.searchAllStates=true; state.pagination.page=1; renderTablaVotantes(); };
 window.desactivarBusquedaGlobal = ()=>{ state.searchAllStates=false; state.pagination.page=1; renderTablaVotantes(); };
-
 

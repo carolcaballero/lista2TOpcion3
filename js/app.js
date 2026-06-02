@@ -421,10 +421,17 @@ function syncMenuCardState() {
 function positionDropdown(menuBtn, menu) {
     if (!menuBtn || !menu) return;
 
-    // ── MÓVIL: sheet desde abajo ──
+    // ── MÓVIL: sheet desde abajo — teleportar al body para evitar que el backdrop lo tape ──
     if (window.innerWidth <= 768) {
-        menu.classList.add('dropdown-mobile-sheet');
-        menu.classList.remove('dropdown-teleported');
+        // Teleportar al body si no está ya ahí
+        if (menu.parentElement !== document.body) {
+            _teleportedMenuOriginalParent = menu.parentElement;
+            _teleportedMenu = menu;
+            document.body.appendChild(menu);
+        }
+        menu.classList.add('dropdown-mobile-sheet', 'dropdown-teleported');
+        menu.classList.remove('dropdown-relative');
+        menu.style.cssText = ''; // el posicionamiento lo maneja el CSS del sheet
         document.body.classList.add('menu-sheet-open');
         const backdrop = document.getElementById('menu-backdrop');
         if (backdrop) backdrop.classList.add('show');
@@ -432,27 +439,20 @@ function positionDropdown(menuBtn, menu) {
     }
 
     // ── DESKTOP ──
-    // Si está dentro de una tabla (overflow contenedor), teleportar al body
     const isInsideTable = !!menuBtn.closest('.tabla-desktop, .table-responsive');
 
     if (isInsideTable) {
-        // Teleportar al body con position:fixed calculado
         _teleportedMenuOriginalParent = menu.parentElement;
         _teleportedMenu = menu;
         document.body.appendChild(menu);
         menu.classList.add('dropdown-teleported');
+        menu.classList.remove('dropdown-mobile-sheet');
 
-        // Calcular posición desde el botón
         const btnRect = menuBtn.getBoundingClientRect();
-        const menuW = 288; // ancho estimado del dropdown
+        const menuW = 288;
         const gap = 6;
-
-        let top = btnRect.bottom + gap + window.scrollY;
-        let left = btnRect.right - menuW; // alinear borde derecho
-
-        // Ajustar si se sale por la izquierda
+        let left = btnRect.right - menuW;
         if (left < 12) left = 12;
-        // Ajustar si se sale por la derecha
         if (left + menuW > window.innerWidth - 12) left = window.innerWidth - menuW - 12;
 
         menu.style.cssText = `
@@ -465,7 +465,6 @@ function positionDropdown(menuBtn, menu) {
             min-width: ${menuW}px;
         `;
 
-        // Ajustar si el menú se desborda por abajo
         requestAnimationFrame(() => {
             const mRect = menu.getBoundingClientRect();
             if (mRect.bottom > window.innerHeight - 12) {
@@ -473,8 +472,7 @@ function positionDropdown(menuBtn, menu) {
             }
         });
     } else {
-        // Tarjeta móvil / posicionamiento relativo normal
-        menu.classList.remove('dropdown-teleported');
+        menu.classList.remove('dropdown-teleported', 'dropdown-mobile-sheet');
         menu.style.cssText = 'right: 0; top: calc(100% + 6px);';
 
         requestAnimationFrame(() => {
@@ -1217,11 +1215,11 @@ function compartirWhatsApp(cedula, nombre) {
         '🗳️ *Control Electoral — Lista 2 Opción 3*',
         '',
         `👤 *Nombre:* ${v.nombre}`,
-        `🪪 *CI:* ${v.cedula}`,
-        `🏛️ *Local:* ${v.local  || "—"}`,
+        `📄 *CI:* ${v.cedula}`,
+        `📍 *Local:* ${v.local  || "—"}`,
         `📋 *Mesa:* ${v.mesa   || "—"}${v.orden ? `  ·  Orden ${v.orden}` : ""}`,
         `${estadoEmoji} *Estado:* ${voto}`,
-        obs           ? `📝 *Observación:* ${obs}` : '',
+        obs           ? `📝 *Obs:* ${obs}` : '',
         cambiadoPor !== '---' ? `👤 *Actualizado por:* ${cambiadoPor}` : ''
     ].filter(Boolean).join('\n');
 

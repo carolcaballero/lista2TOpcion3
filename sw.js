@@ -5,7 +5,7 @@
 //               Firebase en gstatic → excluido del cache de fuentes
 // ═══════════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'ce-v13-cache-v1'; // ← incrementar cuando cambies assets
+const CACHE_NAME = 'ce-v13-cache-v2'; // ← incrementar cuando cambies assets
 
 const STATIC_ASSETS = [
   './',

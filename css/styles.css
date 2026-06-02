@@ -595,6 +595,7 @@ button:focus-visible {
     border-radius: var(--r-md);
     box-shadow: inset 0 1px 3px rgba(15,23,42,0.05);
     border: 1px solid var(--color-border-soft);
+    flex: 1;
 }
 
 .tab-btn {
@@ -609,6 +610,9 @@ button:focus-visible {
     font-weight: 700;
     font-size: .78rem;
     position: relative;
+    white-space: nowrap;
+    flex: 1;
+    justify-content: center;
 }
 .tab-btn:hover {
     color: var(--color-primary);
@@ -630,6 +634,44 @@ button:focus-visible {
     animation: tabUnderline .3s var(--ease-out);
 }
 @keyframes tabUnderline { from { width: 0; opacity: 0; } to { width: 18px; opacity: 1; } }
+
+/* Icono arriba + texto abajo en móvil */
+@media (max-width: 640px) {
+    .toolbar-top {
+        flex-direction: column;
+        align-items: stretch;
+        gap: .5rem;
+    }
+    .toolbar-tabs {
+        width: 100%;
+        padding: .25rem;
+        gap: .2rem;
+    }
+    .tab-btn {
+        flex-direction: column;
+        gap: .2rem;
+        padding: .55rem .3rem .45rem;
+        font-size: .6rem;
+        letter-spacing: .2px;
+        white-space: normal;
+        text-align: center;
+        min-width: 0;
+        line-height: 1.2;
+    }
+    .tab-btn .tab-icon {
+        width: 20px !important;
+        height: 20px !important;
+        flex-shrink: 0;
+    }
+    .tab-label {
+        display: block;
+        line-height: 1.1;
+    }
+    .tab-btn.active::after {
+        bottom: -2px;
+        width: 14px;
+    }
+}
 
 /* ═══════════════ FILTROS ═══════════════ */
 .toolbar-filters { margin-bottom: .75rem; }
@@ -3078,4 +3120,103 @@ body.menu-sheet-open { overflow: hidden; }
 @keyframes sheetUp {
     from { opacity: 0; transform: translateY(16px) scale(.98); }
     to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ═══════════════ BOTÓN EXCEL COMPLETO ═══════════════ */
+.btn-excel-export {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    padding: 1.1rem 1.4rem;
+    background: linear-gradient(135deg, #166534, #15803D);
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    font-family: var(--font-family);
+    box-shadow: 0 4px 18px -4px rgba(21,128,61,0.5), 0 1px 4px rgba(21,128,61,0.2);
+    transition: all var(--t-base);
+    text-align: left;
+    position: relative;
+    overflow: hidden;
+}
+.btn-excel-export::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,.08), transparent);
+    pointer-events: none;
+}
+.btn-excel-export:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px -4px rgba(21,128,61,0.55), 0 2px 8px rgba(21,128,61,0.25);
+    background: linear-gradient(135deg, #14532d, #166534);
+}
+.btn-excel-export:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px -2px rgba(21,128,61,0.4);
+}
+.btn-excel-export svg {
+    flex-shrink: 0;
+    opacity: .92;
+}
+.btn-excel-export strong {
+    display: block;
+    font-size: .9rem;
+    font-weight: 800;
+    letter-spacing: -.2px;
+    line-height: 1.2;
+}
+.btn-excel-export small {
+    display: block;
+    font-size: .7rem;
+    opacity: .78;
+    margin-top: .2rem;
+    font-weight: 500;
+    letter-spacing: .2px;
+}
+
+/* ═══════════════ DROPDOWN SHEET MÓVIL — mejorado ═══════════════ */
+@media (max-width: 768px) {
+    .menu-tres-puntos .dropdown.dropdown-mobile-sheet {
+        box-shadow: 0 -8px 40px rgba(15,23,42,.18), 0 -2px 8px rgba(15,23,42,.08);
+    }
+    /* Agarre visual arriba del sheet */
+    .menu-tres-puntos .dropdown.dropdown-mobile-sheet::before {
+        content: "";
+        display: block;
+        width: 36px;
+        height: 4px;
+        background: var(--color-border);
+        border-radius: var(--r-pill);
+        margin: 10px auto 0;
+    }
+    /* Items más grandes para dedo */
+    .menu-tres-puntos .dropdown.dropdown-mobile-sheet a {
+        min-height: 54px !important;
+        font-size: .9rem !important;
+        padding: .8rem 1.25rem !important;
+    }
+    .menu-tres-puntos .dropdown.dropdown-mobile-sheet .dropdown-primary {
+        min-height: 60px !important;
+        padding: .9rem 1.25rem !important;
+    }
+    .menu-tres-puntos .dropdown.dropdown-mobile-sheet .dropdown-header {
+        padding: .6rem 1.25rem .75rem !important;
+    }
+    .menu-tres-puntos .dropdown.dropdown-mobile-sheet .dropdown-header-name {
+        font-size: .95rem;
+    }
+    .menu-tres-puntos .dropdown.dropdown-mobile-sheet .dropdown-header-ced {
+        font-size: .78rem;
+        margin-top: .2rem;
+    }
+    .menu-tres-puntos .dropdown.dropdown-mobile-sheet .svg-icon {
+        width: 22px !important;
+        height: 22px !important;
+    }
+    .menu-tres-puntos .dropdown.dropdown-mobile-sheet .dropdown-divider {
+        margin: .3rem 0;
+    }
 }

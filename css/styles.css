@@ -1058,7 +1058,6 @@ td input[type="checkbox"],
     display: inline-block;
     z-index: 15;
 }
-.card-menu { z-index: 16; }
 .card-votante.menu-open { z-index: 40; }
 .menu-tres-puntos .btn-puntos {
     background: var(--color-bg-soft);
@@ -2513,7 +2512,8 @@ td input[type="checkbox"],
     font-size: .78rem;
     border-radius: var(--r-md);
     position: relative;
-    overflow: visible;
+    overflow: hidden;    /* era visible — causaba que el botón tapara el menú tres puntos */
+    z-index: 1;          /* explícito para no flotar sobre card-menu */
 }
 .btn-accion-lg .material-symbols-outlined { font-size: 22px; }
 .btn-accion-lg .btn-accion-label {
@@ -2604,6 +2604,14 @@ td input[type="checkbox"],
 .card-menu {
     align-self: flex-start;
     flex-shrink: 0;
+    position: relative;
+    z-index: 20;          /* siempre encima de action-btns y card content */
+}
+
+/* action-btns dentro de la card — debajo del card-menu */
+.action-btns-card {
+    position: relative;
+    z-index: 1;
 }
 
 /* ═══════════════ HISTORIAL MEJORADO ═══════════════ */

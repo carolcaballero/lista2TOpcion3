@@ -253,7 +253,7 @@ async function syncOfflineQueue() {
     }
     saveOfflineQueue(remaining);
     updateOfflineBadge();
-    if (ok > 0) { toast(`✔ ${ok} acciones offline sincronizadas.`, "ok"); actualizarDashboard(); }
+    if (ok > 0) { toast(`${ok} acciones offline sincronizadas.`, "ok"); actualizarDashboard(); }
     if (err > 0) toast(`⚠ ${err} acciones quedaron pendientes.`, "warn");
 }
 function iniciarReintentosOffline() {
@@ -1190,13 +1190,13 @@ window.toggleMenu = toggleMenu;
 async function copiarCedula(cedula) {
     try {
         await navigator.clipboard.writeText(cedula);
-        toast(`✔ Cédula ${cedula} copiada.`, "ok");
+        toast(`Cédula ${cedula} copiada.`, "ok");
     } catch {
         const ta = document.createElement("textarea");
         ta.value = cedula;
         document.body.appendChild(ta);
         ta.select();
-        try { document.execCommand("copy"); toast(`✔ Cédula ${cedula} copiada.`, "ok"); }
+        try { document.execCommand("copy"); toast(`Cédula ${cedula} copiada.`, "ok"); }
         catch { toast("No se pudo copiar.", "error"); }
         ta.remove();
     }
@@ -1205,23 +1205,29 @@ async function copiarCedula(cedula) {
 function compartirWhatsApp(cedula, nombre) {
     const v = state.padron.find(p => p.cedula === cedula);
     if (!v) return;
-    const voto = getVoto(cedula);
-    const obs = getObs(cedula);
+    const voto   = getVoto(cedula);
+    const obs    = getObs(cedula);
     const cambiadoPor = getLog(cedula);
+
+    // Emoji de estado según el voto
+    const estadoEmoji = voto === "Votó"    ? "✅" :
+                        voto === "No Votó" ? "❌" : "⏳";
+
     const texto = [
-        '📋 *Control Electoral*',
+        '🗳️ *Control Electoral — Lista 2 Opción 3*',
         '',
         `👤 *Nombre:* ${v.nombre}`,
-        `🆔 *CI:* ${v.cedula}`,
-        `📍 *Local:* ${v.local || "—"}`,
-        `🗳️ *Mesa:* ${v.mesa || "—"} · Orden ${v.orden || "—"}`,
-        `📊 *Estado:* ${voto}`,
-        obs ? `📝 *Observación:* ${obs}` : '',
-        cambiadoPor !== '---' ? `👤 *Última actualización:* ${cambiadoPor}` : ''
+        `🪪 *CI:* ${v.cedula}`,
+        `🏛️ *Local:* ${v.local  || "—"}`,
+        `📋 *Mesa:* ${v.mesa   || "—"}${v.orden ? `  ·  Orden ${v.orden}` : ""}`,
+        `${estadoEmoji} *Estado:* ${voto}`,
+        obs           ? `📝 *Observación:* ${obs}` : '',
+        cambiadoPor !== '---' ? `👤 *Actualizado por:* ${cambiadoPor}` : ''
     ].filter(Boolean).join('\n');
+
     const url = `https://wa.me/?text=${encodeURIComponent(texto)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
-    toast(`Compartiendo datos de ${nombre || v.nombre}...`, 'ok');
+    toast(`Compartiendo datos de ${nombre || v.nombre}...`, "ok");
 }
 
 function quickVoto(cedula) {
@@ -1298,7 +1304,7 @@ window.confirmarEliminarSeleccionados = async function() {
     actualizarDashboard();
     renderTablaVotantes();
     toast(err === 0
-        ? `✔ ${ok} registro${ok > 1 ? "s eliminados" : " eliminado"} correctamente.`
+        ? `${ok} registro${ok > 1 ? "s eliminados" : " eliminado"} correctamente.`
         : `⚠ ${ok} eliminados, ${err} con error.`,
         err === 0 ? "ok" : "warn");
 };
@@ -1444,8 +1450,8 @@ async function guardarVoto(cedula, voto, observaciones, accionBit, detalleBit, e
     try {
         await setDoc(doc(db, "votos", cedula), payload);
         await addDoc(collection(db, "votos", cedula, "historial"), histPayload);
-        if      (voto === "Votó")    toast("✔ ¡Voto registrado correctamente!", "ok");
-        else if (voto === "No Votó") toast("✔ Registrado como No Votó.", "ok");
+        if      (voto === "Votó")    toast("¡Voto registrado correctamente!", "ok");
+        else if (voto === "No Votó") toast("Registrado como No Votó.", "ok");
         else                         toast("Registro vuelto a Pendiente.", "warn");
         await registrarBitacora(accionBit, detalleBit);
     } catch (err) {
@@ -1506,7 +1512,7 @@ async function actualizarObservacion(cedula, texto, nombre, anterior) {
                 timestamp: serverTimestamp()
             });
         } catch(e) { /* historial opcional */ }
-        toast("✔ Observación guardada.", "ok");
+        toast("Observación guardada.", "ok");
         await registrarBitacora("Observación", `Actualizó obs. de ${v?.nombre || nombre || cedula}: "${texto.substring(0,60)}"`);
     } catch { toast("Error al guardar observación.", "error"); }
 }
@@ -1537,7 +1543,7 @@ async function handleRegistrarUsuario(e) {
         if (existe.exists()) { toast("El nombre de usuario ya existe.", "error"); return; }
         const passwordHash = await sha256(password);
         await setDoc(doc(db, "usuarios", username), { username, fullname, phone, passwordHash, isAdmin: false, local });
-        toast(`✔ Operador "${fullname}" creado correctamente.`);
+        toast(`Operador "${fullname}" creado correctamente.`);
         await registrarBitacora("Nuevo Operador", `Creó operador ${fullname} (${username})`);
         document.getElementById("register-user-form").reset();
         cargarLocalesDesdePadron();
@@ -1899,7 +1905,7 @@ window.exportarXLSX = function() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Planilla");
     XLSX.writeFile(wb, `planilla-electoral-${Date.now()}.xlsx`);
-    toast("✔ Planilla exportada.", "ok");
+    toast("Planilla exportada.", "ok");
 };
 
 // ═══════════════ CAMBIAR CONTRASEÑA ═══════════════
@@ -1928,7 +1934,7 @@ window.confirmarCambiarPassword = async function() {
         if (!snap.exists()) { errEl.textContent = "Operador no encontrado."; return; }
         const u = snap.data();
         await setDoc(ref, { ...u, passwordHash, password: null }, { merge: true });
-        toast(`✔ Contraseña de "${username}" actualizada.`, "ok");
+        toast(`Contraseña de "${username}" actualizada.`, "ok");
         await registrarBitacora("Cambio Contraseña", `Cambió contraseña de ${u.fullname || username}`);
         cerrarModal("modal-chpass");
     } catch (err) { errEl.textContent = "Error al guardar."; }
@@ -2035,7 +2041,7 @@ window.agregarDesdePardon = async function() {
     state.padron.push(nuevo);
     try {
         await setDoc(doc(db, "padron_extra", cedulaNorm), { ...nuevo, timestamp: serverTimestamp() });
-        toast(`✔ ${nombre} agregado.`, "ok");
+        toast(`${nombre} agregado.`, "ok");
         await registrarBitacora("Nuevo Votante", `Agregó a ${nombre} (CI ${cedulaNorm})`);
         actualizarDashboard();
     } catch (e) {
@@ -2119,4 +2125,3 @@ window.exportarXLSX = exportarXLSX;
 window.exportarEstadisticasXLSX = function() { toast("Función disponible en administración.", "warn"); };
 window.activarBusquedaGlobal = ()=>{ state.searchAllStates=true; state.pagination.page=1; renderTablaVotantes(); };
 window.desactivarBusquedaGlobal = ()=>{ state.searchAllStates=false; state.pagination.page=1; renderTablaVotantes(); };
-

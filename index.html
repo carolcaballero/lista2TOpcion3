@@ -392,10 +392,22 @@
 
     <div class="toolbar-top">
         <div class="toolbar-tabs">
-            <button id="tab-planilla"   class="tab-btn active"><svg class="svg-icon svg-sm" aria-hidden="true"><use href="#i-list"/></svg>Planilla</button>
-            <button id="tab-stats"      class="tab-btn"><svg class="svg-icon svg-sm" aria-hidden="true"><use href="#i-chart"/></svg>Estadísticas</button>
-            <button id="tab-admin"      class="tab-btn hidden"><svg class="svg-icon svg-sm" aria-hidden="true"><use href="#i-admin"/></svg>Administración</button>
-            <button id="tab-padron-anr" class="tab-btn"><svg class="svg-icon svg-sm" aria-hidden="true"><use href="#i-doc"/></svg>Padrón ANR</button>
+            <button id="tab-planilla"   class="tab-btn active">
+                <svg class="svg-icon svg-sm tab-icon" aria-hidden="true"><use href="#i-list"/></svg>
+                <span class="tab-label">Planilla</span>
+            </button>
+            <button id="tab-stats"      class="tab-btn">
+                <svg class="svg-icon svg-sm tab-icon" aria-hidden="true"><use href="#i-chart"/></svg>
+                <span class="tab-label">Estadísticas</span>
+            </button>
+            <button id="tab-admin"      class="tab-btn hidden">
+                <svg class="svg-icon svg-sm tab-icon" aria-hidden="true"><use href="#i-admin"/></svg>
+                <span class="tab-label">Admin</span>
+            </button>
+            <button id="tab-padron-anr" class="tab-btn">
+                <svg class="svg-icon svg-sm tab-icon" aria-hidden="true"><use href="#i-doc"/></svg>
+                <span class="tab-label">Padrón ANR</span>
+            </button>
         </div>
         <button id="btn-exportar" onclick="exportarXLSX()" class="btn-secondary hidden" style="display:none;">Exportar XLSX</button>
     </div>
@@ -506,8 +518,21 @@
             </div>
             <div class="admin-card">
                 <h3><span class="material-symbols-outlined">download</span>Exportar Estadísticas</h3>
-                <p style="font-size:.82rem;color:var(--color-text-soft);margin-bottom:14px;">Descargá Excel completo con planilla, estadísticas por local, mesa y resumen.</p>
-                <button onclick="exportarEstadisticasXLSX()" class="btn-primary">Descargar Excel Completo</button>
+                <p style="font-size:.82rem;color:var(--color-text-soft);margin-bottom:18px;padding:0 1.4rem;">Descargá Excel completo con planilla, estadísticas por local, mesa y resumen general.</p>
+                <div style="padding:0 1.4rem 1.4rem;">
+                    <button onclick="exportarEstadisticasXLSX()" class="btn-excel-export">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="12" y1="18" x2="12" y2="12"/>
+                            <polyline points="9 15 12 18 15 15"/>
+                        </svg>
+                        <span>
+                            <strong>Descargar Excel Completo</strong>
+                            <small>Planilla · Locales · Mesas · Resumen</small>
+                        </span>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -622,5 +647,4 @@
 </script>
 </body>
 </html>
-
 

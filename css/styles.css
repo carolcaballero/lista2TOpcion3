@@ -2942,8 +2942,8 @@ td input[type="checkbox"],
 #menu-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.18);
-    backdrop-filter: blur(1.5px);
+    background: rgba(15, 23, 42, 0.35);
+    /* SIN backdrop-filter: el blur creaba un stacking context que borroneaba el sheet */
     opacity: 0;
     pointer-events: none;
     transition: opacity var(--t-base);

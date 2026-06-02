@@ -3103,7 +3103,9 @@ body.menu-sheet-open { overflow: hidden; }
 }
 
 @media (max-width: 768px) {
-    .menu-tres-puntos .dropdown.dropdown-mobile-sheet {
+    /* Sheet funciona tanto dentro de menu-tres-puntos como teleportado al body */
+    .menu-tres-puntos .dropdown.dropdown-mobile-sheet,
+    .dropdown.dropdown-mobile-sheet {
         position: fixed !important;
         left: 12px !important;
         right: 12px !important;
@@ -3116,13 +3118,52 @@ body.menu-sheet-open { overflow: hidden; }
         overflow-y: auto;
         border-radius: 20px;
         animation: sheetUp .22s var(--ease-out);
+        /* z-index mayor que el backdrop (2500) para que nunca quede tapado */
+        z-index: 3000 !important;
+        background: #fff;
+        box-shadow: 0 -8px 40px rgba(15,23,42,.2), 0 -2px 8px rgba(15,23,42,.08);
     }
-    .menu-tres-puntos .dropdown.dropdown-mobile-sheet .dropdown-header {
+    .menu-tres-puntos .dropdown.dropdown-mobile-sheet .dropdown-header,
+    .dropdown.dropdown-mobile-sheet .dropdown-header {
         position: sticky;
         top: 0;
         z-index: 1;
         padding-top: 1rem;
         background: #fff;
+    }
+    /* Agarre visual */
+    .dropdown.dropdown-mobile-sheet::before {
+        content: "";
+        display: block;
+        width: 36px;
+        height: 4px;
+        background: var(--color-border);
+        border-radius: var(--r-pill);
+        margin: 10px auto 2px;
+    }
+    /* Items más grandes para dedo */
+    .dropdown.dropdown-mobile-sheet a {
+        min-height: 54px !important;
+        font-size: .9rem !important;
+        padding: .8rem 1.25rem !important;
+    }
+    .dropdown.dropdown-mobile-sheet .dropdown-primary {
+        min-height: 60px !important;
+        padding: .9rem 1.25rem !important;
+    }
+    .dropdown.dropdown-mobile-sheet .svg-icon {
+        width: 22px !important;
+        height: 22px !important;
+    }
+    .dropdown.dropdown-mobile-sheet .dropdown-divider {
+        margin: .3rem 0;
+    }
+    .dropdown.dropdown-mobile-sheet .dropdown-header-name {
+        font-size: .95rem;
+    }
+    .dropdown.dropdown-mobile-sheet .dropdown-header-ced {
+        font-size: .78rem;
+        margin-top: .2rem;
     }
 }
 @keyframes sheetUp {
@@ -3183,48 +3224,4 @@ body.menu-sheet-open { overflow: hidden; }
     margin-top: .2rem;
     font-weight: 500;
     letter-spacing: .2px;
-}
-
-/* ═══════════════ DROPDOWN SHEET MÓVIL — mejorado ═══════════════ */
-@media (max-width: 768px) {
-    .menu-tres-puntos .dropdown.dropdown-mobile-sheet {
-        box-shadow: 0 -8px 40px rgba(15,23,42,.18), 0 -2px 8px rgba(15,23,42,.08);
-    }
-    /* Agarre visual arriba del sheet */
-    .menu-tres-puntos .dropdown.dropdown-mobile-sheet::before {
-        content: "";
-        display: block;
-        width: 36px;
-        height: 4px;
-        background: var(--color-border);
-        border-radius: var(--r-pill);
-        margin: 10px auto 0;
-    }
-    /* Items más grandes para dedo */
-    .menu-tres-puntos .dropdown.dropdown-mobile-sheet a {
-        min-height: 54px !important;
-        font-size: .9rem !important;
-        padding: .8rem 1.25rem !important;
-    }
-    .menu-tres-puntos .dropdown.dropdown-mobile-sheet .dropdown-primary {
-        min-height: 60px !important;
-        padding: .9rem 1.25rem !important;
-    }
-    .menu-tres-puntos .dropdown.dropdown-mobile-sheet .dropdown-header {
-        padding: .6rem 1.25rem .75rem !important;
-    }
-    .menu-tres-puntos .dropdown.dropdown-mobile-sheet .dropdown-header-name {
-        font-size: .95rem;
-    }
-    .menu-tres-puntos .dropdown.dropdown-mobile-sheet .dropdown-header-ced {
-        font-size: .78rem;
-        margin-top: .2rem;
-    }
-    .menu-tres-puntos .dropdown.dropdown-mobile-sheet .svg-icon {
-        width: 22px !important;
-        height: 22px !important;
-    }
-    .menu-tres-puntos .dropdown.dropdown-mobile-sheet .dropdown-divider {
-        margin: .3rem 0;
-    }
 }

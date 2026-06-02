@@ -319,16 +319,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     checkSession();
 
     document.addEventListener('click', function(e) {
-        if (!e.target.closest('.menu-tres-puntos')) closeAllMenus();
+        const enMenuBtn = e.target.closest('.menu-tres-puntos');
+        const enDropdownTeleportado = e.target.closest('.dropdown.dropdown-teleported');
+        if (!enMenuBtn && !enDropdownTeleportado) closeAllMenus();
     });
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') closeAllMenus();
     });
     document.getElementById('menu-backdrop')?.addEventListener('click', () => closeAllMenus());
     window.addEventListener('resize', () => closeAllMenus());
-    window.addEventListener('scroll', () => {
-        if (window.innerWidth > 768) closeAllMenus();
-    }, true);
+    // Cerrar en cualquier scroll (captura eventos de scroll dentro de tabla tambien)
+    window.addEventListener('scroll', () => { closeAllMenus(); }, true);
+    document.addEventListener('scroll', () => { closeAllMenus(); }, true);
 });
 
 function bindNetworkEvents() {
@@ -342,15 +344,27 @@ function bindNetworkEvents() {
     });
 }
 
+// ── Referencia al dropdown actualmente "teleportado" al body (desktop tabla) ──
+let _teleportedMenu = null;
+let _teleportedMenuOriginalParent = null;
+
 function closeAllMenus(exceptCedula = null) {
+    // Devolver al DOM original cualquier menú teleportado
+    if (_teleportedMenu && (!exceptCedula || _teleportedMenu.id !== `menu-${exceptCedula}`)) {
+        _returnTeleportedMenu();
+    }
+
     document.querySelectorAll('.menu-tres-puntos .dropdown.show').forEach(d => {
         if (!exceptCedula || d.id !== `menu-${exceptCedula}`) {
-            d.classList.remove('show', 'dropdown-mobile-sheet');
-            d.style.left = '';
-            d.style.right = '';
-            d.style.top = '';
-            d.style.bottom = '';
-            d.style.minWidth = '';
+            d.classList.remove('show', 'dropdown-mobile-sheet', 'dropdown-teleported');
+            d.style.cssText = '';
+        }
+    });
+    // También limpiar cualquier dropdown teleportado suelto en body
+    document.querySelectorAll('.dropdown.dropdown-teleported.show').forEach(d => {
+        if (!exceptCedula || d.id !== `menu-${exceptCedula}`) {
+            d.classList.remove('show', 'dropdown-teleported');
+            d.style.cssText = '';
         }
     });
     document.querySelectorAll('.card-votante.menu-open').forEach(card => {
@@ -359,6 +373,17 @@ function closeAllMenus(exceptCedula = null) {
     document.body.classList.remove('menu-sheet-open');
     const backdrop = document.getElementById('menu-backdrop');
     if (backdrop && !exceptCedula) backdrop.classList.remove('show');
+}
+
+function _returnTeleportedMenu() {
+    if (!_teleportedMenu || !_teleportedMenuOriginalParent) return;
+    try {
+        _teleportedMenuOriginalParent.appendChild(_teleportedMenu);
+        _teleportedMenu.classList.remove('dropdown-teleported');
+        _teleportedMenu.style.cssText = '';
+    } catch(e) { /* si el padre ya no existe, ignorar */ }
+    _teleportedMenu = null;
+    _teleportedMenuOriginalParent = null;
 }
 
 function syncMenuCardState() {
@@ -370,35 +395,76 @@ function syncMenuCardState() {
 
 function positionDropdown(menuBtn, menu) {
     if (!menuBtn || !menu) return;
-    menu.classList.remove('dropdown-mobile-sheet');
-    menu.style.left = '';
-    menu.style.right = '0';
-    menu.style.top = 'calc(100% + 6px)';
-    menu.style.bottom = '';
-    menu.style.minWidth = '';
 
+    // ── MÓVIL: sheet desde abajo ──
     if (window.innerWidth <= 768) {
         menu.classList.add('dropdown-mobile-sheet');
+        menu.classList.remove('dropdown-teleported');
         document.body.classList.add('menu-sheet-open');
         const backdrop = document.getElementById('menu-backdrop');
         if (backdrop) backdrop.classList.add('show');
         return;
     }
 
-    requestAnimationFrame(() => {
-        const rect = menu.getBoundingClientRect();
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
+    // ── DESKTOP ──
+    // Si está dentro de una tabla (overflow contenedor), teleportar al body
+    const isInsideTable = !!menuBtn.closest('.tabla-desktop, .table-responsive');
 
-        if (rect.right > vw - 12) {
-            menu.style.right = 'auto';
-            menu.style.left = `${Math.max(12, menuBtn.offsetWidth - rect.width)}px`;
-        }
-        if (rect.bottom > vh - 12) {
-            menu.style.top = 'auto';
-            menu.style.bottom = 'calc(100% + 6px)';
-        }
-    });
+    if (isInsideTable) {
+        // Teleportar al body con position:fixed calculado
+        _teleportedMenuOriginalParent = menu.parentElement;
+        _teleportedMenu = menu;
+        document.body.appendChild(menu);
+        menu.classList.add('dropdown-teleported');
+
+        // Calcular posición desde el botón
+        const btnRect = menuBtn.getBoundingClientRect();
+        const menuW = 288; // ancho estimado del dropdown
+        const gap = 6;
+
+        let top = btnRect.bottom + gap + window.scrollY;
+        let left = btnRect.right - menuW; // alinear borde derecho
+
+        // Ajustar si se sale por la izquierda
+        if (left < 12) left = 12;
+        // Ajustar si se sale por la derecha
+        if (left + menuW > window.innerWidth - 12) left = window.innerWidth - menuW - 12;
+
+        menu.style.cssText = `
+            position: fixed !important;
+            top: ${btnRect.bottom + gap}px !important;
+            left: ${left}px !important;
+            right: auto !important;
+            bottom: auto !important;
+            z-index: 99999 !important;
+            min-width: ${menuW}px;
+        `;
+
+        // Ajustar si el menú se desborda por abajo
+        requestAnimationFrame(() => {
+            const mRect = menu.getBoundingClientRect();
+            if (mRect.bottom > window.innerHeight - 12) {
+                menu.style.top = `${btnRect.top - mRect.height - gap}px`;
+            }
+        });
+    } else {
+        // Tarjeta móvil / posicionamiento relativo normal
+        menu.classList.remove('dropdown-teleported');
+        menu.style.cssText = 'right: 0; top: calc(100% + 6px);';
+
+        requestAnimationFrame(() => {
+            const rect = menu.getBoundingClientRect();
+            const vw = window.innerWidth;
+            if (rect.right > vw - 12) {
+                menu.style.right = 'auto';
+                menu.style.left = `${Math.max(12, menuBtn.offsetWidth - rect.width)}px`;
+            }
+            if (rect.bottom > window.innerHeight - 12) {
+                menu.style.top = 'auto';
+                menu.style.bottom = 'calc(100% + 6px)';
+            }
+        });
+    }
 }
 
 function openDropdownMenu(menuBtn, cedula) {
@@ -875,89 +941,53 @@ function construirCardsConSecciones(lista, mostrarSecciones, isAdmin) {
     return html;
 }
 
-// Dropdown del menú 3 puntos — con Material Symbols profesionales
+// Dropdown del menú 3 puntos: opciones ampliadas
 function construirDropdownMenu(v, voto, obs, isAdmin) {
-  const id = `menu-${v.cedula}`;
-  const nombreEsc = jsEscape(v.nombre);
+    const id = `menu-${v.cedula}`;
+    const nombreEsc = jsEscape(v.nombre);
 
-  let accionesVoto = '';
-  if (voto === 'Pendiente') {
-    accionesVoto += `
-      <a href="#" data-action="quick-voto"   data-cedula="${v.cedula}">
-        <span class="material-symbols-outlined" style="color:#15803D;">check_circle</span>
-        <span>Marcar como <strong>Votó</strong></span>
-      </a>
-      <a href="#" data-action="quick-novoto" data-cedula="${v.cedula}" data-nombre="${nombreEsc}">
-        <span class="material-symbols-outlined" style="color:#B45309;">cancel</span>
-        <span>Marcar como <strong>No Votó</strong></span>
-      </a>`;
-  } else if (voto === 'Votó') {
-    accionesVoto += `
-      <a href="#" data-action="quick-novoto" data-cedula="${v.cedula}" data-nombre="${nombreEsc}">
-        <span class="material-symbols-outlined" style="color:#B45309;">cancel</span>
-        <span>Cambiar a <strong>No Votó</strong></span>
-      </a>
-      <a href="#" data-action="quick-voto"   data-cedula="${v.cedula}">
-        <span class="material-symbols-outlined" style="color:#B91C1C;">undo</span>
-        <span>Quitar voto (Pendiente)</span>
-      </a>`;
-  } else {
-    accionesVoto += `
-      <a href="#" data-action="quick-voto"   data-cedula="${v.cedula}">
-        <span class="material-symbols-outlined" style="color:#15803D;">check_circle</span>
-        <span>Cambiar a <strong>Votó</strong></span>
-      </a>
-      <a href="#" data-action="quick-novoto" data-cedula="${v.cedula}" data-nombre="${nombreEsc}">
-        <span class="material-symbols-outlined" style="color:#B91C1C;">undo</span>
-        <span>Quitar No Votó (Pendiente)</span>
-      </a>`;
-  }
+    let accionesVoto = "";
+    if (voto === "Pendiente") {
+        accionesVoto += `
+            <a href="#" data-action="quick-voto"   data-cedula="${v.cedula}"><svg class="svg-icon" aria-hidden="true" style="color:#15803D;"><use href="#i-check"/></svg> Marcar como <strong>Votó</strong></a>
+            <a href="#" data-action="quick-novoto" data-cedula="${v.cedula}" data-nombre="${nombreEsc}"><svg class="svg-icon" aria-hidden="true" style="color:#B45309;"><use href="#i-cancel"/></svg> Marcar como <strong>No Votó</strong></a>`;
+    } else if (voto === "Votó") {
+        accionesVoto += `
+            <a href="#" data-action="quick-novoto" data-cedula="${v.cedula}" data-nombre="${nombreEsc}"><svg class="svg-icon" aria-hidden="true" style="color:#B45309;"><use href="#i-cancel"/></svg> Cambiar a <strong>No Votó</strong></a>
+            <a href="#" data-action="quick-voto"   data-cedula="${v.cedula}"><svg class="svg-icon" aria-hidden="true" style="color:#B91C1C;"><use href="#i-arrow-back"/></svg> Quitar voto (Pendiente)</a>`;
+    } else {
+        accionesVoto += `
+            <a href="#" data-action="quick-voto"   data-cedula="${v.cedula}"><svg class="svg-icon" aria-hidden="true" style="color:#15803D;"><use href="#i-check"/></svg> Cambiar a <strong>Votó</strong></a>
+            <a href="#" data-action="quick-novoto" data-cedula="${v.cedula}" data-nombre="${nombreEsc}"><svg class="svg-icon" aria-hidden="true" style="color:#B91C1C;"><use href="#i-arrow-back"/></svg> Quitar No Votó (Pendiente)</a>`;
+    }
 
-  const menuObs = obs
-    ? `<a href="#" data-action="obs" data-cedula="${v.cedula}" data-nombre="${nombreEsc}">
-         <span class="material-symbols-outlined" style="color:#B45309;">edit</span>
-         <span>Editar observación</span>
-       </a>`
-    : `<a href="#" data-action="obs" data-cedula="${v.cedula}" data-nombre="${nombreEsc}">
-         <span class="material-symbols-outlined" style="color:#B45309;">edit</span>
-         <span>Agregar observación</span>
-       </a>`;
+    const menuObs = obs
+        ? `<a href="#" data-action="obs" data-cedula="${v.cedula}" data-nombre="${nombreEsc}"><svg class="svg-icon" aria-hidden="true" style="color:#B45309;"><use href="#i-edit"/></svg> Editar observación</a>`
+        : `<a href="#" data-action="obs" data-cedula="${v.cedula}" data-nombre="${nombreEsc}"><svg class="svg-icon" aria-hidden="true" style="color:#B45309;"><use href="#i-edit"/></svg> Agregar observación</a>`;
 
-  const menuEliminar = isAdmin
-    ? `<div class="dropdown-divider"></div>
-       <a href="#" class="dropdown-danger" data-action="eliminar" data-cedula="${v.cedula}">
-         <span class="material-symbols-outlined">delete</span>
-         <span>Eliminar votante</span>
-       </a>`
-    : '';
+    const menuEliminar = isAdmin
+        ? `<div class="dropdown-divider"></div>
+           <a href="#" class="dropdown-danger" data-action="eliminar" data-cedula="${v.cedula}"><svg class="svg-icon" aria-hidden="true"><use href="#i-delete"/></svg> Eliminar votante</a>`
+        : "";
 
-  return `
-    <div class="dropdown" id="${id}">
-      <div class="dropdown-header">
-        <span class="dropdown-header-name">${escHtml(v.nombre)}</span>
-        <span class="dropdown-header-ced">CI ${escHtml(v.cedula)}</span>
-      </div>
-      <a href="#" data-action="historial" data-cedula="${v.cedula}" data-nombre="${nombreEsc}" class="dropdown-primary">
-        <span class="material-symbols-outlined" style="color:#1D4ED8;">history</span>
-        <span>
-          <strong>Ver historial completo</strong>
-          <small>Todos los cambios y "Cambiado por"</small>
-        </span>
-      </a>
-      <div class="dropdown-divider"></div>
-      ${accionesVoto}
-      <div class="dropdown-divider"></div>
-      ${menuObs}
-      <a href="#" data-action="copiar-ci" data-cedula="${v.cedula}">
-        <span class="material-symbols-outlined" style="color:#475569;">content_copy</span>
-        <span>Copiar cédula</span>
-      </a>
-      <a href="#" data-action="compartir-wa" data-cedula="${v.cedula}" data-nombre="${nombreEsc}">
-        <span class="material-symbols-outlined" style="color:#15803D;">chat</span>
-        <span>Compartir por WhatsApp</span>
-      </a>
-      ${menuEliminar}
-    </div>`;
+    return `
+        <div class="dropdown" id="${id}">
+            <div class="dropdown-header">
+                <span class="dropdown-header-name">${escHtml(v.nombre)}</span>
+                <span class="dropdown-header-ced">CI ${escHtml(v.cedula)}</span>
+            </div>
+            <a href="#" data-action="historial" data-cedula="${v.cedula}" data-nombre="${nombreEsc}" class="dropdown-primary">
+                <svg class="svg-icon" aria-hidden="true" style="color:#1D4ED8;"><use href="#i-history"/></svg>
+                <span><strong>Ver historial completo</strong><br><small>Todos los cambios y "Cambiado por"</small></span>
+            </a>
+            <div class="dropdown-divider"></div>
+            ${accionesVoto}
+            <div class="dropdown-divider"></div>
+            ${menuObs}
+            <a href="#" data-action="copiar-ci" data-cedula="${v.cedula}"><svg class="svg-icon" aria-hidden="true" style="color:#475569;"><use href="#i-copy"/></svg> Copiar cédula</a>
+            <a href="#" data-action="compartir-wa" data-cedula="${v.cedula}" data-nombre="${nombreEsc}"><svg class="svg-icon" aria-hidden="true" style="color:#15803D;"><use href="#i-whatsapp"/></svg> Compartir por WhatsApp</a>
+            ${menuEliminar}
+        </div>`;
 }
 
 function construirTarjeta(v, idx, isAdmin) {
@@ -1026,8 +1056,8 @@ function bindRowEvents() {
     const appSection = document.getElementById("app-section");
     if (!appSection) return;
 
-    // Un solo listener para toda la app: checkboxes + acciones + dropdowns
-    appSection.addEventListener("click", (e) => {
+    // Función compartida para manejar acciones de datos
+    function handleDataAction(e) {
         // 1) Checkbox de selección (admin)
         const cb = e.target.closest(".sel-checkbox");
         if (cb) {
@@ -1082,7 +1112,17 @@ function bindRowEvents() {
         // Cerrar dropdown si el click vino de adentro
         if (target.closest(".dropdown")) closeAllMenus();
         else syncMenuCardState();
-    });
+    }
+
+    // Listener principal en appSection (cards + tabla)
+    appSection.addEventListener("click", handleDataAction);
+
+    // Listener en document para dropdowns teleportados al body (desktop tabla)
+    document.addEventListener("click", (e) => {
+        const inTeleported = e.target.closest('.dropdown.dropdown-teleported');
+        if (!inTeleported) return;
+        handleDataAction(e);
+    }, true); // capture para interceptar antes del cierre general
 }
 
 // ═══════════════ CHECKBOXES — funciones globales ═══════════════
@@ -1586,9 +1626,9 @@ async function cargarLocalesDesdePadron() {
             btn.className = "local-picker-btn";
             btn.dataset.local = loc;
             btn.style.setProperty("--lc", conf.color);
-            btn.style.setProperty("--ls", conf.colorSoft);
-            const iconHtml = getLocalIconHtml(loc, 22);
-            const iconLabel = conf.labelIcon ? `<span class="lp-kind">${conf.labelIcon}</span>` : '';
+            btn.style.setProperty("--lc-soft", conf.colorSoft);
+            const iconHtml = getLocalIconHtml(loc, 20);
+            const iconLabel = conf.labelIcon ? `<span class="lp-kind" style="background:${conf.color}15;color:${conf.color};border-color:${conf.color}30;">${conf.labelIcon}</span>` : '';
             btn.innerHTML = `${iconHtml}<span class="lp-name">${loc}</span>${iconLabel}<span class="lp-mesas">M${conf.mesaMin}–${conf.mesaMax}</span>`;
             btn.onclick = () => {
                 picker.querySelectorAll(".local-picker-btn").forEach(b => {
@@ -1597,8 +1637,6 @@ async function cargarLocalesDesdePadron() {
                     b.style.borderColor = "";
                 });
                 btn.classList.add("selected");
-                btn.style.background = conf.color + "18";
-                btn.style.borderColor = conf.color;
                 if (hidden) hidden.value = loc;
             };
             picker.appendChild(btn);
@@ -1656,17 +1694,37 @@ function renderLocalesSummary() {
         const pct = total ? Math.round((voted/total)*100) : 0;
         const color = getColorLocal(local);
         const colorSoft = getColorLocalSoft(local);
-        const iconHtml = getLocalIconHtml(local, 20);
+        const iconHtml = getLocalIconHtml(local, 26);
         const card = document.createElement("div");
         card.className = "local-card";
-        card.style.borderLeftColor = color;
+        card.style.setProperty("--lc", color);
+        card.style.setProperty("--lc-soft", colorSoft);
         if (local === currentLocalForMesas && currentStatsView === "mesas") card.classList.add("active");
+
+        // Etiqueta corta del tipo de local
+        const tipoLabel = conf ? conf.labelIcon : "Otro";
+        const mesasLabel = conf ? `Mesas ${conf.mesaMin}–${conf.mesaMax}` : "";
+
         card.innerHTML = `
-            <div class="local-card-name" style="color:${color}">${iconHtml}<span>${local}</span></div>
-            <div class="local-card-num" style="color:${color}">${voted}<span style="font-size:.85rem;color:var(--color-gray);"> / ${total}</span></div>
-            <div class="local-card-meta">${conf ? `${conf.labelIcon} · Mesas ${conf.mesaMin}–${conf.mesaMax}` : "Sin asignar"}</div>
-            <div class="local-card-bar"><div class="local-card-bar-fill" style="width:${pct}%;background:linear-gradient(90deg,${color},${colorSoft})"></div></div>
-            <div class="local-card-pct" style="color:${color}">${pct}% de participación</div>`;
+            <div class="local-card-inner">
+                <div class="local-card-top">
+                    <div class="local-card-icon-wrap" style="background:${colorSoft}22;border-color:${color}33;">
+                        ${iconHtml}
+                    </div>
+                    <div class="local-card-name">
+                        <span class="local-card-label">${escHtml(local)}</span>
+                        <span style="color:${color};">${tipoLabel}${mesasLabel ? ' · ' + mesasLabel : ''}</span>
+                    </div>
+                </div>
+                <div class="local-card-num">${voted}<span class="local-card-num-total"> / ${total}</span></div>
+                <div class="local-card-pct">
+                    <span>${pct}% participación</span>
+                    <span class="local-card-meta-badge" style="background:${color}15;color:${color};border-color:${color}30;">${voted} votaron</span>
+                </div>
+                <div class="local-card-bar">
+                    <div class="local-card-bar-fill" style="width:${pct}%;background:linear-gradient(90deg,${color},${colorSoft})"></div>
+                </div>
+            </div>`;
         if (local !== "OTRO") {
             card.addEventListener("click", () => {
                 currentStatsView = "mesas";

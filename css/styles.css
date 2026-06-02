@@ -1256,83 +1256,172 @@ td input[type="checkbox"],
     margin-bottom: 1.25rem;
 }
 
+/* ═══════════════ CARDS DE LOCALES — rediseño premium ═══════════════ */
+.locales-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
 .local-card {
     background: #fff;
     border: 1px solid var(--color-border);
-    border-radius: var(--r-lg);
-    padding: 1.1rem;
+    border-radius: 18px;
+    padding: 0;
     box-shadow: var(--shadow-sm);
     cursor: pointer;
     transition: all var(--t-base);
-    border-left: 4px solid var(--color-primary);
     position: relative;
-    overflow: visible;
+    overflow: hidden;
     animation: cardEnter .4s var(--ease-out) both;
 }
+
+/* Banda de color superior */
+.local-card::before {
+    content: "";
+    display: block;
+    height: 5px;
+    background: var(--lc, var(--color-primary));
+    width: 100%;
+}
+
+/* Icono grande decorativo de fondo */
 .local-card::after {
     content: "";
     position: absolute;
-    top: 0; right: 0;
-    width: 80px; height: 80px;
-    background: radial-gradient(circle, var(--color-primary-light) 0%, transparent 70%);
+    bottom: -10px; right: -10px;
+    width: 90px; height: 90px;
+    background: var(--lc, var(--color-primary));
+    opacity: 0.06;
+    border-radius: 50%;
     pointer-events: none;
-    opacity: .6;
+    transition: opacity var(--t-base);
 }
+
 .local-card:hover {
-    transform: translateY(-4px);
+    transform: translateY(-5px);
     box-shadow: var(--shadow-lg);
-    border-left-width: 6px;
+    border-color: transparent;
+}
+.local-card:hover::after { opacity: 0.1; }
+
+.local-card-inner {
+    padding: 1.1rem 1.2rem 1rem;
+}
+
+.local-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .6rem;
+    margin-bottom: .75rem;
+}
+
+.local-card-icon-wrap {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    background: var(--lc-soft, #F1F5F9);
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    border: 1.5px solid var(--lc, var(--color-border));
+    opacity: 0.9;
 }
 
 .local-card-name {
-    font-size: .7rem;
+    font-size: .68rem;
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: .4px;
+    letter-spacing: .5px;
     display: flex;
-    align-items: center;
-    gap: .45rem;
-    margin-bottom: .55rem;
-    color: var(--color-text-soft);
-    position: relative;
+    flex-direction: column;
+    gap: .15rem;
+    color: var(--color-gray);
+    flex: 1;
+    padding-top: .15rem;
 }
+
+.local-card-name span {
+    color: var(--lc, var(--color-primary));
+    font-size: .62rem;
+}
+
+.local-card-label {
+    font-size: .78rem;
+    font-weight: 700;
+    color: var(--color-dark);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.25;
+}
+
 .local-card-num {
-    font-size: 2rem;
+    font-size: 2.4rem;
     font-weight: 900;
     line-height: 1;
-    background: linear-gradient(135deg, var(--color-dark), var(--color-primary));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    position: relative;
+    color: var(--lc, var(--color-primary));
+    letter-spacing: -1.5px;
 }
+
+.local-card-num-total {
+    font-size: .95rem;
+    font-weight: 500;
+    color: var(--color-gray-soft);
+}
+
 .local-card-meta {
-    font-size: .76rem;
+    font-size: .7rem;
     color: var(--color-gray);
-    margin-top: .25rem;
-    position: relative;
+    margin-top: .3rem;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
 }
+
+.local-card-meta-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .2rem;
+    background: var(--lc-soft, #F1F5F9);
+    color: var(--lc, var(--color-primary));
+    font-size: .62rem;
+    font-weight: 700;
+    padding: .15rem .5rem;
+    border-radius: 999px;
+    border: 1px solid var(--lc, var(--color-border));
+    opacity: 0.85;
+}
+
 .local-card-pct {
     font-size: .72rem;
-    font-weight: 700;
-    margin-top: .3rem;
-    position: relative;
+    font-weight: 800;
+    margin-top: .5rem;
+    color: var(--lc, var(--color-primary));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
+
 .local-card-bar {
-    margin-top: .8rem;
-    height: 6px;
+    margin-top: .5rem;
+    height: 7px;
     background: var(--color-bg-soft);
     border-radius: var(--r-pill);
     overflow: hidden;
     position: relative;
 }
+
 .local-card-bar-fill {
     height: 100%;
     border-radius: var(--r-pill);
-    background: var(--gradient-primary);
+    background: linear-gradient(90deg, var(--lc, var(--color-primary)), var(--lc-soft, #FCA5A5));
     transition: width 1s var(--ease-out);
     position: relative;
 }
+
 .local-card-bar-fill::after {
     content: "";
     position: absolute; inset: 0;
@@ -1388,11 +1477,11 @@ td input[type="checkbox"],
     gap: 1rem;
 }
 
-/* ═══════════════ ADMIN ═══════════════ */
+/* ═══════════════ ADMIN — rediseño premium ═══════════════ */
 .admin-grid {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 1.5rem;
 }
 .admin-top-grid {
     display: grid;
@@ -1403,55 +1492,101 @@ td input[type="checkbox"],
 .admin-card {
     background: #fff;
     border: 1px solid var(--color-border);
-    padding: 1.6rem;
-    border-radius: var(--r-lg);
+    padding: 0;
+    border-radius: 20px;
     box-shadow: var(--shadow-sm);
     transition: box-shadow var(--t-base), transform var(--t-base);
     animation: cardEnter .4s var(--ease-out);
+    overflow: hidden;
 }
-.admin-card:hover { box-shadow: var(--shadow-md); }
+.admin-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
 
+/* Cabecera de admin-card */
 .admin-card h3 {
-    margin-bottom: 1.1rem;
-    padding-bottom: .65rem;
-    font-size: .95rem;
-    color: var(--color-dark);
+    margin: 0;
+    padding: 1rem 1.4rem;
+    font-size: .82rem;
+    color: #fff;
     display: flex;
     align-items: center;
-    gap: .55rem;
+    gap: .65rem;
     font-weight: 800;
-    border-bottom: 2px solid var(--color-primary-light);
     text-transform: uppercase;
-    letter-spacing: .4px;
+    letter-spacing: .5px;
+    background: var(--gradient-primary);
+    position: relative;
+    overflow: hidden;
+}
+.admin-card h3::after {
+    content: "";
+    position: absolute;
+    top: -40px; right: -20px;
+    width: 100px; height: 100px;
+    background: rgba(255,255,255,.08);
+    border-radius: 50%;
+    pointer-events: none;
 }
 .admin-card h3 .material-symbols-outlined,
-.admin-card h3 .svg-icon { color: var(--color-primary); }
+.admin-card h3 .svg-icon {
+    color: rgba(255,255,255,0.9);
+    background: rgba(255,255,255,.15);
+    padding: .3rem;
+    border-radius: 8px;
+    width: 28px; height: 28px;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Contenido interior de admin-card */
+.admin-card-body {
+    padding: 1.4rem;
+}
+/* Compatibilidad: si no hay admin-card-body, el padding va al form directamente */
+.admin-card > .form-group,
+.admin-card > form,
+.admin-card > p,
+.admin-card > button,
+.admin-card > .table-responsive,
+.admin-card > .local-picker-wrap {
+    padding: 0 1.4rem 1.4rem;
+}
+.admin-card > form { padding-top: 1.1rem; }
 
 /* Local picker */
 .local-picker-wrap {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: 1fr;
     gap: .55rem;
 }
 .local-picker-btn {
-    display: inline-flex;
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
     align-items: center;
-    gap: .4rem;
-    padding: .6rem .8rem;
-    background: #fff;
+    gap: .5rem;
+    padding: .75rem 1rem;
+    background: var(--color-bg-soft);
     border: 1.5px solid var(--color-border);
     border-radius: var(--r-md);
-    font-size: .78rem;
+    font-size: .82rem;
     font-weight: 600;
-    color: var(--color-text-soft);
+    color: var(--color-text);
     cursor: pointer;
     transition: all var(--t-base);
+    text-align: left;
 }
 .local-picker-btn:hover {
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-    background: var(--color-primary-softer);
-    transform: translateY(-1px);
+    border-color: var(--lc, var(--color-primary));
+    background: rgba(var(--lc, 185, 28, 28), .04);
+    transform: translateX(3px);
+    box-shadow: var(--shadow-xs);
+}
+.local-picker-btn.selected {
+    background: linear-gradient(135deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+    border-color: var(--lc, var(--color-primary));
+    border-width: 2px;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--lc, var(--color-primary)) 15%, transparent);
+    color: var(--lc, var(--color-primary));
+    font-weight: 700;
 }
 .local-picker-btn.active,
 .local-picker-btn[aria-pressed="true"] {
@@ -1462,16 +1597,27 @@ td input[type="checkbox"],
 }
 .lp-mesas {
     font-size: .65rem;
-    background: rgba(255,255,255,.7);
-    padding: .1rem .45rem;
+    background: rgba(0,0,0,.06);
+    padding: .18rem .55rem;
     border-radius: var(--r-pill);
-    margin-left: auto;
     font-weight: 700;
-    color: var(--color-primary);
+    color: var(--color-text-soft);
+    white-space: nowrap;
 }
 .local-picker-btn.active .lp-mesas,
 .local-picker-btn[aria-pressed="true"] .lp-mesas {
-    background: rgba(255,255,255,.95);
+    background: rgba(255,255,255,.2);
+    color: #fff;
+}
+.local-picker-btn.selected .lp-mesas {
+    background: color-mix(in srgb, var(--lc, var(--color-primary)) 12%, transparent);
+    color: var(--lc, var(--color-primary));
+}
+.lp-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .78rem;
 }
 
 /* Info banner */
@@ -1972,19 +2118,30 @@ td input[type="checkbox"],
 
 /* Local card activo en estadísticas */
 .local-card.active {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-lg);
-    border-left-width: 6px;
-    background: linear-gradient(135deg, #fff, #FFF8F8);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px -6px var(--lc, rgba(185,28,28,.35)), var(--shadow-md);
+    border-color: var(--lc, var(--color-primary));
+    border-width: 2px;
 }
 .local-card.active::before {
-    content: "▼";
+    height: 6px;
+    background: var(--lc, var(--color-primary));
+    opacity: 1;
+}
+/* Flecha indicadora abajo */
+.local-card.active::after {
+    content: "";
     position: absolute;
-    bottom: -8px; left: 50%;
+    bottom: -9px; left: 50%;
     transform: translateX(-50%);
-    color: var(--color-primary);
-    font-size: .8rem;
-    z-index: 2;
+    width: 0; height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid var(--lc, var(--color-primary));
+    border-radius: 0;
+    pointer-events: none;
+    opacity: 1;
+    background: none;
 }
 
 /* Botones de acción uniformes en tabla de operadores */
@@ -2785,18 +2942,21 @@ body.menu-sheet-open { overflow: hidden; }
 }
 .menu-tres-puntos { position: relative; isolation: isolate; }
 .menu-tres-puntos .btn-puntos {
-    width: 40px;
-    height: 40px;
-    min-width: 40px;
-    min-height: 40px;
-    border-radius: 12px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 .menu-tres-puntos .btn-puntos .material-symbols-outlined,
 .menu-tres-puntos .btn-puntos .material-symbols-rounded,
 .menu-tres-puntos .btn-puntos .ms-fallback-icon {
-    font-size: 22px;
-    width: 22px;
-    height: 22px;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
 }
 .menu-tres-puntos .dropdown {
     min-width: 272px;
@@ -2808,6 +2968,90 @@ body.menu-sheet-open { overflow: hidden; }
 .menu-tres-puntos .dropdown a {
     min-height: 46px;
 }
+
+/* ─── Dropdown teleportado al body (desktop — fix overflow tabla) ─── */
+.dropdown.dropdown-teleported {
+    position: fixed !important;
+    z-index: 99999 !important;
+    min-width: 288px;
+    max-width: min(92vw, 320px);
+    background: #fff;
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px -8px rgba(15,23,42,0.22), 0 4px 16px rgba(15,23,42,0.08);
+    overflow: hidden;
+    animation: dropdownIn .2s var(--ease-out);
+    /* Asegurar que el contenido interno funcione igual */
+    display: none;
+}
+.dropdown.dropdown-teleported.show {
+    display: block;
+}
+/* Los links dentro del dropdown teleportado heredan los mismos estilos */
+.dropdown.dropdown-teleported a {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    padding: .65rem 1rem;
+    font-size: .85rem;
+    color: var(--color-text);
+    text-decoration: none;
+    font-weight: 500;
+    transition: background var(--t-fast), color var(--t-fast), padding-left var(--t-fast);
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    font-family: var(--font-family);
+    min-height: 46px;
+}
+.dropdown.dropdown-teleported a:hover {
+    background: var(--color-primary-softer);
+    color: var(--color-primary);
+    border-left-color: var(--color-primary);
+    padding-left: 1.15rem;
+}
+.dropdown.dropdown-teleported a.dropdown-danger {
+    color: var(--color-primary);
+}
+.dropdown.dropdown-teleported a.dropdown-danger:hover {
+    background: var(--color-primary-light);
+    border-left-color: var(--color-primary);
+}
+.dropdown.dropdown-teleported .dropdown-header {
+    padding: .85rem 1rem .65rem;
+    border-bottom: 1px solid var(--color-border-soft);
+    background: linear-gradient(135deg, var(--color-bg-soft), #fff);
+}
+.dropdown.dropdown-teleported .dropdown-header-name {
+    display: block;
+    font-weight: 800;
+    font-size: .88rem;
+    color: var(--color-dark);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dropdown.dropdown-teleported .dropdown-header-ced {
+    display: block;
+    font-size: .74rem;
+    color: var(--color-gray);
+    font-family: var(--font-mono);
+    margin-top: .15rem;
+}
+.dropdown.dropdown-teleported .dropdown-primary {
+    background: var(--color-info-bg) !important;
+    border-left-color: var(--color-info) !important;
+    padding-left: 1.15rem !important;
+    font-weight: 600;
+}
+.dropdown.dropdown-teleported .dropdown-primary:hover {
+    background: #BFDBFE !important;
+}
+.dropdown.dropdown-teleported .dropdown-divider {
+    height: 1px;
+    background: var(--color-border-soft);
+    margin: .2rem 0;
+}
+
 @media (max-width: 768px) {
     .menu-tres-puntos .dropdown.dropdown-mobile-sheet {
         position: fixed !important;
@@ -2828,6 +3072,7 @@ body.menu-sheet-open { overflow: hidden; }
         top: 0;
         z-index: 1;
         padding-top: 1rem;
+        background: #fff;
     }
 }
 @keyframes sheetUp {

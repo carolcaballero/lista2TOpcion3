@@ -941,29 +941,10 @@ function construirCardsConSecciones(lista, mostrarSecciones, isAdmin) {
     return html;
 }
 
-// Dropdown del menú 3 puntos: opciones ampliadas
+// Dropdown del menú 3 puntos — solo acciones secundarias
 function construirDropdownMenu(v, voto, obs, isAdmin) {
     const id = `menu-${v.cedula}`;
     const nombreEsc = jsEscape(v.nombre);
-
-    let accionesVoto = "";
-    if (voto === "Pendiente") {
-        accionesVoto += `
-            <a href="#" data-action="quick-voto"   data-cedula="${v.cedula}"><svg class="svg-icon" aria-hidden="true" style="color:#15803D;"><use href="#i-check"/></svg> Marcar como <strong>Votó</strong></a>
-            <a href="#" data-action="quick-novoto" data-cedula="${v.cedula}" data-nombre="${nombreEsc}"><svg class="svg-icon" aria-hidden="true" style="color:#B45309;"><use href="#i-cancel"/></svg> Marcar como <strong>No Votó</strong></a>`;
-    } else if (voto === "Votó") {
-        accionesVoto += `
-            <a href="#" data-action="quick-novoto" data-cedula="${v.cedula}" data-nombre="${nombreEsc}"><svg class="svg-icon" aria-hidden="true" style="color:#B45309;"><use href="#i-cancel"/></svg> Cambiar a <strong>No Votó</strong></a>
-            <a href="#" data-action="quick-voto"   data-cedula="${v.cedula}"><svg class="svg-icon" aria-hidden="true" style="color:#B91C1C;"><use href="#i-arrow-back"/></svg> Quitar voto (Pendiente)</a>`;
-    } else {
-        accionesVoto += `
-            <a href="#" data-action="quick-voto"   data-cedula="${v.cedula}"><svg class="svg-icon" aria-hidden="true" style="color:#15803D;"><use href="#i-check"/></svg> Cambiar a <strong>Votó</strong></a>
-            <a href="#" data-action="quick-novoto" data-cedula="${v.cedula}" data-nombre="${nombreEsc}"><svg class="svg-icon" aria-hidden="true" style="color:#B91C1C;"><use href="#i-arrow-back"/></svg> Quitar No Votó (Pendiente)</a>`;
-    }
-
-    const menuObs = obs
-        ? `<a href="#" data-action="obs" data-cedula="${v.cedula}" data-nombre="${nombreEsc}"><svg class="svg-icon" aria-hidden="true" style="color:#B45309;"><use href="#i-edit"/></svg> Editar observación</a>`
-        : `<a href="#" data-action="obs" data-cedula="${v.cedula}" data-nombre="${nombreEsc}"><svg class="svg-icon" aria-hidden="true" style="color:#B45309;"><use href="#i-edit"/></svg> Agregar observación</a>`;
 
     const menuEliminar = isAdmin
         ? `<div class="dropdown-divider"></div>
@@ -976,14 +957,14 @@ function construirDropdownMenu(v, voto, obs, isAdmin) {
                 <span class="dropdown-header-name">${escHtml(v.nombre)}</span>
                 <span class="dropdown-header-ced">CI ${escHtml(v.cedula)}</span>
             </div>
-            <a href="#" data-action="historial" data-cedula="${v.cedula}" data-nombre="${nombreEsc}" class="dropdown-primary">
-                <svg class="svg-icon" aria-hidden="true" style="color:#1D4ED8;"><use href="#i-history"/></svg>
-                <span><strong>Ver historial completo</strong><br><small>Todos los cambios y "Cambiado por"</small></span>
+            <a href="#" data-action="obs" data-cedula="${v.cedula}" data-nombre="${nombreEsc}" class="dropdown-primary">
+                <svg class="svg-icon" aria-hidden="true" style="color:#B45309;"><use href="#i-edit"/></svg>
+                <span><strong>${obs ? 'Editar observación' : 'Agregar observación'}</strong><br><small>${obs ? 'Modificar nota existente' : 'Agregar una nota a este votante'}</small></span>
             </a>
             <div class="dropdown-divider"></div>
-            ${accionesVoto}
-            <div class="dropdown-divider"></div>
-            ${menuObs}
+            <a href="#" data-action="historial" data-cedula="${v.cedula}" data-nombre="${nombreEsc}">
+                <svg class="svg-icon" aria-hidden="true" style="color:#1D4ED8;"><use href="#i-history"/></svg> Ver historial de cambios
+            </a>
             <a href="#" data-action="copiar-ci" data-cedula="${v.cedula}"><svg class="svg-icon" aria-hidden="true" style="color:#475569;"><use href="#i-copy"/></svg> Copiar cédula</a>
             <a href="#" data-action="compartir-wa" data-cedula="${v.cedula}" data-nombre="${nombreEsc}"><svg class="svg-icon" aria-hidden="true" style="color:#15803D;"><use href="#i-whatsapp"/></svg> Compartir por WhatsApp</a>
             ${menuEliminar}
@@ -1628,8 +1609,7 @@ async function cargarLocalesDesdePadron() {
             btn.style.setProperty("--lc", conf.color);
             btn.style.setProperty("--lc-soft", conf.colorSoft);
             const iconHtml = getLocalIconHtml(loc, 20);
-            const iconLabel = conf.labelIcon ? `<span class="lp-kind" style="background:${conf.color}15;color:${conf.color};border-color:${conf.color}30;">${conf.labelIcon}</span>` : '';
-            btn.innerHTML = `${iconHtml}<span class="lp-name">${loc}</span>${iconLabel}<span class="lp-mesas">M${conf.mesaMin}–${conf.mesaMax}</span>`;
+            btn.innerHTML = `${iconHtml}<span class="lp-name">${loc}</span><span class="lp-mesas">M${conf.mesaMin}–${conf.mesaMax}</span>`;
             btn.onclick = () => {
                 picker.querySelectorAll(".local-picker-btn").forEach(b => {
                     b.classList.remove("selected");

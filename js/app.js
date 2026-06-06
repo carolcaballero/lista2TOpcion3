@@ -52,6 +52,7 @@ const state = {
     notifiedThresholds: new Set(),
     isRendering:      false,
     offlineRetryInterval: null,
+    sortByLocal:      false,
 };
 
 const selectedCedulas = new Set();
@@ -780,15 +781,25 @@ async function renderTablaVotantes() {
         return 2;
     };
     const compararLista = (a, b) => {
+        if (state.sortByLocal) {
+            const localCmp = (a.local || "").localeCompare(b.local || "", "es");
+            if (localCmp !== 0) return localCmp;
+            return (a.nombre || "").localeCompare(b.nombre || "", "es");
+        }
         const d = ordenEstado(a) - ordenEstado(b);
         if (d !== 0) return d;
+        return (a.nombre || "").localeCompare(b.nombre || "", "es");
+    };
+    const compararPorLocal = (a, b) => {
+        const localCmp = (a.local || "").localeCompare(b.local || "", "es");
+        if (localCmp !== 0) return localCmp;
         return (a.nombre || "").localeCompare(b.nombre || "", "es");
     };
 
     let lista;
     if (q && state.searchAllStates) {
         lista = state.padron.filter(v => v.nombre.toLowerCase().includes(q) || v.cedula.includes(q));
-        lista.sort(compararLista);
+        lista.sort(state.sortByLocal ? compararPorLocal : compararLista);
     } else if (state.currentFilter === "todos") {
         lista = [...state.padron];
         if (q) lista = lista.filter(v => v.nombre.toLowerCase().includes(q) || v.cedula.includes(q));
@@ -796,7 +807,7 @@ async function renderTablaVotantes() {
     } else {
         lista = state.padron.filter(v => getVoto(v.cedula) === state.currentFilter);
         if (q) lista = lista.filter(v => v.nombre.toLowerCase().includes(q) || v.cedula.includes(q));
-        lista.sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"));
+        lista.sort(state.sortByLocal ? compararPorLocal : (a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"));
     }
 
     const totalItems = lista.length;
@@ -850,8 +861,10 @@ async function renderTablaVotantes() {
                     No se encontraron registros para este criterio.
                 </div>`;
         } else {
-            const debeMostrarSecciones = (state.currentFilter === "todos" && !q && totalPages === 1);
-            if (debeMostrarSecciones) cardsContainer.innerHTML = construirCardsConSecciones(lista, true, isAdmin);
+            const debeMostrarSecciones = (state.currentFilter === "todos" && !q && totalPages === 1 && !state.sortByLocal);
+            const debeMostrarPorLocal  = state.sortByLocal && totalPages === 1;
+            if (debeMostrarPorLocal) cardsContainer.innerHTML = construirCardsPorLocal(lista, isAdmin);
+            else if (debeMostrarSecciones) cardsContainer.innerHTML = construirCardsConSecciones(lista, true, isAdmin);
             else cardsContainer.innerHTML = paginatedList.map((v, idx) => construirTarjeta(v, start + idx, isAdmin)).join("");
         }
     }
@@ -923,6 +936,13 @@ async function renderTablaVotantes() {
 
     renderPaginationControls(totalItems);
     actualizarBarraSeleccion();
+    // Actualizar indicador visual del encabezado Local
+    const thLocal = document.getElementById("th-local-sort");
+    if (thLocal) {
+        thLocal.classList.toggle("sort-active", !!state.sortByLocal);
+        const arrow = thLocal.querySelector(".sort-arrow");
+        if (arrow) arrow.textContent = state.sortByLocal ? " ▲" : " ⇅";
+    }
     state.isRendering = false;
     mostrarLoadingEnTabla(false);
 }
@@ -961,6 +981,35 @@ function construirCardsConSecciones(lista, mostrarSecciones, isAdmin) {
     html += renderGrupo("Votaron",    grupos["Votó"],     "sd-voted",   "check_circle");
     html += renderGrupo("No Votaron", grupos["No Votó"],  "sd-novoted", "cancel");
     html += renderGrupo("Pendientes", grupos["Pendiente"], "sd-pending", "schedule");
+    return html;
+}
+
+// ── Tarjetas agrupadas por Local de Votación ──
+function construirCardsPorLocal(lista, isAdmin) {
+    const localesOrden = [];
+    const grupos = {};
+    lista.forEach(v => {
+        const loc = v.local || "SIN LOCAL";
+        if (!grupos[loc]) { grupos[loc] = []; localesOrden.push(loc); }
+        grupos[loc].push(v);
+    });
+    // Orden: únicos, ya vienen ordenados por local desde la lista
+    const localesUnicos = [...new Set(localesOrden)];
+    let html = "";
+    let contadorGlobal = 0;
+    localesUnicos.forEach(local => {
+        const items = grupos[local] || [];
+        if (!items.length) return;
+        const conf = LOCALES_CONFIG[local];
+        const color = getColorLocal(local);
+        const iconHtml = getLocalIconHtml(local, 18);
+        html += `
+            <div class="section-divider" style="background:${color}18;color:${color};border-color:${color}33;">
+                ${iconHtml}&nbsp;<strong>${escHtml(local)}</strong>
+                <span class="sd-count">${items.length}</span>
+            </div>`;
+        items.forEach(v => { html += construirTarjeta(v, contadorGlobal++, isAdmin); });
+    });
     return html;
 }
 
@@ -1904,6 +1953,96 @@ window.exportarXLSX = function() {
     XLSX.utils.book_append_sheet(wb, ws, "Planilla");
     XLSX.writeFile(wb, `planilla-electoral-${Date.now()}.xlsx`);
     toast("Planilla exportada.", "ok");
+};
+
+// ═══════════════ TOGGLE ORDEN POR LOCAL (PLANILLA) ═══════════════
+window.toggleOrdenPorLocal = function() {
+    state.sortByLocal = !state.sortByLocal;
+    state.pagination.page = 1;
+    // Actualizar visual del encabezado
+    const thLocal = document.getElementById("th-local-sort");
+    if (thLocal) {
+        thLocal.classList.toggle("sort-active", state.sortByLocal);
+        const arrow = thLocal.querySelector(".sort-arrow");
+        if (arrow) arrow.textContent = state.sortByLocal ? " ▲" : " ⇅";
+    }
+    renderTablaVotantes();
+};
+
+// ═══════════════ EXPORTAR LISTA COMPLETA PADRON EXTRA (ADMIN) ═══════════════
+window.exportarListaCompletaPadron = async function() {
+    if (!state.currentUser?.isAdmin) { toast("Solo el administrador puede exportar.", "error"); return; }
+    toast("Preparando lista completa...", "ok");
+    try {
+        // Traer todos los registros frescos de Firebase
+        const snap = await getDocs(collection(db, "padron_extra"));
+        const todos = [];
+        snap.forEach(d => {
+            const v = d.data();
+            todos.push({
+                nombre:    v.nombre    || "Sin nombre",
+                cedula:    String(v.cedula || "").replace(/[\s\-]/g,"").replace(/^0+/,""),
+                local:     v.local     || "",
+                mesa:      v.mesa      || "",
+                orden:     v.orden     || "",
+                domicilio: v.domicilio || "---",
+            });
+        });
+
+        // Ordenar: primero por local, luego por nombre (alfabético)
+        todos.sort((a, b) => {
+            const localCmp = (a.local || "").localeCompare(b.local || "", "es", { sensitivity: "base" });
+            if (localCmp !== 0) return localCmp;
+            return (a.nombre || "").localeCompare(b.nombre || "", "es", { sensitivity: "base" });
+        });
+
+        if (!todos.length) { toast("No hay registros en la planilla.", "warn"); return; }
+
+        // Construir workbook con encabezados profesionales
+        const HEADER_STYLE = { font: { bold: true, color: { rgb: "FFFFFF" }, sz: 11 }, fill: { fgColor: { rgb: "B91C1C" } }, alignment: { horizontal: "center", vertical: "center" } };
+        const localesOrden = [...new Set(todos.map(v => v.local || "SIN LOCAL"))];
+
+        // Hoja 1: Lista completa ordenada por local y nombre
+        const filasCompleta = [["N°","Nombre","Cédula","Local de Votación","Mesa","Orden","Domicilio"]];
+        todos.forEach((v, i) => {
+            filasCompleta.push([i+1, v.nombre, v.cedula, v.local, v.mesa, v.orden, v.domicilio]);
+        });
+        const wsCompleta = XLSX.utils.aoa_to_sheet(filasCompleta);
+        // Ancho de columnas
+        wsCompleta['!cols'] = [
+            { wch: 5 }, { wch: 36 }, { wch: 14 }, { wch: 42 }, { wch: 8 }, { wch: 8 }, { wch: 28 }
+        ];
+
+        // Hoja 2: Por local (una sección por local)
+        const filasPorLocal = [["N°","Nombre","Cédula","Local de Votación","Mesa","Orden"]];
+        let contador = 1;
+        localesOrden.forEach(local => {
+            const grupo = todos.filter(v => (v.local || "SIN LOCAL") === local);
+            if (!grupo.length) return;
+            // Fila separadora de local
+            filasPorLocal.push([`— ${local} — (${grupo.length} personas)`, "", "", "", "", ""]);
+            grupo.forEach(v => {
+                filasPorLocal.push([contador++, v.nombre, v.cedula, v.local, v.mesa, v.orden]);
+            });
+            filasPorLocal.push(["", "", "", "", "", ""]); // Espacio entre locales
+        });
+        const wsPorLocal = XLSX.utils.aoa_to_sheet(filasPorLocal);
+        wsPorLocal['!cols'] = [
+            { wch: 5 }, { wch: 36 }, { wch: 14 }, { wch: 42 }, { wch: 8 }, { wch: 8 }
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, wsCompleta, "Lista Completa");
+        XLSX.utils.book_append_sheet(wb, wsPorLocal, "Por Local");
+
+        const fecha = new Date().toLocaleDateString("es-PY").replace(/\//g,"-");
+        XLSX.writeFile(wb, `lista-completa-padron-${fecha}.xlsx`);
+        toast(`Lista exportada: ${todos.length} personas.`, "ok");
+        await registrarBitacora("Exportar Lista Completa", `Exportó lista completa de padron_extra (${todos.length} registros)`);
+    } catch(e) {
+        console.error(e);
+        toast("Error al exportar la lista.", "error");
+    }
 };
 
 // ═══════════════ CAMBIAR CONTRASEÑA ═══════════════

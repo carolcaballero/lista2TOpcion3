@@ -453,7 +453,18 @@
                         <th style="width:30px;"><input type="checkbox" id="checkbox-todos" onchange="toggleTodosCheckbox()"></th>
                         <th>N°</th><th>Nombre</th><th>Cédula</th>
                         <th id="th-local-sort" onclick="toggleOrdenPorLocal()" style="cursor:pointer;user-select:none;white-space:nowrap;" title="Ordenar por local">
-                            Local <span class="sort-arrow">⇅</span>
+                            Local
+                            <span class="sort-arrow-wrap">
+                                <!-- ícono inactivo: dos flechas arriba/abajo -->
+                                <svg class="sort-icon sort-icon-idle" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                    <path d="M5 10.5L8 13.5L11 10.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <path d="M11 5.5L8 2.5L5 5.5"   stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <!-- ícono activo: flecha hacia arriba sola -->
+                                <svg class="sort-icon sort-icon-active" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                    <path d="M4 10L8 4L12 10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </span>
                         </th>
                         <th>Mesa</th><th>Orden</th>
                         <th>Estado</th><th>Acciones</th><th>Observaciones</th><th>Cambiado por</th><th></th>

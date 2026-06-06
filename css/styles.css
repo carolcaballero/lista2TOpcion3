@@ -3240,15 +3240,46 @@ body.menu-sheet-open { overflow: hidden; }
     color: var(--color-primary-accent);
     font-weight: 700;
 }
-#th-local-sort .sort-arrow {
-    font-size: .7em;
-    opacity: .65;
-    margin-left: 3px;
-    transition: opacity var(--t-base);
+.sort-arrow-wrap {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 4px;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
 }
-#th-local-sort:hover .sort-arrow,
-#th-local-sort.sort-active .sort-arrow {
+.sort-icon {
+    width: 14px;
+    height: 14px;
+    transition: opacity .18s, transform .22s cubic-bezier(.4,0,.2,1), color .18s;
+    flex-shrink: 0;
+}
+/* idle: sempre visível mas suave */
+.sort-icon-idle {
+    opacity: .45;
+    display: block;
+}
+.sort-icon-active {
+    display: none;
+    opacity: 0;
+}
+/* hover sem sort ativo */
+#th-local-sort:hover .sort-icon-idle {
+    opacity: .85;
+}
+/* sort ativo: troca de ícone */
+#th-local-sort.sort-active .sort-icon-idle {
+    display: none;
+}
+#th-local-sort.sort-active .sort-icon-active {
+    display: block;
     opacity: 1;
+    color: var(--color-primary-accent);
+    animation: sortBounceIn .25s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes sortBounceIn {
+    from { transform: translateY(3px) scale(.8); opacity: 0; }
+    to   { transform: translateY(0)   scale(1);  opacity: 1; }
 }
 
 /* ═══ BOTÓN LISTA COMPLETA — override color verde oscuro ═══ */

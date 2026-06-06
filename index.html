@@ -451,7 +451,11 @@
                 <thead>
                     <tr>
                         <th style="width:30px;"><input type="checkbox" id="checkbox-todos" onchange="toggleTodosCheckbox()"></th>
-                        <th>N°</th><th>Nombre</th><th>Cédula</th><th>Local</th><th>Mesa</th><th>Orden</th>
+                        <th>N°</th><th>Nombre</th><th>Cédula</th>
+                        <th id="th-local-sort" onclick="toggleOrdenPorLocal()" style="cursor:pointer;user-select:none;white-space:nowrap;" title="Ordenar por local">
+                            Local <span class="sort-arrow">⇅</span>
+                        </th>
+                        <th>Mesa</th><th>Orden</th>
                         <th>Estado</th><th>Acciones</th><th>Observaciones</th><th>Cambiado por</th><th></th>
                     </tr>
                 </thead>
@@ -534,6 +538,20 @@
                         <span>
                             <strong>Descargar Excel Completo</strong>
                             <small>Planilla · Locales · Mesas · Resumen</small>
+                        </span>
+                    </button>
+                </div>
+                <div style="padding:0 1.4rem 1.4rem;">
+                    <button onclick="exportarListaCompletaPadron()" class="btn-excel-export" style="background:linear-gradient(135deg,#15803D,#166534);margin-top:10px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        <span>
+                            <strong>Lista Completa de Agregados</strong>
+                            <small>Ordenada por local y nombre · Hoja por local</small>
                         </span>
                     </button>
                 </div>

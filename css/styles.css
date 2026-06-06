@@ -3225,3 +3225,34 @@ body.menu-sheet-open { overflow: hidden; }
     font-weight: 500;
     letter-spacing: .2px;
 }
+
+/* ═══ SORT BY LOCAL — encabezado clickable ═══ */
+#th-local-sort {
+    position: relative;
+    transition: background var(--t-base), color var(--t-base);
+}
+#th-local-sort:hover {
+    background: rgba(185,28,28,0.07);
+    color: var(--color-primary-accent);
+}
+#th-local-sort.sort-active {
+    background: rgba(185,28,28,0.10);
+    color: var(--color-primary-accent);
+    font-weight: 700;
+}
+#th-local-sort .sort-arrow {
+    font-size: .7em;
+    opacity: .65;
+    margin-left: 3px;
+    transition: opacity var(--t-base);
+}
+#th-local-sort:hover .sort-arrow,
+#th-local-sort.sort-active .sort-arrow {
+    opacity: 1;
+}
+
+/* ═══ BOTÓN LISTA COMPLETA — override color verde oscuro ═══ */
+.btn-excel-export[style*="#15803D"]:hover {
+    background: linear-gradient(135deg,#14532d,#15803D) !important;
+    box-shadow: 0 8px 28px -4px rgba(21,128,61,0.55), 0 2px 8px rgba(21,128,61,0.25);
+}
